@@ -63,5 +63,5 @@ make client-run
 ### Cómo terminar el programa
 Si bien los programas se cierran de manera automática una vez finalizado el procesamiento, el sistema cerrará por completo una vez ejecutado el comando:
 ```console
-make docker-compose-down
+make shutdown
 ```
