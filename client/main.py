@@ -1,5 +1,5 @@
 from configparser import ConfigParser
-from common.client import TestClient
+from common.client import Client
 import logging
 import os
 
@@ -35,6 +35,9 @@ def initialize_config():
     try:
         config_params["port"] = int(os.getenv('SERVER_PORT', config["DEFAULT"]["SERVER_PORT"]))
         config_params["ip"] = os.getenv('SERVER_IP', config["DEFAULT"]["SERVER_IP"])
+
+        config_params["book_file_path"] = os.getenv('BOOK_FILE_PATH', config["DEFAULT"]["BOOK_FILE_PATH"])
+
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
 
     except KeyError as e:
@@ -50,6 +53,7 @@ def main():
     logging_level = config_params["logging_level"]
     port = config_params["port"]
     ip = config_params["ip"]
+    book_file_path = config_params["book_file_path"]    
 
     initialize_log(logging_level)
 
@@ -61,7 +65,7 @@ def main():
                   | logging_level: {logging_level}''')
 
     # Initialize server and start server loop
-    client = TestClient(ip, port)
+    client = Client(ip, port, book_file_path)
     client.run()
 
 if __name__ == "__main__":

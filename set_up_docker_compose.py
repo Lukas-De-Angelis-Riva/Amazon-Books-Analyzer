@@ -101,6 +101,7 @@ def create_client():
         ],
         'volumes': [
             './client/config.ini:/config.ini',
+            './client/data:/data',
         ],
         'networks': [
             NETWORK_NAME,
