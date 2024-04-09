@@ -1,8 +1,10 @@
-import socket
-from common.handler import SocketBroken, TCPHandler
-import logging
-import csv
+from utils.protocolHandler import ProtocolHandler
+from utils.TCPhandler import SocketBroken
 from model.book import Book
+
+import logging
+import socket
+import csv
 import os
 
 TITLE = 0
@@ -24,15 +26,15 @@ class Client:
     def run(self):
         logging.info(f'action: running client')
         # Read airports.csv and send to the system.
-#        self.connect(self.ip, self.port)
-        self.send_books(self.book_file_path, chunk_size=20)
-#        self.disconnect()
+        self.connect(self.ip, self.port)
+        self.send_books(self.book_file_path, chunk_size=1)
+        self.disconnect()
         logging.info(f'action: closing client')
 
     def connect(self, ip, port):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect((ip, port))
-        self.handler = TCPHandler(self.socket)
+        self.protocolHandler = ProtocolHandler(self.socket)
 
     def disconnect(self):
         self.socket.close()
@@ -41,13 +43,19 @@ class Client:
     def read_book_line(self, line):
         r = csv.reader([line], )
         _book = list(r)[0]
-        return Book(
+        book = Book(
             title = _book[TITLE],
             authors = [author.strip(" '[]") for author in _book[AUTHORS].split(',')],
             publisher = _book[PUBLISHER],
             publishedDate = _book[PUBLISHED_DATE],
             categories = [category.strip(" '[]") for category in _book[CATEGORIES].split(',')],
         )
+        book.authors = book.authors if len(book.authors) > 0 else ["-"]
+        book.publisher = book.publisher if len(book.publisher) != 0 else "-"
+        book.publishedDate = book.publishedDate if len(book.publishedDate) != 0 else "-"
+        book.categories = book.categories if len(book.categories) > 0 else ["-"]
+
+        return book
 
     def send_books(self, file_path, chunk_size):
         logging.info(f'action: send books | result: in_progress | path: {file_path}')
@@ -62,7 +70,7 @@ class Client:
                     logging.info(f'action: read_book | result: success | book: {element}')
                     batch.append(element)
                     if len(batch) == chunk_size:
-#                        send_message(batch)
+                        self.protocolHandler.send_books(batch)
                         batch = []
                         logging.info('action: read {} | progress: {:.2f}%'.format(
                             file_path, 100*(file.tell())/(file_size)
@@ -70,11 +78,11 @@ class Client:
                     i+=1
 
                 if batch:
-#                    send_message(batch)
+                    self.protocolHandler.send_books(batch)
                     logging.info('action: read {} | progress: {:.2f}%'.format(
                         file_path, 100*(file.tell())/(file_size)
                     ))
-#                send_eof()
+                self.protocolHandler.send_book_eof()
         except (SocketBroken, OSError) as e:
             if not self.signal_received:
                 logging.error(f'action: send books | result: fail | error: {e}')

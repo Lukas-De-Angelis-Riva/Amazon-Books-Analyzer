@@ -1,0 +1,22 @@
+name: tp1-client
+networks:
+  amazon-network:
+    external: 'true'
+    ipam:
+      config:
+      - subnet: 172.25.125.0/24
+      driver: default
+services:
+  client:
+    container_name: client
+    entrypoint: python3 /main.py
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    image: client:latest
+    networks:
+    - amazon-network
+    volumes:
+    - ./client/config.ini:/config.ini
+    - ./client/data:/data
+version: '3.9'

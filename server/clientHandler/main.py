@@ -1,5 +1,5 @@
 from configparser import ConfigParser
-from common.dummyClientHandler import DummyClientHandler
+from common.clientHandler import ClientHandler
 import logging
 import os
 
@@ -58,7 +58,7 @@ def main():
                   f"logging_level: {logging_level}")
 
     # Initialize server and start server loop
-    clientHandler = DummyClientHandler(ip, port)
+    clientHandler = ClientHandler(config_params)
     clientHandler.run()
 
 if __name__ == "__main__":
