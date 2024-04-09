@@ -2,13 +2,11 @@ import socket
 import signal
 import logging
 
+from common.clientHandlerMiddleware import ClientHandlerMiddleware
+from utils.serializer.bookSerializer import BookSerializer
+from utils.protocolHandler import ProtocolHandler
 from utils.TCPhandler import SocketBroken
 from utils.protocol import make_eof
-from utils.serializer.bookSerializer import BookSerializer
-
-from utils.protocolHandler import ProtocolHandler
-
-# from common.clientHandlerMiddleware import ClientHandlerMiddleware
 
 class ClientHandler:
     def __init__(self, config_params):
@@ -22,7 +20,7 @@ class ClientHandler:
 
         self.book_serializer = BookSerializer()
 
-        #self.middleware = ClientHandlerMiddleware()
+        self.middleware = ClientHandlerMiddleware()
         
     def run(self):
         """
@@ -39,7 +37,7 @@ class ClientHandler:
 
         self._server_socket.close()
         logging.debug(f'action: release_socket | result: success')
-        #self.middleware.stop()
+        self.middleware.stop()
         logging.debug(f'action: release_rabbitmq_conn | result: success')
 
 
@@ -77,14 +75,14 @@ class ClientHandler:
 
     def __handle_book_eof(self):
         eof = make_eof()
-        #self.middleware.send_book(eof)
+        self.middleware.send_booksQ1(eof)
 
         logging.debug(f'action: send_airports | value: EOF | result: success')
         return False
 
     def __handle_books(self, value):
         data = self.book_serializer.to_bytes(value)
-        #self.middleware.send_airport(data)
+        self.middleware.send_booksQ1(data)
 
         logging.debug(f'action: send_books | len(value): {len(value)} | result: success')
         return True
