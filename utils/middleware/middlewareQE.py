@@ -1,5 +1,5 @@
 import logging
-from middleware.middleware import Middleware
+from utils.middleware.middleware import Middleware
 
 class MiddlewareQE(Middleware):
     def __init__(self, in_queue_name: str, exchange: str, tag: str):

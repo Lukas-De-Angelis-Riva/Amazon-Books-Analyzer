@@ -2,7 +2,7 @@
 import yaml
 import argparse
 
-from config import LOGGING_LEVEL
+from config import LOGGING_LEVEL, AMOUNT_OF_QUERY1_WORKERS
 
 NETWORK_NAME = "amazon-network"
 
@@ -56,6 +56,28 @@ def create_middleware_side():
 ### SERVER SIDE ###
 ###################
 
+def create_query1Worker(i):
+    return {
+        'container_name': f'query1Worker{i}',
+        'image': 'query1_worker:latest',
+        'entrypoint': 'python3 /main.py',
+        'environment': [
+            'PYTHONUNBUFFERED=1',
+            f'LOGGING_LEVEL={LOGGING_LEVEL}',
+            'PEERS='+str(AMOUNT_OF_QUERY1_WORKERS),
+        ],
+        'volumes': [
+            './server/query1/worker/config.ini:/config.ini',
+        ],
+#        'depends_on': [
+#            'resultHandler',
+#        ],
+        'networks': [
+            NETWORK_NAME,
+        ],
+    }
+
+
 def create_clientHandler():
     return {
         'container_name': 'clientHandler',
@@ -68,6 +90,7 @@ def create_clientHandler():
         'volumes': [
             './server/clientHandler/config.ini:/config.ini',
         ],
+        'depends_on': [f'query1Worker{i+1}' for i in range(AMOUNT_OF_QUERY1_WORKERS)],
         'networks': [
             NETWORK_NAME,
         ],
@@ -81,8 +104,15 @@ def create_server_side():
     config['networks'] = {}
     config['networks'][NETWORK_NAME] = create_network(external = True)
 
+    # CLIENT HANDLER
     config['services'] = {}
     config['services']['clientHandler'] = create_clientHandler()
+
+    # QUERY 1
+    for i in range(AMOUNT_OF_QUERY1_WORKERS):
+        config['services'][f'query1Worker{i+1}'] = create_query1Worker(i+1)
+
+    # QUERY 2...
 
     with open('docker-compose-server.yaml', 'w') as file:
         yaml.dump(config, file)

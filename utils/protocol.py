@@ -24,7 +24,12 @@ class TlvTypes():
     BOOK_PUBLISHER = next()
     BOOK_PUBLISHED_DATE = next()
     BOOK_CATEGORIES = next()
-    
+
+    Q1_RESULT_CHUNK = next()
+    Q1_RESULT = next()
+    Q1_RESULT_TITLE = next()
+    Q1_RESULT_AUTHORS = next()
+    Q1_RESULT_PUBLISHER = next()
 
     REVIEW_CHUNK = next()
     REVIEW = next()

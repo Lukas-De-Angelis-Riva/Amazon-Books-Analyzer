@@ -77,7 +77,7 @@ class ClientHandler:
         eof = make_eof()
         self.middleware.send_booksQ1(eof)
 
-        logging.debug(f'action: send_airports | value: EOF | result: success')
+        logging.debug(f'action: send_books | value: EOF | result: success')
         return False
 
     def __handle_books(self, value):
