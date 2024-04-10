@@ -37,6 +37,7 @@ def initialize_config():
         config_params["ip"] = os.getenv('SERVER_IP', config["DEFAULT"]["SERVER_IP"])
 
         config_params["book_file_path"] = os.getenv('BOOK_FILE_PATH', config["DEFAULT"]["BOOK_FILE_PATH"])
+        config_params["chunk_size_book"] = int(os.getenv('CHUNK_SIZE_BOOK', config["DEFAULT"]["CHUNK_SIZE_BOOK"]))
 
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
 
@@ -54,6 +55,7 @@ def main():
     port = config_params["port"]
     ip = config_params["ip"]
     book_file_path = config_params["book_file_path"]    
+    chunk_size_book = config_params["chunk_size_book"]    
 
     initialize_log(logging_level)
 
@@ -65,7 +67,7 @@ def main():
                   | logging_level: {logging_level}''')
 
     # Initialize server and start server loop
-    client = Client(ip, port, book_file_path)
+    client = Client(ip, port, book_file_path,chunk_size_book)
     client.run()
 
 if __name__ == "__main__":
