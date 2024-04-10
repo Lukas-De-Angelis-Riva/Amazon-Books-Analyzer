@@ -33,6 +33,12 @@ class TlvTypes():
 
     REVIEW_CHUNK = next()
     REVIEW = next()
+    REVIEW_ID = next()
+    REVIEW_TITLE = next()
+    REVIEW_SCORE = next()
+    REVIEW_TEXT = next()
+
+    REVIEW = next()
     ACK = next()
     
 def is_eof(bytes):

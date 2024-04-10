@@ -47,9 +47,10 @@ class Client:
             title = _book[TITLE],
             authors = [author.strip(" '[]") for author in _book[AUTHORS].split(',')],
             publisher = _book[PUBLISHER],
-            publishedDate = _book[PUBLISHED_DATE],
+            publishedDate = _book[PUBLISHED_DATE].split("-")[0],
             categories = [category.strip(" '[]") for category in _book[CATEGORIES].split(',')],
         )
+
         book.authors = book.authors if len(book.authors) > 0 else ["-"]
         book.publisher = book.publisher if len(book.publisher) != 0 else "-"
         book.publishedDate = book.publishedDate if len(book.publishedDate) != 0 else "-"
