@@ -69,14 +69,29 @@ def create_query1Worker(i):
         'volumes': [
             './server/query1/worker/config.ini:/config.ini',
         ],
-#        'depends_on': [
-#            'resultHandler',
-#        ],
+        'depends_on': [
+            'resultHandler',
+        ],
         'networks': [
             NETWORK_NAME,
         ],
     }
-
+def create_resultHandler():
+    return {
+        'container_name': 'resultHandler',
+        'image': 'result_handler:latest',
+        'entrypoint': 'python3 /main.py',
+        'environment': [
+            'PYTHONUNBUFFERED=1',
+            f'LOGGING_LEVEL={LOGGING_LEVEL}',
+        ],
+        'volumes': [
+            './server/resultHandler/config.ini:/config.ini',
+        ],
+        'networks': [
+            NETWORK_NAME,
+        ],
+    }
 
 def create_clientHandler():
     return {
@@ -113,6 +128,9 @@ def create_server_side():
         config['services'][f'query1Worker{i+1}'] = create_query1Worker(i+1)
 
     # QUERY 2...
+        
+
+    config['services']['resultHandler'] = create_resultHandler()
 
     with open('docker-compose-server.yaml', 'w') as file:
         yaml.dump(config, file)

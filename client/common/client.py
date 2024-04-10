@@ -47,15 +47,22 @@ class Client:
             title = _book[TITLE],
             authors = [author.strip(" '[]") for author in _book[AUTHORS].split(',')],
             publisher = _book[PUBLISHER],
-            publishedDate = _book[PUBLISHED_DATE].split("-")[0],
+            publishedDate = _book[PUBLISHED_DATE].split("-")[0].strip("*?"),
             categories = [category.strip(" '[]") for category in _book[CATEGORIES].split(',')],
         )
-
+        '''
+        book.title = book.title if len(book.title) > 0 else "-"
         book.authors = book.authors if len(book.authors) > 0 else ["-"]
         book.publisher = book.publisher if len(book.publisher) != 0 else "-"
         book.publishedDate = book.publishedDate if len(book.publishedDate) != 0 else "-"
         book.categories = book.categories if len(book.categories) > 0 else ["-"]
-
+        '''
+        if len(book.title) == 0 or \
+            len(book.authors) == 0 or \
+            len(book.publisher) == 0  or \
+            len(book.publishedDate) == 0 or \
+            len(book.categories) == 0:
+            return None
         return book
 
     def send_books(self, file_path, chunk_size):
@@ -68,14 +75,17 @@ class Client:
                 i = 0
                 while line := file.readline():
                     element = self.read_book_line(line)
-                    logging.info(f'action: read_book | result: success | book: {element}')
-                    batch.append(element)
-                    if len(batch) == chunk_size:
-                        self.protocolHandler.send_books(batch)
-                        batch = []
-                        logging.info('action: read {} | progress: {:.2f}%'.format(
-                            file_path, 100*(file.tell())/(file_size)
-                        ))
+                    if element != None:
+                        logging.info(f'action: read_book | result: success | book: {element}')
+                        batch.append(element)
+                        if len(batch) == chunk_size:
+                            self.protocolHandler.send_books(batch)
+                            batch = []
+                            logging.info('action: read {} | progress: {:.2f}%'.format(
+                                file_path, 100*(file.tell())/(file_size)
+                            ))
+                    else:
+                        logging.info(f'action: read_book | result: discard_book')
                     i+=1
 
                 if batch:
