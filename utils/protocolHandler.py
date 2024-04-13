@@ -3,12 +3,13 @@ import struct
 from utils.TCPhandler import TCPHandler
 from utils.protocol import TlvTypes, UnexpectedType, SIZE_LENGTH, is_eof, make_eof, make_heartbeat
 from utils.serializer.bookSerializer import BookSerializer
+from utils.serializer.lineSerializer import LineSerializer
 
 class ProtocolHandler:
     def __init__(self, socket):
         self.TCPHandler = TCPHandler(socket)
         self.book_serializer = BookSerializer()
-        
+        self.line_serializer = LineSerializer()
         self.eof_books_received = False
 
     def wait_confimation(self):
@@ -71,8 +72,8 @@ class ProtocolHandler:
         #elif tlv_type == TlvTypes.FLIGHT_CHUNK:
         #    return TlvTypes.FLIGHT_CHUNK, self.flight_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
 
-        #elif tlv_type == TlvTypes.LINE_CHUNK:
-        #    return TlvTypes.LINE_CHUNK, self.line_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
+        elif tlv_type == TlvTypes.LINE_CHUNK:
+            return TlvTypes.LINE_CHUNK, self.line_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
         
         else:
             raise UnexpectedType()

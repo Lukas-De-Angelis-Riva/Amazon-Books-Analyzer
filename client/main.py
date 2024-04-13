@@ -39,8 +39,12 @@ def initialize_config():
         config_params["book_file_path"] = os.getenv('BOOK_FILE_PATH', config["DEFAULT"]["BOOK_FILE_PATH"])
         config_params["chunk_size_book"] = int(os.getenv('CHUNK_SIZE_BOOK', config["DEFAULT"]["CHUNK_SIZE_BOOK"]))
 
+        config_params["results_path"] = os.getenv('RESULTS_PATH', config["DEFAULT"]["RESULTS_PATH"])
+
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
 
+        config_params["results_port"] = int(os.getenv('RESULT_PORT', config["DEFAULT"]["RESULT_PORT"]))
+        config_params["results_ip"] = os.getenv('RESULT_IP', config["DEFAULT"]["RESULT_IP"])
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
     except ValueError as e:
@@ -54,8 +58,6 @@ def main():
     logging_level = config_params["logging_level"]
     port = config_params["port"]
     ip = config_params["ip"]
-    book_file_path = config_params["book_file_path"]    
-    chunk_size_book = config_params["chunk_size_book"]    
 
     initialize_log(logging_level)
 
@@ -67,7 +69,7 @@ def main():
                   | logging_level: {logging_level}''')
 
     # Initialize server and start server loop
-    client = Client(ip, port, book_file_path,chunk_size_book)
+    client = Client(config_params)
     client.run()
 
 if __name__ == "__main__":

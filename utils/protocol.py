@@ -38,7 +38,10 @@ class TlvTypes():
     REVIEW_SCORE = next()
     REVIEW_TEXT = next()
 
-    REVIEW = next()
+    LINE_CHUNK = next()
+    LINE = next()
+    LINE_RAW = next()
+    
     ACK = next()
     
 def is_eof(bytes):
