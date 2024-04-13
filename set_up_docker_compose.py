@@ -2,8 +2,9 @@
 import yaml
 import argparse
 
-from config import LOGGING_LEVEL, AMOUNT_OF_QUERY1_WORKERS
-
+from config import LOGGING_LEVEL
+from config import AMOUNT_OF_QUERY1_WORKERS
+from config import AMOUNT_OF_QUERY3_WORKERS
 NETWORK_NAME = "amazon-network"
 
 def create_network(external: bool):
@@ -76,6 +77,27 @@ def create_query1Worker(i):
             NETWORK_NAME,
         ],
     }
+
+def create_query3Worker(i):
+    return {
+        'container_name': f'query3Worker{i}',
+        'image': 'query3_worker:latest',
+        'entrypoint': 'python3 /main.py',
+        'environment': [
+            'PYTHONUNBUFFERED=1',
+            f'LOGGING_LEVEL={LOGGING_LEVEL}',
+            'PEERS='+str(AMOUNT_OF_QUERY1_WORKERS),
+        ],
+        'volumes': [
+            './server/query3_4/config.ini:/config.ini',
+        ],
+        'depends_on': [
+            'resultHandler',
+        ],
+        'networks': [
+            NETWORK_NAME,
+        ],
+    }
 def create_resultHandler():
     return {
         'container_name': 'resultHandler',
@@ -129,6 +151,9 @@ def create_server_side():
 
     # QUERY 2...
         
+    # QUERY 3 & 4
+    for i in range(AMOUNT_OF_QUERY1_WORKERS):
+        config['services'][f'query3Worker{i+1}'] = create_query3Worker(i+1)
 
     config['services']['resultHandler'] = create_resultHandler()
 

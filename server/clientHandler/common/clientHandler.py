@@ -4,6 +4,7 @@ import logging
 
 from common.clientHandlerMiddleware import ClientHandlerMiddleware
 from utils.serializer.bookSerializer import BookSerializer
+from utils.serializer.bookQ3serializer import BookQ3Serializer
 from utils.protocolHandler import ProtocolHandler
 from utils.TCPhandler import SocketBroken
 from utils.protocol import make_eof
@@ -19,6 +20,7 @@ class ClientHandler:
         signal.signal(signal.SIGTERM, self.__handle_signal)
 
         self.book_serializer = BookSerializer()
+        self.book_q3_serializer = BookQ3Serializer()
 
         self.middleware = ClientHandlerMiddleware()
         
@@ -81,8 +83,11 @@ class ClientHandler:
         return False
 
     def __handle_books(self, value):
-        data = self.book_serializer.to_bytes(value)
-        self.middleware.send_booksQ1(data)
+        book = self.book_serializer.to_bytes(value)
+        book_q3 = self.book_q3_serializer.to_bytes(value)
+
+        self.middleware.send_booksQ1(book)
+        self.middleware.send_booksQ3(book_q3)
 
         logging.debug(f'action: send_books | len(value): {len(value)} | result: success')
         return True
