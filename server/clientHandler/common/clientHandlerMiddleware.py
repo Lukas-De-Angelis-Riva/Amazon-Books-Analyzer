@@ -11,7 +11,7 @@ class ClientHandlerMiddleware(Middleware):
         self.channel.queue_declare(queue='Q1-Books', durable=True)
 
         # Declare queue to send flights to QUERY2
-        #self.channel.queue_declare(queue='Q2-flights', durable=True)
+        self.channel.queue_declare(queue='Q2-Books', durable=True)
 
         # Declare queue to send flights to QUERY4
         #self.channel.queue_declare(queue='Q4-flights', durable=True)
@@ -22,13 +22,9 @@ class ClientHandlerMiddleware(Middleware):
     def send_booksQ1(self, bytes):
         self.send_msg(routing_key='Q1-Books', data=bytes, exchange='')
 
-    def send_flightsQ2(self, bytes):
-        self.send_msg(routing_key='Q2-flights', data=bytes, exchange='')
-
-    def send_flightsQ4(self, bytes):
-        self.send_msg(routing_key='Q4-flights', data=bytes, exchange='')
+    def send_booksQ2(self, bytes):
+        self.send_msg(routing_key='Q2-Books', data=bytes, exchange='')
 
     def send_eof(self, bytes):
-        self.send_msg(routing_key='Q1-flights', data=bytes, exchange='')
-        self.send_msg(routing_key='Q2-flights', data=bytes, exchange='')
-        self.send_msg(routing_key='Q4-flights', data=bytes, exchange='')
+        self.send_msg(routing_key='Q1-Books', data=bytes, exchange='')
+        self.send_msg(routing_key='Q2-Books', data=bytes, exchange='')

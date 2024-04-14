@@ -76,13 +76,20 @@ class ClientHandler:
     def __handle_book_eof(self):
         eof = make_eof()
         self.middleware.send_booksQ1(eof)
+        self.middleware.send_booksQ2(eof)
 
         logging.debug(f'action: send_books | value: EOF | result: success')
         return False
 
     def __handle_books(self, value):
-        data = self.book_serializer.to_bytes(value)
-        self.middleware.send_booksQ1(data)
+
+        # Query 1
+        data_q1 = self.book_serializer.to_bytes(value)
+        self.middleware.send_booksQ1(data_q1)
+
+        # Query 2
+        data_q2 = self.book_serializer.to_bytes(value)
+        self.middleware.send_booksQ2(data_q2)
 
         logging.debug(f'action: send_books | len(value): {len(value)} | result: success')
         return True

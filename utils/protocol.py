@@ -31,6 +31,15 @@ class TlvTypes():
     Q1_RESULT_AUTHORS = next()
     Q1_RESULT_PUBLISHER = next()
 
+    Q2_PARTIAL_CHUNK = next()
+    Q2_PARTIAL = next()
+    Q2_PARTIAL_AUTHOR = next()
+    Q2_PARTIAL_DECADES = next()
+
+    Q2_RESULT_CHUNK = next()
+    Q2_RESULT = next()
+    Q2_RESULT_AUTHOR = next()
+
     REVIEW_CHUNK = next()
     REVIEW = next()
     REVIEW_ID = next()
@@ -106,6 +115,23 @@ def float_to_bytes(f:float, code: int):
 
 def float_from_bytes(bytes_f):
     return struct.unpack('!f', bytes_f)[0]
+
+def intarr_to_bytes(int_array, code: int):
+    bytes = code_to_bytes(code)
+    bytes_arr = b''
+    for i in int_array:
+        bytes_arr += int.to_bytes(i, SIZE_LENGTH, 'big')
+    bytes += int.to_bytes(len(bytes_arr), SIZE_LENGTH, 'big')
+    bytes += bytes_arr
+    return bytes
+
+def intarr_from_bytes(bytes_arr):
+    array = []
+    n = len(bytes_arr)//SIZE_LENGTH
+    for i in range(0, n):
+        bytes_i = bytes_arr[i*SIZE_LENGTH:(i+1)*SIZE_LENGTH]
+        array.append(int.from_bytes(bytes_i, 'big')) 
+    return array
 
 class UnexpectedType(Exception):
     pass
