@@ -4,7 +4,9 @@ import argparse
 
 from config import LOGGING_LEVEL
 from config import AMOUNT_OF_QUERY1_WORKERS
+from config import AMOUNT_OF_QUERY2_WORKERS
 from config import AMOUNT_OF_QUERY3_WORKERS
+
 NETWORK_NAME = "amazon-network"
 
 def create_network(external: bool):
@@ -78,18 +80,38 @@ def create_query1Worker(i):
         ],
     }
 
-def create_query3Worker(i):
+def create_query2Worker(i):
     return {
-        'container_name': f'query3Worker{i}',
-        'image': 'query3_worker:latest',
+        'container_name': f'query2Worker{i}',
+        'image': 'query2_worker:latest',
         'entrypoint': 'python3 /main.py',
         'environment': [
             'PYTHONUNBUFFERED=1',
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
-            'PEERS='+str(AMOUNT_OF_QUERY1_WORKERS),
+            'PEERS='+str(AMOUNT_OF_QUERY2_WORKERS),
         ],
         'volumes': [
-            './server/query3_4/config.ini:/config.ini',
+            './server/query2/worker/config.ini:/config.ini',
+        ],
+        'depends_on': [
+            'query2Synchronizer',
+        ],
+        'networks': [
+            NETWORK_NAME,
+        ],
+    }
+
+def create_query2Synchronizer():
+    return {
+        'container_name': f'query2Synchronizer',
+        'image': 'query2_synchronizer:latest',
+        'entrypoint': 'python3 /main.py',
+        'environment': [
+            'PYTHONUNBUFFERED=1',
+            f'LOGGING_LEVEL={LOGGING_LEVEL}',
+        ],
+        'volumes': [
+            './server/query2/synchronizer/config.ini:/config.ini',
         ],
         'depends_on': [
             'resultHandler',
@@ -98,6 +120,28 @@ def create_query3Worker(i):
             NETWORK_NAME,
         ],
     }
+
+def create_query3Worker(i):
+    return {
+        'container_name': f'query3Worker{i}',
+        'image': 'query3_worker:latest',
+        'entrypoint': 'python3 /main.py',
+        'environment': [
+            'PYTHONUNBUFFERED=1',
+            f'LOGGING_LEVEL={LOGGING_LEVEL}',
+            'PEERS='+str(AMOUNT_OF_QUERY3_WORKERS),
+        ],
+        'volumes': [
+            './server/query3/config.ini:/config.ini',
+        ],
+        'depends_on': [
+            'resultHandler',
+        ],
+        'networks': [
+            NETWORK_NAME,
+        ],
+    }
+
 def create_resultHandler():
     return {
         'container_name': 'resultHandler',
@@ -127,7 +171,9 @@ def create_clientHandler():
         'volumes': [
             './server/clientHandler/config.ini:/config.ini',
         ],
-        'depends_on': [f'query1Worker{i+1}' for i in range(AMOUNT_OF_QUERY1_WORKERS)],
+        'depends_on':
+            [f'query1Worker{i+1}' for i in range(AMOUNT_OF_QUERY1_WORKERS)] + \
+            [f'query2Worker{i+1}' for i in range(AMOUNT_OF_QUERY2_WORKERS)],
         'networks': [
             NETWORK_NAME,
         ],
@@ -148,6 +194,11 @@ def create_server_side():
     # QUERY 1
     for i in range(AMOUNT_OF_QUERY1_WORKERS):
         config['services'][f'query1Worker{i+1}'] = create_query1Worker(i+1)
+
+    # QUERY 2
+    for i in range(AMOUNT_OF_QUERY2_WORKERS):
+        config['services'][f'query2Worker{i+1}'] = create_query2Worker(i+1)
+    config['services']['query2Synchronizer'] = create_query2Synchronizer()
 
     # QUERY 2...
         
