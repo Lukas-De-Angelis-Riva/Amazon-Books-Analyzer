@@ -1,10 +1,13 @@
+import logging
+
 from utils.worker import Worker
+from utils.q3Partial import Q3Partial
 from utils.middleware.middlewareEQ import MiddlewareEQ
 from utils.serializer.bookQ3serializer import BookQ3Serializer
 
-class BookQ3Handler(Worker):
-    def __init__(self, books, minimun_date,maximun_date):
-        middleware = MiddlewareEQ(exchange='books-Q3/4',
+class BookReceiver(Worker):
+    def __init__(self, books, minimun_date, maximun_date):
+        middleware = MiddlewareEQ(exchange='Q3-Books',
                                   tag='',
                                   out_queue_name=None)
         super().__init__(middleware=middleware,
@@ -18,10 +21,12 @@ class BookQ3Handler(Worker):
 
     def work(self, input):
         book = input
-        published_date = book.published_date
+        published_date = int(book.publishedDate)
 
+        logging.info(f'action: work | book: {book}')
         if published_date <= self.maximun_date and published_date >= self.minimun_date:
-            self.books[book.title] = (book.authors,book.publishedDate,0)
+            logging.info(f'action: saving | book: {book}')
+            self.books[book.title] = Q3Partial(book.title, book.authors)
 
     def recv_eof(self, eof):
         return

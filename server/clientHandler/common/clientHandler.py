@@ -79,6 +79,7 @@ class ClientHandler:
         eof = make_eof()
         self.middleware.send_booksQ1(eof)
         self.middleware.send_booksQ2(eof)
+        self.middleware.send_booksQ3(eof)
 
         logging.debug(f'action: send_books | value: EOF | result: success')
         return False

@@ -1,5 +1,5 @@
 FROM python-base:latest
 
-COPY server/query3_4 /
+COPY server/query3/worker /
 
 ENTRYPOINT ["/bin/sh"]

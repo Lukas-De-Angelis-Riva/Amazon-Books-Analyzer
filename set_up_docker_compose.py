@@ -132,7 +132,7 @@ def create_query3Worker(i):
             'PEERS='+str(AMOUNT_OF_QUERY3_WORKERS),
         ],
         'volumes': [
-            './server/query3/config.ini:/config.ini',
+            './server/query3/worker/config.ini:/config.ini',
         ],
         'depends_on': [
             'resultHandler',
