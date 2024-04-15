@@ -3,6 +3,7 @@ import logging
 from configparser import ConfigParser
 
 from common.bookReceiver import BookReceiver
+from common.query3Worker import Query3Worker
 
 def initialize_config():
     """ Parse env variables or config file to find program config params
@@ -51,10 +52,8 @@ def main():
     bookHandler = BookReceiver(books, config_params['minimun_date'], config_params['maximun_date'])
     bookHandler.run()
 
-    logging.info(f'{books}')
-
-    #reviewHandler = Query3Handler(books, peers, chunk_size, distance_rate)
-    #reviewHandler.run()
+    worker = Query3Worker(peers, chunk_size, books)
+    worker.run()
 
 def initialize_log(logging_level):
     """

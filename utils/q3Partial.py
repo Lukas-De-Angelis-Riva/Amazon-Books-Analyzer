@@ -14,9 +14,12 @@ class Q3Partial:
     def __str__(self):
         return f'Q3Partial(Title:{self.title}, author: {self.authors}, n: {self.n}, scoreAvg: {self.scoreAvg})'
 
-#    def update(self, review: Review):
-#        decade = 10 * (int(book.publishedDate)//10)
-#        self.decades.add(decade)
+    def update(self, review: Review):
+        avg = self.scoreAvg; n = self.n
 
-#    def merge(self, other):
-#        self.decades |= other.decades
+        self.scoreAvg = (avg*n + review.score)/(n+1)
+        self.n += 1
+
+    def merge(self, other):
+        self.scoreAvg = (self.scoreAvg*self.n + other.scoreAvg*other.n)/(self.n + other.n)
+        self.n += other.n
