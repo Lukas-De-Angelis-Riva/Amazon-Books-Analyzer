@@ -39,6 +39,9 @@ def initialize_config():
         config_params["book_file_path"] = os.getenv('BOOK_FILE_PATH', config["DEFAULT"]["BOOK_FILE_PATH"])
         config_params["chunk_size_book"] = int(os.getenv('CHUNK_SIZE_BOOK', config["DEFAULT"]["CHUNK_SIZE_BOOK"]))
 
+        config_params["review_file_path"] = os.getenv('REVIEW_FILE_PATH', config["DEFAULT"]["REVIEW_FILE_PATH"])
+        config_params["chunk_size_review"] = int(os.getenv('CHUNK_SIZE_REVIEW', config["DEFAULT"]["CHUNK_SIZE_REVIEW"]))
+
         config_params["results_path"] = os.getenv('RESULTS_PATH', config["DEFAULT"]["RESULTS_PATH"])
 
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])

@@ -51,14 +51,14 @@ class TestUtils(unittest.TestCase):
         review1 = Review(
             id=1,
             title='At the Montains of madness',
-            score=5,
+            score=5.0,
             text="mu' bueno",
         )
 
         review2 = Review(
             id=2,
             title='The C programming language',
-            score=3,
+            score=3.0,
             text="int x80",
         )
 
@@ -71,12 +71,12 @@ class TestUtils(unittest.TestCase):
 
         assert review1.id == _review1.id
         assert review1.title == _review1.title
-        assert review1.score == _review1.score
+        assert abs(review1.score - _review1.score) < 1e-4
         assert review1.text == _review1.text
 
         assert review2.id == _review2.id
         assert review2.title == _review2.title
-        assert review2.score == _review2.score
+        assert abs(review2.score - _review2.score) < 1e-4
         assert review2.text == _review2.text
 
 if __name__ == '__main__':

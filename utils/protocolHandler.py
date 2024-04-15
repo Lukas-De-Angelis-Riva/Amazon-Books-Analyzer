@@ -3,12 +3,14 @@ import struct
 from utils.TCPhandler import TCPHandler
 from utils.protocol import TlvTypes, UnexpectedType, SIZE_LENGTH, is_eof, make_eof, make_heartbeat
 from utils.serializer.bookSerializer import BookSerializer
+from utils.serializer.reviewSerializer import ReviewSerializer
 from utils.serializer.lineSerializer import LineSerializer
 
 class ProtocolHandler:
     def __init__(self, socket):
         self.TCPHandler = TCPHandler(socket)
         self.book_serializer = BookSerializer()
+        self.review_serializer = ReviewSerializer()
         self.line_serializer = LineSerializer()
         self.eof_books_received = False
 
@@ -31,7 +33,7 @@ class ProtocolHandler:
         self.send_eof()
         self.wait_confimation()
 
-    def send_rewiew_eof(self):
+    def send_review_eof(self):
         self.send_eof()
         self.wait_confimation()
 
@@ -69,8 +71,8 @@ class ProtocolHandler:
         elif tlv_type == TlvTypes.BOOK_CHUNK:
             return TlvTypes.BOOK_CHUNK, self.book_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
 
-        #elif tlv_type == TlvTypes.FLIGHT_CHUNK:
-        #    return TlvTypes.FLIGHT_CHUNK, self.flight_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
+        elif tlv_type == TlvTypes.REVIEW_CHUNK:
+            return TlvTypes.REVIEW_CHUNK, self.review_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
 
         elif tlv_type == TlvTypes.LINE_CHUNK:
             return TlvTypes.LINE_CHUNK, self.line_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)

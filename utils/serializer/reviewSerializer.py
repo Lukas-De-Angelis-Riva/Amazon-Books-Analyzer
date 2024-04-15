@@ -1,6 +1,8 @@
 from utils.serializer.serializer import Serializer
 from utils.protocol import TlvTypes, SIZE_LENGTH
-from utils.protocol import string_to_bytes, string_from_bytes, integer_to_bytes, integer_from_bytes
+from utils.protocol import string_to_bytes, string_from_bytes
+from utils.protocol import integer_to_bytes, integer_from_bytes
+from utils.protocol import float_to_bytes, float_from_bytes
 from utils.protocol import code_to_bytes
 from model.review import Review
 
@@ -25,7 +27,7 @@ class ReviewSerializer(Serializer):
         return Review(
             id = integer_from_bytes(raw_dict[TlvTypes.REVIEW_ID]),
             title = string_from_bytes(raw_dict[TlvTypes.REVIEW_TITLE]),
-            score = integer_from_bytes(raw_dict[TlvTypes.REVIEW_SCORE]),
+            score = float_from_bytes(raw_dict[TlvTypes.REVIEW_SCORE]),
             text = string_from_bytes(raw_dict[TlvTypes.REVIEW_TEXT]),
         )
 
@@ -36,7 +38,7 @@ class ReviewSerializer(Serializer):
             raw_book = b''
             raw_book += integer_to_bytes(book.id, TlvTypes.REVIEW_ID)
             raw_book += string_to_bytes(book.title, TlvTypes.REVIEW_TITLE)
-            raw_book += integer_to_bytes(book.score, TlvTypes.REVIEW_SCORE)
+            raw_book += float_to_bytes(book.score, TlvTypes.REVIEW_SCORE)
             raw_book += string_to_bytes(book.text, TlvTypes.REVIEW_TEXT)
             
             raw_chunk += code_to_bytes(TlvTypes.REVIEW)
