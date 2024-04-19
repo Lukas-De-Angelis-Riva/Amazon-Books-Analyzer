@@ -22,6 +22,7 @@ def initialize_config():
     try:
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
         config_params["peers"] = int(os.environ['PEERS'])
+        config_params["chunk_size"] = int(os.getenv('CHUNK_SIZE', config["DEFAULT"]["CHUNK_SIZE"]))
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
     except ValueError as e:
@@ -34,6 +35,7 @@ def main():
     config_params = initialize_config()
     logging_level = config_params["logging_level"]
     peers = config_params['peers']
+    chunk_size = config_params['chunk_size']
 
     initialize_log(logging_level)
 
@@ -42,7 +44,7 @@ def main():
     logging.debug(f"action: config | result: success | logging_level: {logging_level}")
 
     # Initialize server and start server loop
-    worker = Query2Worker(peers)
+    worker = Query2Worker(peers, chunk_size)
     worker.run()
 
 

@@ -7,14 +7,14 @@ from utils.serializer.bookSerializer import BookSerializer
 from utils.serializer.partialQ2Serializer import PartialQ2Serializer
 
 class Query2Worker(Worker):
-    def __init__(self, peers):
+    def __init__(self, peers, chunk_size):
         middleware = MiddlewareQQ(in_queue_name='Q2-Books',
                                   out_queue_name='Q2-Sync')
         super().__init__(middleware=middleware,
                          in_serializer=BookSerializer(),
                          out_serializer=PartialQ2Serializer(),
                          peers=peers,
-                         chunk_size=1,)
+                         chunk_size=chunk_size,)
 
     def work(self, input):
         book = input

@@ -6,7 +6,7 @@ from utils.serializer.partialQ2Serializer import PartialQ2Serializer
 from utils.serializer.resultQ2Serializer import ResultQ2Serializer
 
 class Query2Synchronizer(Worker):
-    def __init__(self):
+    def __init__(self, chunk_size, min_decades):
         middleware = MiddlewareQE(in_queue_name='Q2-Sync',
                                   exchange='results',
                                   tag='Q2')
@@ -14,7 +14,8 @@ class Query2Synchronizer(Worker):
                          in_serializer=PartialQ2Serializer(),
                          out_serializer=ResultQ2Serializer(),
                          peers=1,
-                         chunk_size=1,)
+                         chunk_size=chunk_size,)
+        self.min_decades = min_decades
 
     def work(self, input):
         partial = input
@@ -26,14 +27,13 @@ class Query2Synchronizer(Worker):
             self.results[author] = partial
 
     def passes_filter(self, partial):
-        return len(partial.decades) >= 3
+        return len(partial.decades) >= self.min_decades
 
     def send_results(self):
         chunk = []
         for partial in self.results.values():
             if not self.passes_filter(partial):
                 continue
-            
             logging.info(f'action: publish_result | value: {partial.author}')
             chunk.append(partial.author)
             if len(chunk) >= self.chunk_size:

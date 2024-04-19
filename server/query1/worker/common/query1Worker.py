@@ -1,12 +1,11 @@
 import logging
 from utils.worker import Worker
-from model.book import Book
 from utils.middleware.middlewareQE import MiddlewareQE
 from utils.serializer.bookSerializer import BookSerializer
 from utils.serializer.resultQ1Serializer import ResultQ1Serializer
 
 class Query1Worker(Worker):
-    def __init__(self, peers):
+    def __init__(self, peers, chunk_size, matches):
         middleware = MiddlewareQE(in_queue_name='Q1-Books',
                                   exchange='results',
                                   tag='Q1')
@@ -14,15 +13,9 @@ class Query1Worker(Worker):
                          in_serializer=BookSerializer(),
                          out_serializer=ResultQ1Serializer(),
                          peers=peers,
-                         chunk_size=1,)
+                         chunk_size=chunk_size,)
         self.matching_books = []
-
-    def matches(self, book):
-        logging.info(f'action: TEST | date:{book.publishedDate}, categories:{book.categories}, title:{book.title}')
-        return int(book.publishedDate) >= 2000 and \
-            int(book.publishedDate) <= 2023 and \
-            'computers' in [c.lower() for c in book.categories] and \
-            'distributed' in book.title.lower()
+        self.matches = matches
 
     def work(self, input):
         book = input

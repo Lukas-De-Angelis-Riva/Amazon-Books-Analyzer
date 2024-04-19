@@ -21,6 +21,9 @@ def initialize_config():
     config_params = {}
     try:
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
+        config_params["chunk_size"] = int(os.getenv('CHUNK_SIZE', config["DEFAULT"]["CHUNK_SIZE"]))
+        config_params["min_amount_reviews"] = int(os.getenv('MIN_AMOUNT_REVIEWS', config["DEFAULT"]["MIN_AMOUNT_REVIEWS"]))
+        config_params["n_top"] = int(os.getenv('N_TOP', config["DEFAULT"]["N_TOP"]))
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
     except ValueError as e:
@@ -32,6 +35,9 @@ def initialize_config():
 def main():
     config_params = initialize_config()
     logging_level = config_params["logging_level"]
+    chunk_size = config_params["chunk_size"]
+    min_amount_reviews = config_params["min_amount_reviews"]
+    n_top = config_params["n_top"]
 
     initialize_log(logging_level)
 
@@ -40,7 +46,7 @@ def main():
     logging.debug(f"action: config | result: success | logging_level: {logging_level}")
 
     # Initialize server and start server loop
-    worker = Query3Synchronizer()
+    worker = Query3Synchronizer(chunk_size, min_amount_reviews, n_top)
     worker.run()
 
 
