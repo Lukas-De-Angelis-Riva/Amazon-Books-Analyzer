@@ -1,10 +1,9 @@
 import io
 import unittest
 
-from utils.q3Partial import Q3Partial
+from dto.q3Partial import Q3Partial
 from model.review import Review
-from utils.serializer.partialQ3Serializer import PartialQ3Serializer
-
+from utils.serializer.q3PartialSerializer import Q3PartialSerializer 
 
 class TestUtils(unittest.TestCase):
 
@@ -63,8 +62,8 @@ class TestUtils(unittest.TestCase):
         assert partial1.n == 10+5
         assert abs(partial1.scoreAvg - 14/3) < 1e-4
 
-    def test_partialq2serializer(self):
-        serializer = PartialQ3Serializer()
+    def test_partialq3serializer(self):
+        serializer = Q3PartialSerializer()
 
         partial1 = Q3Partial(
             title='The C programming language',

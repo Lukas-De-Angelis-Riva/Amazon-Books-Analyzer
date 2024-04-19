@@ -1,8 +1,8 @@
 import logging
 from utils.worker import Worker
 from utils.middleware.middlewareQE import MiddlewareQE
-from utils.serializer.bookSerializer import BookSerializer
-from utils.serializer.resultQ1Serializer import ResultQ1Serializer
+from utils.serializer.q1InSerializer import Q1InSerializer
+from utils.serializer.q1OutSerializer import Q1OutSerializer
 
 class Query1Worker(Worker):
     def __init__(self, peers, chunk_size, matches):
@@ -10,8 +10,8 @@ class Query1Worker(Worker):
                                   exchange='results',
                                   tag='Q1')
         super().__init__(middleware=middleware,
-                         in_serializer=BookSerializer(),
-                         out_serializer=ResultQ1Serializer(),
+                         in_serializer=Q1InSerializer(),
+                         out_serializer=Q1OutSerializer(),
                          peers=peers,
                          chunk_size=chunk_size,)
         self.matching_books = []

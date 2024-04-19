@@ -1,7 +1,7 @@
 FROM python-base:latest
 
 COPY server/query3/synchronizer /
-
-# RUN python -m unittest test/tests.py
+COPY server/query3/serializer /utils/serializer
+COPY server/query3/dto /dto
 
 ENTRYPOINT ["/bin/sh"]

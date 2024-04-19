@@ -1,6 +1,8 @@
 FROM python-base:latest
 
 COPY server/query2/synchronizer /
+COPY server/query2/serializer /utils/serializer
+COPY server/query2/dto /dto
 
 RUN python -m unittest test/tests.py
 

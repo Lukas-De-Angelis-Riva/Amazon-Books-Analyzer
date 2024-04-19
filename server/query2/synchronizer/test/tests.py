@@ -1,15 +1,11 @@
 import io
 import unittest
 
-from utils.q2Partial import Q2Partial
-from model.book import Book
-from utils.serializer.resultQ2Serializer import ResultQ2Serializer
-
-from utils.protocol import intarr_to_bytes, intarr_from_bytes, TlvTypes, SIZE_LENGTH
+from utils.serializer.q2OutSerializer import Q2OutSerializer
 
 class TestUtils(unittest.TestCase):
     def test_resultq2serializer(self):
-        serializer = ResultQ2Serializer()
+        serializer = Q2OutSerializer()
 
         result1 = 'Dennis Ritchie'
         result2 = 'Brian Kernighan'

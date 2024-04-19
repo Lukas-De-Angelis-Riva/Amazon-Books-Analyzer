@@ -1,9 +1,9 @@
 import logging
 
 from utils.worker import Worker
-from utils.q3Partial import Q3Partial
+from dto.q3Partial import Q3Partial
 from utils.middleware.middlewareEQ import MiddlewareEQ
-from utils.serializer.bookQ3serializer import BookQ3Serializer
+from utils.serializer.q3BookInSerializer import Q3BookInSerializer
 
 class BookReceiver(Worker):
     def __init__(self, books, minimun_date, maximun_date):
@@ -11,7 +11,7 @@ class BookReceiver(Worker):
                                   tag='',
                                   out_queue_name=None)
         super().__init__(middleware=middleware,
-                         in_serializer=BookQ3Serializer(),
+                         in_serializer=Q3BookInSerializer(),
                          out_serializer=None,
                          peers=0,
                          chunk_size=0)

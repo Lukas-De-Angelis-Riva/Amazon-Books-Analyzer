@@ -16,7 +16,8 @@ class TlvTypes():
     EOF = next()
     WAIT = next()
     POLL = next()
-    
+    ACK = next()
+
     BOOK_CHUNK = next()
     BOOK = next()
     BOOK_TITLE = next()
@@ -24,33 +25,6 @@ class TlvTypes():
     BOOK_PUBLISHER = next()
     BOOK_PUBLISHED_DATE = next()
     BOOK_CATEGORIES = next()
-
-    Q1_RESULT_CHUNK = next()
-    Q1_RESULT = next()
-    Q1_RESULT_TITLE = next()
-    Q1_RESULT_AUTHORS = next()
-    Q1_RESULT_PUBLISHER = next()
-
-    Q2_PARTIAL_CHUNK = next()
-    Q2_PARTIAL = next()
-    Q2_PARTIAL_AUTHOR = next()
-    Q2_PARTIAL_DECADES = next()
-
-    Q2_RESULT_CHUNK = next()
-    Q2_RESULT = next()
-    Q2_RESULT_AUTHOR = next()
-
-    Q3_PARTIAL_CHUNK = next()
-    Q3_PARTIAL = next()
-    Q3_PARTIAL_TITLE = next()
-    Q3_PARTIAL_AUTHORS = next()
-    Q3_PARTIAL_N = next()
-    Q3_PARTIAL_AVG = next()
-
-    Q3_RESULT_CHUNK = next()
-    Q3_RESULT = next()
-    Q3_RESULT_TITLE = next()
-    Q3_RESULT_AUTHORS = next()
 
     REVIEW_CHUNK = next()
     REVIEW = next()
@@ -62,9 +36,7 @@ class TlvTypes():
     LINE_CHUNK = next()
     LINE = next()
     LINE_RAW = next()
-    
-    ACK = next()
-    
+
 def is_eof(bytes):
     if len(bytes) == TlvTypes.SIZE_CODE_MSG:
         data = struct.unpack("!i",bytes)[0]

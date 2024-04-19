@@ -1,6 +1,3 @@
-from model.book import Book
-from model.review import Review
-
 class Q3Result:
     def __init__(self, title: str, authors: list):
         self.title = title

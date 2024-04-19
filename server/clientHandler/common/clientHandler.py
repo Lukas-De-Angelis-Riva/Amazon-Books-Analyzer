@@ -5,7 +5,10 @@ import logging
 from common.clientHandlerMiddleware import ClientHandlerMiddleware
 from utils.serializer.bookSerializer import BookSerializer
 from utils.serializer.reviewSerializer import ReviewSerializer
-from utils.serializer.bookQ3serializer import BookQ3Serializer
+from utils.serializer.q1InSerializer import Q1InSerializer
+from utils.serializer.q2InSerializer import Q2InSerializer
+from utils.serializer.q3BookInSerializer import Q3BookInSerializer
+from utils.serializer.q3ReviewInSerializer import Q3ReviewInSerializer
 from utils.protocolHandler import ProtocolHandler
 from utils.TCPhandler import SocketBroken
 from utils.protocol import make_eof
@@ -20,10 +23,22 @@ class ClientHandler:
         self._server_on = True
         signal.signal(signal.SIGTERM, self.__handle_signal)
 
+        # client data serializer:
         self.book_serializer = BookSerializer()
         self.review_serializer = ReviewSerializer()
 
-        self.book_q3_serializer = BookQ3Serializer()
+        # Query 1
+        self.q1InSerializer = Q1InSerializer()
+
+        # Query 2
+        self.q2InSerializer = Q2InSerializer()
+
+        # Query 3/4
+        self.q3BookInSerializer = Q3BookInSerializer()
+        self.q3ReviewInSerializer = Q3ReviewInSerializer()
+
+        # Query 5
+        # ...
 
         self.middleware = ClientHandlerMiddleware()
         
@@ -89,15 +104,15 @@ class ClientHandler:
 
     def __handle_books(self, value):
         # Query 1:
-        data_q1 = self.book_serializer.to_bytes(value)
+        data_q1 = self.q1InSerializer.to_bytes(value)
         self.middleware.send_booksQ1(data_q1)
 
         # Query 2:
-        data_q2 = self.book_serializer.to_bytes(value)
+        data_q2 = self.q2InSerializer.to_bytes(value)
         self.middleware.send_booksQ2(data_q2)
 
         # Query 3/4:
-        data_q3 = self.book_q3_serializer.to_bytes(value)
+        data_q3 = self.q3BookInSerializer.to_bytes(value)
         self.middleware.send_booksQ3(data_q3)
 
         logging.debug(f'action: send_books | len(value): {len(value)} | result: success')
@@ -115,7 +130,7 @@ class ClientHandler:
         logging.debug(f'action: received reviews | result: success | N: {len(reviews)}')
 
         # Query 3/4:
-        data = self.review_serializer.to_bytes(reviews)
+        data = self.q3ReviewInSerializer.to_bytes(reviews)
         self.middleware.send_reviewsQ3(data)
 
         # Query 5:

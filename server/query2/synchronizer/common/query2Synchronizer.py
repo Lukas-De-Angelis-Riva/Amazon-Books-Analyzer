@@ -2,8 +2,8 @@ import logging
 
 from utils.worker import Worker
 from utils.middleware.middlewareQE import MiddlewareQE
-from utils.serializer.partialQ2Serializer import PartialQ2Serializer
-from utils.serializer.resultQ2Serializer import ResultQ2Serializer
+from utils.serializer.q2PartialSerializer import Q2PartialSerializer
+from utils.serializer.q2OutSerializer import Q2OutSerializer
 
 class Query2Synchronizer(Worker):
     def __init__(self, chunk_size, min_decades):
@@ -11,8 +11,8 @@ class Query2Synchronizer(Worker):
                                   exchange='results',
                                   tag='Q2')
         super().__init__(middleware=middleware,
-                         in_serializer=PartialQ2Serializer(),
-                         out_serializer=ResultQ2Serializer(),
+                         in_serializer=Q2PartialSerializer(),
+                         out_serializer=Q2OutSerializer(),
                          peers=1,
                          chunk_size=chunk_size,)
         self.min_decades = min_decades

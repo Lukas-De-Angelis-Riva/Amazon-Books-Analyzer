@@ -2,8 +2,8 @@ import logging
 
 from utils.worker import Worker
 from utils.middleware.middlewareQE import MiddlewareQE
-from utils.serializer.partialQ3Serializer import PartialQ3Serializer
-from utils.serializer.resultQ3Serializer import ResultQ3Serializer
+from utils.serializer.q3PartialSerializer import Q3PartialSerializer
+from utils.serializer.q3OutSerializer import Q3OutSerializer
 
 class Query3Synchronizer(Worker):
     def __init__(self, chunk_size, min_amount_reviews, n_top):
@@ -11,8 +11,8 @@ class Query3Synchronizer(Worker):
                                   exchange='results',
                                   tag='Q3')
         super().__init__(middleware=middleware,
-                         in_serializer=PartialQ3Serializer(),
-                         out_serializer=ResultQ3Serializer(),
+                         in_serializer=Q3PartialSerializer(),
+                         out_serializer=Q3OutSerializer(),
                          peers=1,
                          chunk_size=chunk_size,)
         self.min_amount_reviews = min_amount_reviews

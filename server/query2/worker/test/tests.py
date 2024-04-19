@@ -1,9 +1,9 @@
 import io
 import unittest
 
-from utils.q2Partial import Q2Partial
+from dto.q2Partial import Q2Partial
 from model.book import Book
-from utils.serializer.partialQ2Serializer import PartialQ2Serializer
+from utils.serializer.q2PartialSerializer import Q2PartialSerializer
 
 from utils.protocol import intarr_to_bytes, intarr_from_bytes, TlvTypes, SIZE_LENGTH
 
@@ -11,7 +11,7 @@ class TestUtils(unittest.TestCase):
 
     def test_intarray(self):
         decades = [1850, 1970, 2020]
-        bytes = intarr_to_bytes(decades, TlvTypes.Q2_PARTIAL_DECADES)
+        bytes = intarr_to_bytes(decades, 1)
         _decades = intarr_from_bytes(bytes[TlvTypes.SIZE_CODE_MSG+SIZE_LENGTH:])
         for decade in decades:
             assert decade in _decades, f"decade {decade} not present"
@@ -71,7 +71,7 @@ class TestUtils(unittest.TestCase):
         assert 1970 in partial1.decades
 
     def test_partialq2serializer(self):
-        serializer = PartialQ2Serializer()
+        serializer = Q2PartialSerializer()
 
         partial1 = Q2Partial(
             author= 'Dennis Ritchie',

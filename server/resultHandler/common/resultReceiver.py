@@ -2,9 +2,9 @@ import csv
 import io
 import logging
 import signal
-from utils.serializer.resultQ1Serializer import ResultQ1Serializer
-from utils.serializer.resultQ2Serializer import ResultQ2Serializer
-from utils.serializer.resultQ3Serializer import ResultQ3Serializer
+from utils.serializer.q1OutSerializer import Q1OutSerializer
+from utils.serializer.q2OutSerializer import Q2OutSerializer
+from utils.serializer.q3OutSerializer import Q3OutSerializer
 from utils.protocol import is_eof
 
 from common.resultHandlerMiddleware import ResultHandlerMiddleware
@@ -13,10 +13,10 @@ class ResultReceiver():
     def __init__(self, file_name, file_lock):
         signal.signal(signal.SIGTERM, self.__handle_signal)
         self.serializers = {
-            'Q1': ResultQ1Serializer(),
-            'Q2': ResultQ2Serializer(),
-            'Q3': ResultQ3Serializer(),
-            'Q4': ResultQ3Serializer()}
+            'Q1': Q1OutSerializer(),
+            'Q2': Q2OutSerializer(),
+            'Q3': Q3OutSerializer(),
+            'Q4': Q3OutSerializer()}
         self.eofs = {'Q1': False,'Q2': False, 'Q3': False, 'Q4': False} # 'Q5': False
         self.middleware = ResultHandlerMiddleware()
         self.file_lock = file_lock

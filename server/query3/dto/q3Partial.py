@@ -1,4 +1,3 @@
-from model.book import Book
 from model.review import Review
 
 class Q3Partial:

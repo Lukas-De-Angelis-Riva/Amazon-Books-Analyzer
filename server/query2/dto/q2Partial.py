@@ -1,5 +1,5 @@
 from model.book import Book
-from math import trunc
+
 class Q2Partial:
     def __init__(self, author: str, decades: list):
         self.author = author
