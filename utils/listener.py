@@ -24,9 +24,9 @@ class Listener():
         return True
 
     def run(self):
-        logging.debug(f'action: listen_flights | result: in_progress')
+        logging.debug(f'action: listen | result: in_progress')
         self.middleware.listen(self.recv)
-        logging.debug(f'action: listen_flights | result: success')
+        logging.debug(f'action: listen | result: success')
 
         self.middleware.start()
 

@@ -4,6 +4,8 @@ import logging
 
 from common.clientHandlerMiddleware import ClientHandlerMiddleware
 from utils.serializer.bookSerializer import BookSerializer
+from utils.serializer.reviewSerializer import ReviewSerializer
+from utils.serializer.bookQ3serializer import BookQ3Serializer
 from utils.protocolHandler import ProtocolHandler
 from utils.TCPhandler import SocketBroken
 from utils.protocol import make_eof
@@ -19,6 +21,9 @@ class ClientHandler:
         signal.signal(signal.SIGTERM, self.__handle_signal)
 
         self.book_serializer = BookSerializer()
+        self.review_serializer = ReviewSerializer()
+
+        self.book_q3_serializer = BookQ3Serializer()
 
         self.middleware = ClientHandlerMiddleware()
         
@@ -60,8 +65,8 @@ class ClientHandler:
                     keep_reading = self.__handle_books(value)
                 elif protocolHandler.is_book_eof(t):
                     keep_reading = self.__handle_book_eof()
-                #elif protocolHandler.is_flight_eof(t):
-                #    keep_reading = self.__handle_flight_eof()
+                elif protocolHandler.is_review_eof(t):
+                    keep_reading = self.__handle_review_eof()
 
                 protocolHandler.ack()
         
@@ -77,19 +82,23 @@ class ClientHandler:
         eof = make_eof()
         self.middleware.send_booksQ1(eof)
         self.middleware.send_booksQ2(eof)
+        self.middleware.send_booksQ3(eof)
 
         logging.debug(f'action: send_books | value: EOF | result: success')
-        return False
+        return True
 
     def __handle_books(self, value):
-
-        # Query 1
+        # Query 1:
         data_q1 = self.book_serializer.to_bytes(value)
         self.middleware.send_booksQ1(data_q1)
 
-        # Query 2
+        # Query 2:
         data_q2 = self.book_serializer.to_bytes(value)
         self.middleware.send_booksQ2(data_q2)
+
+        # Query 3/4:
+        data_q3 = self.book_q3_serializer.to_bytes(value)
+        self.middleware.send_booksQ3(data_q3)
 
         logging.debug(f'action: send_books | len(value): {len(value)} | result: success')
         return True
@@ -97,25 +106,19 @@ class ClientHandler:
     def __handle_review_eof(self):
         logging.debug(f'action: read review_eof | result: success')
         eof = make_eof(0)
-        self.middleware.send_eof(eof)
+        self.middleware.send_reviews_eof(eof)
         return False
         
     def __handle_reviews(self, reviews):
         #  It's responsible for separating the relevant 
         #  fields for each query and sending them to different queues.
-        logging.debug(f'action: recived reviews | result: success | N: {len(reviews)}')
+        logging.debug(f'action: received reviews | result: success | N: {len(reviews)}')
 
-        # Q1:
-        data = self.review_q1_serializer.to_bytes(reviews)
-        self.middleware.send_reviewsQ1(data)
+        # Query 3/4:
+        data = self.review_serializer.to_bytes(reviews)
+        self.middleware.send_reviewsQ3(data)
 
-        # Q2:
-        data = self.review_q2_serializer.to_bytes(reviews)
-        self.middleware.send_reviewsQ2(data)
-
-        # Q4:
-        data = self.review_q4_serializer.to_bytes(reviews)
-        self.middleware.send_reviewsQ4(data)
+        # Query 5:
 
         return True
 

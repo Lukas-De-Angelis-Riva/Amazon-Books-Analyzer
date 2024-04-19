@@ -5,6 +5,8 @@ docker-image:
 	docker build -f ./server/query1/worker/Dockerfile -t "query1_worker:latest" .
 	docker build -f ./server/query2/worker/Dockerfile -t "query2_worker:latest" .
 	docker build -f ./server/query2/synchronizer/Dockerfile -t "query2_synchronizer:latest" .
+	docker build -f ./server/query3/worker/Dockerfile -t "query3_worker:latest" .
+	docker build -f ./server/query3/synchronizer/Dockerfile -t "query3_synchronizer:latest" .
 	docker build -f ./server/resultHandler/Dockerfile -t "result_handler:latest" .
 .PHONY: docker-image
 

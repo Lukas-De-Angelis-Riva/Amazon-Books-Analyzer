@@ -24,3 +24,6 @@ class MiddlewareQE(Middleware):
 
     def resend(self, data):
         self.send_msg(routing_key=self.in_queue_name, data=data, exchange='')
+
+    def change_tag(self, newTag):
+        self.tag = newTag

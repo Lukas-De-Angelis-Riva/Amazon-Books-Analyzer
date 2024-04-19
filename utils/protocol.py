@@ -40,6 +40,18 @@ class TlvTypes():
     Q2_RESULT = next()
     Q2_RESULT_AUTHOR = next()
 
+    Q3_PARTIAL_CHUNK = next()
+    Q3_PARTIAL = next()
+    Q3_PARTIAL_TITLE = next()
+    Q3_PARTIAL_AUTHORS = next()
+    Q3_PARTIAL_N = next()
+    Q3_PARTIAL_AVG = next()
+
+    Q3_RESULT_CHUNK = next()
+    Q3_RESULT = next()
+    Q3_RESULT_TITLE = next()
+    Q3_RESULT_AUTHORS = next()
+
     REVIEW_CHUNK = next()
     REVIEW = next()
     REVIEW_ID = next()

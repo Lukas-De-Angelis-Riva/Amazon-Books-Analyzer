@@ -1,6 +1,7 @@
 from utils.protocolHandler import ProtocolHandler
 from utils.TCPhandler import SocketBroken
 from model.book import Book
+from model.review import Review
 
 import logging
 import socket
@@ -14,6 +15,11 @@ AUTHORS = 2
 PUBLISHER = 5
 PUBLISHED_DATE = 6
 CATEGORIES = 8
+
+REVIEW_ID = 0
+REVIEW_TITLE = 1
+REVIEW_SCORE = 6
+REVIEW_TEXT = 9
 
 MAX_TIME_SLEEP = 8      # seconds
 MIN_TIME_SLEEP = 1    # seconds
@@ -35,6 +41,8 @@ class Client:
         # Read books.csv and send to the system.
         self.connect(self.config["ip"], self.config["port"])
         self.send_books()
+        self.send_reviews()
+
         if self.signal_received:
             return 
         self.disconnect()
@@ -75,6 +83,14 @@ class Client:
                        self.protocolHandler.send_book_eof,
                        )
 
+    def send_reviews(self):
+        self.send_file(self.config["review_file_path"],
+                       self.read_review_line,
+                       self.config["chunk_size_review"],
+                       self.protocolHandler.send_reviews,
+                       self.protocolHandler.send_review_eof,
+                       )
+
     def send_file(self, path, read_line, chunk_size, send_message, send_eof):
         logging.info(f'action: send file | result: in_progress | path: {path}')
         try:
@@ -104,7 +120,7 @@ class Client:
                         path, 100*(file.tell())/(file_size)
                     ))
                 send_eof()
-        except (SocketBroken,OSError) as e:
+        except (SocketBroken, OSError) as e:
             if not self.signal_received:
                 logging.error(f'action: send file | result: fail | error: {e}')
         else:
@@ -169,3 +185,18 @@ class Client:
             len(book.categories) == 0:
             return None
         return book
+
+    def read_review_line(self, line):
+        r = csv.reader([line], )
+        _review = list(r)[0]
+        review = Review(
+            id=int(_review[REVIEW_ID]),
+            title=_review[REVIEW_TITLE],
+            score=float(_review[REVIEW_SCORE]),
+            text=_review[REVIEW_TEXT],
+        )
+
+        if len(review.title) == 0 or \
+            len(review.text) == 0:
+            return None
+        return review
