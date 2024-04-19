@@ -5,6 +5,7 @@ import signal
 from utils.serializer.q1OutSerializer import Q1OutSerializer
 from utils.serializer.q2OutSerializer import Q2OutSerializer
 from utils.serializer.q3OutSerializer import Q3OutSerializer
+from utils.serializer.q5OutSerializer import Q5OutSerializer
 from utils.protocol import is_eof
 
 from common.resultHandlerMiddleware import ResultHandlerMiddleware
@@ -16,8 +17,10 @@ class ResultReceiver():
             'Q1': Q1OutSerializer(),
             'Q2': Q2OutSerializer(),
             'Q3': Q3OutSerializer(),
-            'Q4': Q3OutSerializer()}
-        self.eofs = {'Q1': False,'Q2': False, 'Q3': False, 'Q4': False} # 'Q5': False
+            'Q4': Q3OutSerializer(),
+            'Q5': Q5OutSerializer(),
+        }
+        self.eofs = {'Q1': False,'Q2': False, 'Q3': False, 'Q4': False, 'Q5': False}
         self.middleware = ResultHandlerMiddleware()
         self.file_lock = file_lock
         self.file_name = file_name
@@ -45,17 +48,8 @@ class ResultReceiver():
                     writer.writerow(['Q3', result.title, result.authors])
                 elif results_type == 'Q4':
                     writer.writerow(['Q4', result.title, result.authors])
-#                elif results_type == 'Q3':
-#                    flight1 = result.fastest_flight
-#                    legs = '-'.join(flight1.legs) # 'AAA-BBB-CCC'
-#                    writer.writerow(['Q3', flight1.origin, flight1.destiny, flight1.id, legs, str(flight1.flight_duration)])
-#                    if result.second_fastest_flight:
-#                        flight2 = result.second_fastest_flight
-#                        legs = '-'.join(flight2.legs) # 'AAA-BBB-CCC'
-#                        writer.writerow(['Q3', flight2.origin, flight2.destiny, flight2.id, legs, str(flight2.flight_duration)])
-#                elif results_type == 'Q4':
-#                    journey = '-'.join([result.origin, result.destiny])
-#                    writer.writerow(['Q4', journey, result.fare_avg, result.fare_max])
+                elif results_type == 'Q5':
+                    writer.writerow(['Q5', result])
                 else:
                     continue
 
