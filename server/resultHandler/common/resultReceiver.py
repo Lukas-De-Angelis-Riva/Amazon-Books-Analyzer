@@ -4,6 +4,7 @@ import logging
 import signal
 from utils.serializer.resultQ1Serializer import ResultQ1Serializer
 from utils.serializer.resultQ2Serializer import ResultQ2Serializer
+from utils.serializer.resultQ3Serializer import ResultQ3Serializer
 from utils.protocol import is_eof
 
 from common.resultHandlerMiddleware import ResultHandlerMiddleware
@@ -11,8 +12,12 @@ from common.resultHandlerMiddleware import ResultHandlerMiddleware
 class ResultReceiver():
     def __init__(self, file_name, file_lock):
         signal.signal(signal.SIGTERM, self.__handle_signal)
-        self.serializers = {'Q1': ResultQ1Serializer(), 'Q2': ResultQ2Serializer()}
-        self.eofs = {'Q1': False,'Q2': False}#, 'Q3': False, 'Q4': False}
+        self.serializers = {
+            'Q1': ResultQ1Serializer(),
+            'Q2': ResultQ2Serializer(),
+            'Q3': ResultQ3Serializer(),
+            'Q4': ResultQ3Serializer()}
+        self.eofs = {'Q1': False,'Q2': False, 'Q3': False, 'Q4': False} # 'Q5': False
         self.middleware = ResultHandlerMiddleware()
         self.file_lock = file_lock
         self.file_name = file_name
@@ -36,6 +41,10 @@ class ResultReceiver():
                     writer.writerow(['Q1', result.title, result.authors, result.publisher])
                 elif results_type == 'Q2':
                     writer.writerow(['Q2', result])
+                elif results_type == 'Q3':
+                    writer.writerow(['Q3', result.title, result.authors])
+                elif results_type == 'Q4':
+                    writer.writerow(['Q4', result.title, result.authors])
 #                elif results_type == 'Q3':
 #                    flight1 = result.fastest_flight
 #                    legs = '-'.join(flight1.legs) # 'AAA-BBB-CCC'

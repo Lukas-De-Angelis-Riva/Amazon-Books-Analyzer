@@ -22,3 +22,7 @@ class Query3Worker(Worker):
         logging.info(f'action: new_review | {review}')
         if review.title in self.results:
             self.results[review.title].update(review)
+
+    def send_results(self):
+        self.results = {k:v for k, v in self.results.items() if v.n > 0}
+        super().send_results()

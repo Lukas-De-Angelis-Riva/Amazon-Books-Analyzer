@@ -135,6 +135,26 @@ def create_query3Worker(i):
             './server/query3/worker/config.ini:/config.ini',
         ],
         'depends_on': [
+            'query3Synchronizer',
+        ],
+        'networks': [
+            NETWORK_NAME,
+        ],
+    }
+
+def create_query3Synchronizer():
+    return {
+        'container_name': f'query3Synchronizer',
+        'image': 'query3_synchronizer:latest',
+        'entrypoint': 'python3 /main.py',
+        'environment': [
+            'PYTHONUNBUFFERED=1',
+            f'LOGGING_LEVEL={LOGGING_LEVEL}',
+        ],
+        'volumes': [
+            './server/query3/synchronizer/config.ini:/config.ini',
+        ],
+        'depends_on': [
             'resultHandler',
         ],
         'networks': [
@@ -199,12 +219,13 @@ def create_server_side():
     for i in range(AMOUNT_OF_QUERY2_WORKERS):
         config['services'][f'query2Worker{i+1}'] = create_query2Worker(i+1)
     config['services']['query2Synchronizer'] = create_query2Synchronizer()
-
-    # QUERY 2...
         
     # QUERY 3 & 4
     for i in range(AMOUNT_OF_QUERY1_WORKERS):
         config['services'][f'query3Worker{i+1}'] = create_query3Worker(i+1)
+    config['services']['query3Synchronizer'] = create_query3Synchronizer()
+
+    # QUERY 5
 
     config['services']['resultHandler'] = create_resultHandler()
 
