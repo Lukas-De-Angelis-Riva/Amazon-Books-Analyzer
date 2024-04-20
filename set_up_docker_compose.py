@@ -177,6 +177,26 @@ def create_query5Worker(i):
             './server/query5/worker/config.ini:/config.ini',
         ],
         'depends_on': [
+            'query5Synchronizer',
+        ],
+        'networks': [
+            NETWORK_NAME,
+        ],
+    }
+
+def create_query5Synchronizer():
+    return {
+        'container_name': f'query5Synchronizer',
+        'image': 'query5_synchronizer:latest',
+        'entrypoint': 'python3 /main.py',
+        'environment': [
+            'PYTHONUNBUFFERED=1',
+            f'LOGGING_LEVEL={LOGGING_LEVEL}',
+        ],
+        'volumes': [
+            './server/query5/synchronizer/config.ini:/config.ini',
+        ],
+        'depends_on': [
             'resultHandler',
         ],
         'networks': [
@@ -250,6 +270,7 @@ def create_server_side():
     # QUERY 5
     for i in range(AMOUNT_OF_QUERY5_WORKERS):
         config['services'][f'query5Worker{i+1}'] = create_query5Worker(i+1)
+    config['services']['query5Synchronizer'] = create_query5Synchronizer()
 
     config['services']['resultHandler'] = create_resultHandler()
 

@@ -31,7 +31,7 @@ class Client:
         self.config = config_params
         self.socket = None
         self.handler = None
-        self.query_sizes = {'Q1':0, 'Q2':0, 'Q3':0, 'Q4':0}
+        self.query_sizes = {'Q1':0, 'Q2':0, 'Q3':0, 'Q4':0, 'Q5':0}
 
         signal.signal(signal.SIGTERM, self.__handle_signal)
         self.signal_received = False
@@ -54,8 +54,8 @@ class Client:
         self.poll_results()
         if self.signal_received:
             return
-        logging.info('action: poll_results | result: success | nQ1: {} | nQ2: {} | nQ3: {} | nQ4: {}'.format(
-            self.query_sizes['Q1'], self.query_sizes['Q2'], self.query_sizes['Q3'], self.query_sizes['Q4']
+        logging.info('action: poll_results | result: success | nQ1: {} | nQ2: {} | nQ3: {} | nQ4: {} | nQ5: {}'.format(
+            self.query_sizes['Q1'], self.query_sizes['Q2'], self.query_sizes['Q3'], self.query_sizes['Q4'], self.query_sizes['Q5']
         ))
         self.disconnect()
 
