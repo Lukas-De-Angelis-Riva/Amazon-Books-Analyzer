@@ -3,7 +3,7 @@ import logging
 from configparser import ConfigParser
 
 from common.bookReceiver import BookReceiver
-from common.query3Worker import Query3Worker
+from common.query5Worker import Query5Worker
 
 def initialize_config():
     """ Parse env variables or config file to find program config params
@@ -25,9 +25,8 @@ def initialize_config():
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
         config_params["chunk_size"] = int(os.getenv('CHUNK_SIZE', config["DEFAULT"]["CHUNK_SIZE"]))
         config_params["peers"] = int(os.environ['PEERS'])
-
-        config_params["minimun_date"] = int(os.getenv('MINIMUN_DATE', config["DEFAULT"]["MINIMUN_DATE"]))
-        config_params["maximun_date"] = int(os.getenv('MAXIMUN_DATE', config["DEFAULT"]["MAXIMUN_DATE"]))
+        
+        config_params["category"] = os.getenv('CATEGORY', config["DEFAULT"]["CATEGORY"])
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
     except ValueError as e:
@@ -49,12 +48,12 @@ def main():
 
     # Initialize server and start server loop
     books = {}
-    bookHandler = BookReceiver(books, config_params['minimun_date'], config_params['maximun_date'])
+    bookHandler = BookReceiver(books, config_params["category"])
     exitcode = bookHandler.run()
     if exitcode != 0:
         return
 
-    worker = Query3Worker(peers, chunk_size, books)
+    worker = Query5Worker(peers, chunk_size, books)
     exitcode = worker.run()
     return exitcode
 

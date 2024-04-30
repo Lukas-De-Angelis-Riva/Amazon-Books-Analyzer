@@ -1,9 +1,7 @@
-import os
-import logging
 from configparser import ConfigParser
-
-from common.bookReceiver import BookReceiver
-from common.query3Worker import Query3Worker
+from common.query5Synchronizer import Query5Synchronizer
+import logging
+import os
 
 def initialize_config():
     """ Parse env variables or config file to find program config params
@@ -24,10 +22,7 @@ def initialize_config():
     try:
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
         config_params["chunk_size"] = int(os.getenv('CHUNK_SIZE', config["DEFAULT"]["CHUNK_SIZE"]))
-        config_params["peers"] = int(os.environ['PEERS'])
-
-        config_params["minimun_date"] = int(os.getenv('MINIMUN_DATE', config["DEFAULT"]["MINIMUN_DATE"]))
-        config_params["maximun_date"] = int(os.getenv('MAXIMUN_DATE', config["DEFAULT"]["MAXIMUN_DATE"]))
+        config_params["percentile"] = int(os.getenv('PERCENTILE', config["DEFAULT"]["PERCENTILE"]))
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
     except ValueError as e:
@@ -35,11 +30,12 @@ def initialize_config():
 
     return config_params
 
+
 def main():
     config_params = initialize_config()
     logging_level = config_params["logging_level"]
-    peers = config_params["peers"]
     chunk_size = config_params["chunk_size"]
+    percentile = config_params["percentile"]
 
     initialize_log(logging_level)
 
@@ -48,15 +44,9 @@ def main():
     logging.debug(f"action: config | result: success | logging_level: {logging_level}")
 
     # Initialize server and start server loop
-    books = {}
-    bookHandler = BookReceiver(books, config_params['minimun_date'], config_params['maximun_date'])
-    exitcode = bookHandler.run()
-    if exitcode != 0:
-        return
+    worker = Query5Synchronizer(chunk_size, percentile)
+    worker.run()
 
-    worker = Query3Worker(peers, chunk_size, books)
-    exitcode = worker.run()
-    return exitcode
 
 def initialize_log(logging_level):
     """

@@ -1,6 +1,8 @@
 import logging
 from utils.middleware.middleware import Middleware
 
+N_QUERIES = 5
+
 class ResultHandlerMiddleware(Middleware):
     def __init__(self):
         super().__init__()
@@ -11,7 +13,7 @@ class ResultHandlerMiddleware(Middleware):
         self.result_queue_name = result.method.queue
         logging.debug(f'action: declare_in_exchange | exchange: results')
 
-        for i in range(1, 5):
+        for i in range(1, N_QUERIES+1):
             self.channel.queue_bind(exchange='results', queue=self.result_queue_name, routing_key=f'Q{i}')
             logging.debug(f'action: bind_queue | queue: {self.result_queue_name} | exchange: results | tag: Q{i}')
         self._callback_results = None

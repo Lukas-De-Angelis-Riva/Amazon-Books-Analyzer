@@ -9,6 +9,8 @@ from utils.serializer.q1InSerializer import Q1InSerializer
 from utils.serializer.q2InSerializer import Q2InSerializer
 from utils.serializer.q3BookInSerializer import Q3BookInSerializer
 from utils.serializer.q3ReviewInSerializer import Q3ReviewInSerializer
+from utils.serializer.q5BookInSerializer import Q5BookInSerializer
+from utils.serializer.q5ReviewInSerializer import Q5ReviewInSerializer
 from utils.protocolHandler import ProtocolHandler
 from utils.TCPhandler import SocketBroken
 from utils.protocol import make_eof
@@ -38,7 +40,8 @@ class ClientHandler:
         self.q3ReviewInSerializer = Q3ReviewInSerializer()
 
         # Query 5
-        # ...
+        self.q5BookInSerializer = Q5BookInSerializer()
+        self.q5ReviewInSerializer = Q5ReviewInSerializer()
 
         self.middleware = ClientHandlerMiddleware()
         
@@ -98,6 +101,7 @@ class ClientHandler:
         self.middleware.send_booksQ1(eof)
         self.middleware.send_booksQ2(eof)
         self.middleware.send_booksQ3(eof)
+        self.middleware.send_booksQ5(eof)
 
         logging.debug(f'action: send_books | value: EOF | result: success')
         return True
@@ -115,13 +119,18 @@ class ClientHandler:
         data_q3 = self.q3BookInSerializer.to_bytes(value)
         self.middleware.send_booksQ3(data_q3)
 
+        # Query 5:
+        data_q5 = self.q5BookInSerializer.to_bytes(value)
+        self.middleware.send_booksQ5(data_q5)
+
         logging.debug(f'action: send_books | len(value): {len(value)} | result: success')
         return True
 
     def __handle_review_eof(self):
         logging.debug(f'action: read review_eof | result: success')
         eof = make_eof(0)
-        self.middleware.send_reviews_eof(eof)
+        self.middleware.send_reviewsQ3(eof)
+        self.middleware.send_reviewsQ5(eof)
         return False
         
     def __handle_reviews(self, reviews):
@@ -134,6 +143,8 @@ class ClientHandler:
         self.middleware.send_reviewsQ3(data)
 
         # Query 5:
+        data = self.q5ReviewInSerializer.to_bytes(reviews)
+        self.middleware.send_reviewsQ5(data)
 
         return True
 

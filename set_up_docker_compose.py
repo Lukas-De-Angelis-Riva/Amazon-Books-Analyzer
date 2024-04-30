@@ -6,6 +6,7 @@ from config import LOGGING_LEVEL
 from config import AMOUNT_OF_QUERY1_WORKERS
 from config import AMOUNT_OF_QUERY2_WORKERS
 from config import AMOUNT_OF_QUERY3_WORKERS
+from config import AMOUNT_OF_QUERY5_WORKERS
 
 NETWORK_NAME = "amazon-network"
 
@@ -162,6 +163,47 @@ def create_query3Synchronizer():
         ],
     }
 
+def create_query5Worker(i):
+    return {
+        'container_name': f'query5Worker{i}',
+        'image': 'query5_worker:latest',
+        'entrypoint': 'python3 /main.py',
+        'environment': [
+            'PYTHONUNBUFFERED=1',
+            f'LOGGING_LEVEL={LOGGING_LEVEL}',
+            'PEERS='+str(AMOUNT_OF_QUERY5_WORKERS),
+        ],
+        'volumes': [
+            './server/query5/worker/config.ini:/config.ini',
+        ],
+        'depends_on': [
+            'query5Synchronizer',
+        ],
+        'networks': [
+            NETWORK_NAME,
+        ],
+    }
+
+def create_query5Synchronizer():
+    return {
+        'container_name': f'query5Synchronizer',
+        'image': 'query5_synchronizer:latest',
+        'entrypoint': 'python3 /main.py',
+        'environment': [
+            'PYTHONUNBUFFERED=1',
+            f'LOGGING_LEVEL={LOGGING_LEVEL}',
+        ],
+        'volumes': [
+            './server/query5/synchronizer/config.ini:/config.ini',
+        ],
+        'depends_on': [
+            'resultHandler',
+        ],
+        'networks': [
+            NETWORK_NAME,
+        ],
+    }
+
 def create_resultHandler():
     return {
         'container_name': 'resultHandler',
@@ -226,6 +268,9 @@ def create_server_side():
     config['services']['query3Synchronizer'] = create_query3Synchronizer()
 
     # QUERY 5
+    for i in range(AMOUNT_OF_QUERY5_WORKERS):
+        config['services'][f'query5Worker{i+1}'] = create_query5Worker(i+1)
+    config['services']['query5Synchronizer'] = create_query5Synchronizer()
 
     config['services']['resultHandler'] = create_resultHandler()
 

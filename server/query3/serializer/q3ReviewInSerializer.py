@@ -24,7 +24,7 @@ class Q3ReviewInSerializer(Serializer):
         assert raw_dict[Q3ReviewInTypes.SCORE], "Invalid review: no score provided"
 
         return Review(
-            id = 0,
+            id = "",
             title = string_from_bytes(raw_dict[Q3ReviewInTypes.TITLE]),
             score = float_from_bytes(raw_dict[Q3ReviewInTypes.SCORE]),
             text = "",

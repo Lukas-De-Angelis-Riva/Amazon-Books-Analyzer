@@ -31,7 +31,7 @@ class Client:
         self.config = config_params
         self.socket = None
         self.handler = None
-        self.query_sizes = {'Q1':0, 'Q2':0, 'Q3':0, 'Q4':0}
+        self.query_sizes = {'Q1':0, 'Q2':0, 'Q3':0, 'Q4':0, 'Q5':0}
 
         signal.signal(signal.SIGTERM, self.__handle_signal)
         self.signal_received = False
@@ -54,8 +54,8 @@ class Client:
         self.poll_results()
         if self.signal_received:
             return
-        logging.info('action: poll_results | result: success | nQ1: {} | nQ2: {} | nQ3: {} | nQ4: {}'.format(
-            self.query_sizes['Q1'], self.query_sizes['Q2'], self.query_sizes['Q3'], self.query_sizes['Q4']
+        logging.info('action: poll_results | result: success | nQ1: {} | nQ2: {} | nQ3: {} | nQ4: {} | nQ5: {}'.format(
+            self.query_sizes['Q1'], self.query_sizes['Q2'], self.query_sizes['Q3'], self.query_sizes['Q4'], self.query_sizes['Q5']
         ))
         self.disconnect()
 
@@ -102,7 +102,7 @@ class Client:
                 while line := file.readline():
                     element = read_line(line)
                     if element != None:
-                        logging.info(f'action: read_element | result: success | element: {element}')
+                        logging.debug(f'action: read_element | result: success | element: {element}')
                         batch.append(element)
                         if len(batch) == chunk_size:
                             send_message(batch)
@@ -111,7 +111,7 @@ class Client:
                                 path, 100*(file.tell())/(file_size)
                             ))
                     else:
-                        logging.info(f'action: read_element | result: discard')
+                        logging.debug(f'action: read_element | result: discard')
                     i+=1
 
                 if batch:
@@ -172,7 +172,7 @@ class Client:
         _book = list(r)[0]
         book = Book(
             title = _book[TITLE],
-            authors = [author.strip(" '[]") for author in _book[AUTHORS].split(',')],
+            authors = [author.strip(" '[]") for author in _book[AUTHORS].split(',') if author.strip(" '[]")!=""],
             publisher = _book[PUBLISHER],
             publishedDate = _book[PUBLISHED_DATE].split("-")[0].strip("*?"),
             categories = [category.strip(" '[]") for category in _book[CATEGORIES].split(',')],
@@ -190,7 +190,7 @@ class Client:
         r = csv.reader([line], )
         _review = list(r)[0]
         review = Review(
-            id=int(_review[REVIEW_ID]),
+            id=_review[REVIEW_ID],
             title=_review[REVIEW_TITLE],
             score=float(_review[REVIEW_SCORE]),
             text=_review[REVIEW_TEXT],
