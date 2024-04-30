@@ -19,7 +19,7 @@ class Query2Synchronizer(Worker):
 
     def work(self, input):
         partial = input
-        logging.info(f'action: new_partial | {partial}')
+        logging.debug(f'action: new_partial | {partial}')
         author = partial.author
         if author in self.results:
             self.results[author].merge(partial)
@@ -34,7 +34,7 @@ class Query2Synchronizer(Worker):
         for partial in self.results.values():
             if not self.passes_filter(partial):
                 continue
-            logging.info(f'action: publish_result | value: {partial.author}')
+            logging.debug(f'action: publish_result | value: {partial.author}')
             chunk.append(partial.author)
             if len(chunk) >= self.chunk_size:
                 data = self.out_serializer.to_bytes(chunk)

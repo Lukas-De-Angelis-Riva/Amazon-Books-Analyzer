@@ -30,13 +30,13 @@ class ResultReceiver(Process):
     def run(self):
         signal.signal(signal.SIGTERM, self.__handle_signal)
 
-        logging.info(f'action: listen_results | result: in_progress')
+        logging.debug(f'action: listen_results | result: in_progress')
         self.middleware.listen_results(self.save_results)
-        logging.info(f'action: listen_results | result: success')
+        logging.debug(f'action: listen_results | result: success')
 
-        logging.info(f'action: middleware_start | start')
+        logging.debug(f'action: middleware_start | start')
         self.middleware.start()
-        logging.info(f'action: middleware_start | end')
+        logging.debug(f'action: middleware_start | end')
 
     def save_results(self, results_raw, results_type):
         results = self.deserialize_result(results_raw, results_type)
@@ -45,7 +45,7 @@ class ResultReceiver(Process):
             writer = csv.writer(file)
 
             for result in results:
-                logging.info(f'action: receive_result | result: success | value: {result}')
+                logging.debug(f'action: receive_result | result: success | value: {result}')
                 if results_type == 'Q1':
                     writer.writerow(['Q1', result.title, result.authors, result.publisher])
                 elif results_type == 'Q2':
@@ -69,16 +69,16 @@ class ResultReceiver(Process):
         results = self.serializers[type].from_chunk(reader)        
         if is_eof(bytes_raw):
             self.eofs[type] = True
-            logging.info(f'action: recv EOF {type}| result: success')
+            logging.debug(f'action: recv EOF {type}| result: success')
             if all(self.eofs.values()):
                 self.write_eof()
 
         return results
 
     def __handle_signal(self, signum, frame):
-        logging.info(f'action: stop_receiver | result: in_progress')
+        logging.debug(f'action: stop_receiver | result: in_progress')
         self.middleware.stop()
         # leaving time to save_results to write and release file and file_lock
         self.stop_lock.acquire()
         self.stop_lock.release()
-        logging.info(f'action: stop_receiver | result: success')
+        logging.debug(f'action: stop_receiver | result: success')

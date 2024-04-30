@@ -19,8 +19,9 @@ class Query1Worker(Worker):
 
     def work(self, input):
         book = input
+        logging.debug(f'action: new_book | book: {book}')
         if self.matches(book):
-            logging.info(f'action: filtering_books | result: match | value: {book}')
+            logging.debug(f'action: new_book | result: match | book: {book}')
             self.matching_books.append(book)
 
     def do_after_work(self):

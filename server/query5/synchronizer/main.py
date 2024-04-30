@@ -45,7 +45,8 @@ def main():
 
     # Initialize server and start server loop
     worker = Query5Synchronizer(chunk_size, percentile)
-    worker.run()
+    exitcode = worker.run()
+    return exitcode
 
 
 def initialize_log(logging_level):

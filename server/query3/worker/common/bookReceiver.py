@@ -23,9 +23,9 @@ class BookReceiver(Worker):
         book = input
         published_date = int(book.publishedDate)
 
-        logging.info(f'action: work | book: {book}')
+        logging.debug(f'action: new_book | book: {book}')
         if published_date <= self.maximun_date and published_date >= self.minimun_date:
-            logging.info(f'action: saving | book: {book}')
+            logging.debug(f'action: new_book | result: saving | book: {book}')
             self.books[book.title] = Q3Partial(book.title, book.authors)
 
     def recv_eof(self, eof):

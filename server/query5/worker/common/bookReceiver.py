@@ -21,9 +21,9 @@ class BookReceiver(Worker):
     def work(self, input):
         book = input
 
-        logging.info(f'action: work | book: {book}')
+        logging.debug(f'action: new_book | book: {book}')
         if self.category in [c.lower() for c in book.categories]:
-            logging.info(f'action: saving | book: {book}')
+            logging.debug(f'action: new_book | result: saving | book: {book}')
             self.books[book.title] = Q5Partial(book.title)
 
     def recv_eof(self, eof):

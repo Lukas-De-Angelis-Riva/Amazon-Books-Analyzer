@@ -46,13 +46,7 @@ class ClientHandler:
         self.middleware = ClientHandlerMiddleware()
         
     def run(self):
-        """
-        Dummy Server loop
-
-        Server that accept a new connections and establishes a
-        communication with a client. After client with communucation
-        finishes, servers starts to accept new connections again
-        """
+        logging.info(f'action: run server | result: success')
         while self._server_on:
             client_sock = self.__accept_new_connection() 
             if client_sock:
@@ -62,15 +56,10 @@ class ClientHandler:
         logging.debug(f'action: release_socket | result: success')
         self.middleware.stop()
         logging.debug(f'action: release_rabbitmq_conn | result: success')
+        logging.info(f'action: stop_server | result: success')
 
 
     def __handle_client_connection(self, client_sock):
-        """
-        Read message from a specific client socket and closes the socket
-
-        If a problem arises in the communication with the client, the
-        client socket will also be closed
-        """
         try:
             protocolHandler = ProtocolHandler(client_sock)
             keep_reading = True
@@ -149,14 +138,11 @@ class ClientHandler:
         return True
 
     def __accept_new_connection(self):
-        """
-        Function blocks until a connection to a client is made.
-        Then connection created is printed and returned
-        """
         try:
             logging.debug('action: accept_connections | result: in_progress')
             c, addr = self._server_socket.accept()
             logging.debug(f'action: accept_connections | result: success | ip: {addr[0]}')
+            logging.info(f'action: new client | ip: {addr[0]}')
             return c
         except OSError as e:
             if self._server_on:
@@ -166,10 +152,7 @@ class ClientHandler:
             return
 
     def __handle_signal(self, signum, frame):
-        """
-        Close server socket graceful
-        """
-        logging.debug(f'action: stop_server | result: in_progress | singal {signum}')
+        logging.info(f'action: stop_server | result: in_progress | signal {signum}')
         self._server_on = False
         self._server_socket.shutdown(socket.SHUT_RDWR)
         logging.debug(f'action: shutdown_socket | result: success')

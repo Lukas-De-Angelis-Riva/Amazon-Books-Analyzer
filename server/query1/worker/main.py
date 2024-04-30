@@ -57,7 +57,8 @@ def main():
     # Initialize server and start server loop
     matches = matching_function(published_date_min, published_date_max, category, title)
     worker = Query1Worker(peers, chunk_size, matches)
-    worker.run()
+    exitcode = worker.run()
+    return exitcode
 
 
 def initialize_log(logging_level):

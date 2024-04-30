@@ -20,7 +20,7 @@ class Query5Synchronizer(Worker):
 
     def work(self, input):
         partial = input
-        logging.info(f'action: new_partial | {partial}')
+        logging.debug(f'action: new_partial | result: merge | partial: {partial}')
         title = partial.title
         if title in self.results:
             self.results[title].merge(partial)
@@ -37,8 +37,12 @@ class Query5Synchronizer(Worker):
 
     def filter_results(self):
         percentile = self.get_percentile()
+        logging.debug(f'action: filtering_result | result: in_progress | percentile: {percentile}')
         return {k:v.title for k, v in self.results.items() if v.sentimentAvg >= percentile}
 
     def send_results(self):
-        self.results = self.filter_results()
+        n = len(self.results)
+        if n > 0:
+            self.results = self.filter_results()
+            logging.debug(f'action: filtering_result | result: success | n: {n} >> {len(self.results)}')
         super().send_results()

@@ -17,11 +17,11 @@ class ResultHandler():
         self.prcv = ResultSender(self.ip, self.port, self.file_name, self.lock)
 
         self.psnd.start() ; self.prcv.start()
+        logging.info(f'action: run handler | result: success')
         self.psnd.join() ; self.prcv.join()
-
         logging.info(f'action: stop_handler | result: sucess')
 
     def __handle_signal(self, signum, frame):
-        logging.info(f'action: stop_handler | result: in_progress | signal {signum, frame}')
+        logging.info(f'action: stop_handler | result: in_progress | signal: SIGTERM({signum})')
         self.psnd.terminate()
         self.prcv.terminate()

@@ -30,18 +30,19 @@ class ResultSender(Process):
 
     def respond(self, tcpHandler, chunk):
         if chunk:
+            logging.debug(f'action: respond | response: CHUNK[{len(chunk)}]')
             data = self.serializer.to_bytes(chunk)
         else:
             if self.eof_readed:
-                logging.info('action: respond | response: EOF')
+                logging.debug(f'action: respond | response: EOF')
                 data = make_eof()
             else:
-                logging.info('action: respond | response: WAIT')
+                logging.debug(f'action: respond | response: WAIT')
                 data = make_wait()
         tcpHandler.send_all(data)
 
     def poll(self):
-        logging.info('action: poll | result: in_progress')
+        logging.debug(f'action: poll | result: in_progress')
         if self.eof_readed:
             return []
 
@@ -49,7 +50,7 @@ class ResultSender(Process):
         with self.file_lock, open(self.file_name, 'r', encoding='UTF8') as file:
             file.seek(self.cursor)
             while line := file.readline():
-                logging.info(f'action: read_line | line: {line}')
+                logging.debug(f'action: read_line | line: {line}')
                 if line.rstrip() == EOF_LINE:
                     self.eof_readed = True
                     return chunk
@@ -58,6 +59,7 @@ class ResultSender(Process):
                 if len(chunk) >= self.chunk_size:
                     break
             self.cursor = file.tell()
+        logging.debug('action: poll | result: success')
         return chunk
 
     def run(self):
@@ -73,7 +75,7 @@ class ResultSender(Process):
     def __handle_client_connection(self, client_sock):
         try:
             self.client_lock.acquire()
-            logging.info(f'action: handle_connection | conn: {client_sock}')
+            logging.debug(f'action: handle_connection | conn: {client_sock}')
             tcpHandler = TCPHandler(client_sock)
             keep_reading = True
             while keep_reading:
@@ -83,32 +85,33 @@ class ResultSender(Process):
 
         except (SocketBroken,OSError) as e:
             if not self.eof_readed:
-                logging.info(f'action: receive_message | result: fail | error: {e}')
+                logging.error(f'action: receive_message | result: fail | error: {str(e)}')
         finally:
             if client_sock:
-                logging.info(f'action: release_client_socket | result: success')
+                logging.debug(f'action: release_client_socket | result: in_progress')
                 client_sock.close()
-                logging.info(f'action: finishing | result: success')
+                logging.debug(f'action: release_client_socket | result: success')
+                logging.debug(f'action: handle_connection | result: success | conn: {client_sock}')
             self.client_lock.release()
 
     def __accept_new_connection(self):
         try:
-            logging.info('action: accept_connections | result: in_progress')
+            logging.debug('action: accept_connections | result: in_progress')
             c, addr = self._server_socket.accept()
-            logging.info(f'action: accept_connections | result: success | ip: {addr[0]}')
+            logging.debug(f'action: accept_connections | result: sucess | ip: {addr[0]}')
             return c
         except Exception as e:
             if self._server_on:
                 logging.error(f'action: accept_connections | result: fail | error: {str(e)}')
             else:
-                logging.info(f'action: stop_accept_connections | result: success')
+                logging.debug(f'action: stop_accept_connections | result: success')
             return
 
     def __handle_signal(self, signum, frame):
-        logging.info(f'action: stop_sender | result: in_progress')
+        logging.debug(f'action: stop_sender | result: in_progress')
         self._server_on = False
         self._server_socket.close()
         # leaving time to handle client, respond last poll and then terminate.
         self.client_lock.acquire() # next will be a semaphore waiting until 0.
         self.client_lock.release()
-        logging.info(f'action: stop_sender | result: success')
+        logging.debug(f'action: stop_sender | result: success')

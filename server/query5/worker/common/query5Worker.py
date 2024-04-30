@@ -18,10 +18,13 @@ class Query5Worker(Worker):
 
     def work(self, input):
         review = input
-        logging.info(f'action: new_review | {review}')
+        logging.debug(f'action: new_review | review: {review}')
         if review.title in self.results:
+            logging.debug(f'action: new_review | result: update | review: {review}')
             self.results[review.title].update(review)
 
     def send_results(self):
+        n = len(self.results)
         self.results = {k:v for k, v in self.results.items() if v.n > 0}
+        logging.debug(f'action: filtering_result | result: success | n: {n} >> {len(self.results)}')
         super().send_results()

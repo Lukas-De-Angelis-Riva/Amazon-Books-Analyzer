@@ -21,7 +21,7 @@ class Query3Synchronizer(Worker):
 
     def work(self, input):
         partial = input
-        logging.info(f'action: new_partial | {partial}')
+        logging.debug(f'action: new_partial | result: merge | partial: {partial}')
         title = partial.title
         if title in self.results:
             self.results[title].merge(partial)
@@ -29,18 +29,23 @@ class Query3Synchronizer(Worker):
             self.results[title] = partial
 
     def recv_eof(self, eof):
+        n = len(self.results)
         self.results = self.filter_results()
+        logging.debug(f'action: filtering_result Q3 | result: success | n: {n} >> {len(self.results)}')
 
         # First send Q3 results
         super().send_results()
         super().handle_eof(eof)
+        logging.debug(f'action: send_results Q3 | result: success')
 
         # Then send Q4 results
         self.results = self.get_top()
+        logging.debug(f'action: filtering_result Q4 | result: success | n: {len(self.results)}')
 
         self.middleware.change_tag('Q4')
         super().send_results()
         super().handle_eof(eof)
+        logging.debug(f'action: send_results Q4 | result: success')
 
     def filter_results(self):
         return {k:v for k, v in self.results.items() if v.n >= self.min_amount_reviews}

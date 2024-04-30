@@ -1,6 +1,7 @@
-import uuid
 import pika
 import logging
+import traceback
+logging.getLogger('pika').setLevel(logging.ERROR)
 
 HOST = 'rabbitmq'
 
@@ -20,6 +21,7 @@ class Middleware:
             self.channel.start_consuming()
         except Exception as e:
             logging.error(f'action: pika_consume | result: fail | error: {str(e)}')
+            logging.error(traceback.format_exc())
         finally:
             self.channel.close()
             self.connection.close()

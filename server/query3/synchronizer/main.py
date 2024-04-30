@@ -47,8 +47,8 @@ def main():
 
     # Initialize server and start server loop
     worker = Query3Synchronizer(chunk_size, min_amount_reviews, n_top)
-    worker.run()
-
+    exitcode = worker.run()
+    return exitcode
 
 def initialize_log(logging_level):
     """

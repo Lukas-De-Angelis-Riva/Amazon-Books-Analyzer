@@ -18,9 +18,9 @@ class Query2Worker(Worker):
 
     def work(self, input):
         book = input
-        logging.info(f'action: new_book | {book}')
+        logging.debug(f'action: new_book | book: {book}')
         for author in book.authors:
             if author not in self.results:
                 self.results[author] = Q2Partial(author, [])
             self.results[author].update(book)
-            logging.info(f'action: updating partial | author: {author} | date: {book.publishedDate}')
+            logging.debug(f'action: new_book | result: update | author: {author} | date: {book.publishedDate}')
