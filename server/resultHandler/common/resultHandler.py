@@ -1,15 +1,27 @@
-from multiprocessing import Process, Lock
+import logging
+import signal
+from multiprocessing import Lock
 from common.resultReceiver import ResultReceiver
 from common.resultSender import ResultSender
 
 class ResultHandler():
     def __init__(self, config_params):
+        signal.signal(signal.SIGTERM, self.__handle_signal)
         self.lock = Lock()
-        self.resultReceiver = ResultReceiver(config_params['file_name'], self.lock)
-        self.resultSender = ResultSender(config_params['ip'], config_params['port'], config_params['file_name'], self.lock)
-  
+        self.file_name = config_params['file_name']
+        self.ip = config_params['ip']
+        self.port = config_params['port']
+
     def run(self):
-        p1 = Process(target=self.resultReceiver.run, args=())
-        p2 = Process(target=self.resultSender.run, args=())
-        p1.start(); p2.start()
-        p1.join() ; p2.join()
+        self.psnd = ResultReceiver(self.file_name, self.lock)
+        self.prcv = ResultSender(self.ip, self.port, self.file_name, self.lock)
+
+        self.psnd.start() ; self.prcv.start()
+        self.psnd.join() ; self.prcv.join()
+
+        logging.info(f'action: stop_handler | result: sucess')
+
+    def __handle_signal(self, signum, frame):
+        logging.info(f'action: stop_handler | result: in_progress | signal {signum, frame}')
+        self.psnd.terminate()
+        self.prcv.terminate()

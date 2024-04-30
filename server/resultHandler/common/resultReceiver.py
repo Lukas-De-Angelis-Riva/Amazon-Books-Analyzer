@@ -1,7 +1,8 @@
+import signal
 import csv
 import io
 import logging
-import signal
+from multiprocessing import Process, Lock
 from utils.serializer.q1OutSerializer import Q1OutSerializer
 from utils.serializer.q2OutSerializer import Q2OutSerializer
 from utils.serializer.q3OutSerializer import Q3OutSerializer
@@ -10,9 +11,9 @@ from utils.protocol import is_eof
 
 from common.resultHandlerMiddleware import ResultHandlerMiddleware
 
-class ResultReceiver():
+class ResultReceiver(Process):
     def __init__(self, file_name, file_lock):
-        signal.signal(signal.SIGTERM, self.__handle_signal)
+        super().__init__(name='ResultReceiver', args=())
         self.serializers = {
             'Q1': Q1OutSerializer(),
             'Q2': Q2OutSerializer(),
@@ -24,18 +25,23 @@ class ResultReceiver():
         self.middleware = ResultHandlerMiddleware()
         self.file_lock = file_lock
         self.file_name = file_name
+        self.stop_lock = Lock()
 
     def run(self):
+        signal.signal(signal.SIGTERM, self.__handle_signal)
+
         logging.info(f'action: listen_results | result: in_progress')
         self.middleware.listen_results(self.save_results)
         logging.info(f'action: listen_results | result: success')
 
+        logging.info(f'action: middleware_start | start')
         self.middleware.start()
+        logging.info(f'action: middleware_start | end')
 
     def save_results(self, results_raw, results_type):
         results = self.deserialize_result(results_raw, results_type)
 
-        with self.file_lock, open(self.file_name, 'a', encoding='UTF8') as file:
+        with self.stop_lock, self.file_lock, open(self.file_name, 'a', encoding='UTF8') as file:
             writer = csv.writer(file)
 
             for result in results:
@@ -70,6 +76,9 @@ class ResultReceiver():
         return results
 
     def __handle_signal(self, signum, frame):
-        logging.info(f'action: stop_handler | result: in_progress | signal {signum}')
+        logging.info(f'action: stop_receiver | result: in_progress')
         self.middleware.stop()
-        logging.info(f'action: stop_handler | result: success')
+        # leaving time to save_results to write and release file and file_lock
+        self.stop_lock.acquire()
+        self.stop_lock.release()
+        logging.info(f'action: stop_receiver | result: success')

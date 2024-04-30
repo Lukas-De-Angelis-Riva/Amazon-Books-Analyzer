@@ -49,14 +49,14 @@ class TestUtils(unittest.TestCase):
         serializer = ReviewSerializer()
 
         review1 = Review(
-            id=1,
+            id="1",
             title='At the Montains of madness',
             score=5.0,
             text="mu' bueno",
         )
 
         review2 = Review(
-            id=2,
+            id="2",
             title='The C programming language',
             score=3.0,
             text="int x80",

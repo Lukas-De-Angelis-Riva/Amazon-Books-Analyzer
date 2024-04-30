@@ -8,6 +8,7 @@ class Listener():
     def __init__(self, middleware: Middleware):
         signal.signal(signal.SIGTERM, self.__handle_signal)
         self.middleware = middleware
+        self.exitcode = 0
 
     def recv_raw(self, raw):
         raise RuntimeError("Must be redefined")
@@ -29,8 +30,10 @@ class Listener():
         logging.debug(f'action: listen | result: success')
 
         self.middleware.start()
+        return self.exitcode
 
     def __handle_signal(self, signum, frame):
+        self.exitcode = -signum
         logging.debug(f'action: stop_handler | result: in_progress | signal {signum}')
         self.middleware.stop()
         logging.debug(f'action: stop_handler | result: success')

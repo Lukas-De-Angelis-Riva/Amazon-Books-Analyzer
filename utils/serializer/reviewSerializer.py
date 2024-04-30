@@ -25,7 +25,7 @@ class ReviewSerializer(Serializer):
         assert raw_dict[TlvTypes.REVIEW_TEXT], "Invalid review: no text provided"
 
         return Review(
-            id = integer_from_bytes(raw_dict[TlvTypes.REVIEW_ID]),
+            id = string_from_bytes(raw_dict[TlvTypes.REVIEW_ID]),
             title = string_from_bytes(raw_dict[TlvTypes.REVIEW_TITLE]),
             score = float_from_bytes(raw_dict[TlvTypes.REVIEW_SCORE]),
             text = string_from_bytes(raw_dict[TlvTypes.REVIEW_TEXT]),
@@ -36,7 +36,7 @@ class ReviewSerializer(Serializer):
 
         for book in chunk:
             raw_book = b''
-            raw_book += integer_to_bytes(book.id, TlvTypes.REVIEW_ID)
+            raw_book += string_to_bytes(book.id, TlvTypes.REVIEW_ID)
             raw_book += string_to_bytes(book.title, TlvTypes.REVIEW_TITLE)
             raw_book += float_to_bytes(book.score, TlvTypes.REVIEW_SCORE)
             raw_book += string_to_bytes(book.text, TlvTypes.REVIEW_TEXT)

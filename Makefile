@@ -27,14 +27,17 @@ client-run: docker-image
 	docker compose -f docker-compose-client.yaml logs -f
 .PHONY: client-run
 
-shutdown:
-	docker compose -f docker-compose-client.yaml stop -t 10
-	docker compose -f docker-compose-client.yaml down
+system-shutdown:
 	docker compose -f docker-compose-server.yaml stop -t 10
 	docker compose -f docker-compose-server.yaml down
 	docker compose -f docker-compose-middleware.yaml stop -t 10
 	docker compose -f docker-compose-middleware.yaml down 
-.PHONY: shutdown
+.PHONY: system-shutdown
+
+client-shutdown:
+	docker compose -f docker-compose-client.yaml stop -t 10
+	docker compose -f docker-compose-client.yaml down
+.PHONY: client-shutdown
 
 system-logs:
 	docker compose -f docker-compose-server.yaml logs -f

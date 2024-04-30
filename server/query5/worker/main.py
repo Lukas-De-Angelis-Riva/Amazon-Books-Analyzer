@@ -49,10 +49,13 @@ def main():
     # Initialize server and start server loop
     books = {}
     bookHandler = BookReceiver(books, config_params["category"])
-    bookHandler.run()
+    exitcode = bookHandler.run()
+    if exitcode != 0:
+        return
 
     worker = Query5Worker(peers, chunk_size, books)
-    worker.run()
+    exitcode = worker.run()
+    return exitcode
 
 def initialize_log(logging_level):
     """

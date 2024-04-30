@@ -23,7 +23,7 @@ class Q5ReviewInSerializer(Serializer):
         assert raw_dict[Q5ReviewInTypes.TEXT], "Invalid review: no text provided"
 
         return Review(
-            id = 0,
+            id = "",
             title = string_from_bytes(raw_dict[Q5ReviewInTypes.TITLE]),
             score = 0.0,
             text = string_from_bytes(raw_dict[Q5ReviewInTypes.TEXT]),
