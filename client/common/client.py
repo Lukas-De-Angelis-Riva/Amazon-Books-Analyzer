@@ -3,12 +3,15 @@ from utils.TCPhandler import SocketBroken
 from model.book import Book
 from model.review import Review
 
+import sys
 import logging
 import socket
 import signal
 import time
 import csv
 import os
+
+from alive_progress import alive_bar
 
 TITLE = 0
 AUTHORS = 2
@@ -39,7 +42,20 @@ class Client:
     def run(self):
         logging.info(f'action: running client')
         # Read books.csv and send to the system.
-        self.connect(self.config["ip"], self.config["port"])
+
+        if not os.path.isfile(self.config["book_file_path"]):
+            logging.error(f'action: run | result: fail | error: {self.config["book_file_path"]} does not exists.')
+            return
+#        if not os.path.isfile(self.config["review_file_path"]):
+#            logging.error(f'action: run | result: fail | error: {self.config["review_file_path"]} does not exists.')
+#            return
+
+        try:
+            self.connect(self.config["ip"], self.config["port"])
+        except Exception as e:
+            logging.error(f'action: connect | result: fail | error: {str(e)}')
+            return
+
         self.send_books()
         self.send_reviews()
 
@@ -93,13 +109,15 @@ class Client:
 
     def send_file(self, path, read_line, chunk_size, send_message, send_eof):
         logging.info(f'action: send file | result: in_progress | path: {path}')
+        
         try:
             file_size = os.path.getsize(path)
-            with open(path, mode ='r') as file:
+            with open(path, mode ='r') as file, alive_bar(100, manual=True, force_tty=True) as bar:
                 file.readline()  # skip the headers
                 batch = []
                 i = 0
                 while line := file.readline():
+                    bar(float(file.tell() / file_size))
                     element = read_line(line)
                     if element != None:
                         logging.debug(f'action: read_element | result: success | element: {element}')
@@ -107,18 +125,13 @@ class Client:
                         if len(batch) == chunk_size:
                             send_message(batch)
                             batch = []
-                            logging.info('action: read {} | progress: {:.2f}%'.format(
-                                path, 100*(file.tell())/(file_size)
-                            ))
                     else:
                         logging.debug(f'action: read_element | result: discard')
                     i+=1
 
                 if batch:
                     send_message(batch)
-                    logging.info('action: read {} | progress: {:.2f}%'.format(
-                        path, 100*(file.tell())/(file_size)
-                    ))
+                    bar(1.0)
                 send_eof()
         except (SocketBroken, OSError) as e:
             if not self.signal_received:
@@ -154,19 +167,12 @@ class Client:
                     self.save_results(value)
                 else:
                     logging.error(f'action: polling | result: fail | unknown_type: {t}')
-        except (SocketBroken, OSError) as e:
+        except (Exception, KeyboardInterrupt) as e:
             if not self.signal_received:
                 logging.error(f'action: polling | result: fail | error: {e}')
-        else: 
+        else:
             logging.debug(f'action: polling | result: success')
 
-
-    # Title,description,authors,image,previewLink,publisher,publishedDate,infoLink,categories,ratingsCount    
-    # book.title = book.title if len(book.title) > 0 else "-"
-    # book.authors = book.authors if len(book.authors) > 0 else ["-"]
-    # book.publisher = book.publisher if len(book.publisher) != 0 else "-"
-    # book.publishedDate = book.publishedDate if len(book.publishedDate) != 0 else "-"
-    # book.categories = book.categories if len(book.categories) > 0 else ["-"]
     def read_book_line(self, line):
         r = csv.reader([line], )
         _book = list(r)[0]

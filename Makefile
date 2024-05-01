@@ -23,8 +23,8 @@ system-run: docker-image
 .PHONY: system-run	
 
 client-run: docker-image
-	docker compose -f docker-compose-client.yaml up -d --build
-	docker compose -f docker-compose-client.yaml logs -f
+	sudo docker compose -f docker-compose-client.yaml build
+	sudo docker compose -f docker-compose-client.yaml run --rm client python main.py
 .PHONY: client-run
 
 system-shutdown:
@@ -33,11 +33,6 @@ system-shutdown:
 	docker compose -f docker-compose-middleware.yaml stop -t 10
 	docker compose -f docker-compose-middleware.yaml down 
 .PHONY: system-shutdown
-
-client-shutdown:
-	docker compose -f docker-compose-client.yaml stop -t 10
-	docker compose -f docker-compose-client.yaml down
-.PHONY: client-shutdown
 
 system-logs:
 	docker compose -f docker-compose-server.yaml logs -f

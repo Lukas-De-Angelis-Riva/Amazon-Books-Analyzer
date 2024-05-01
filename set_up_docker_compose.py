@@ -293,6 +293,7 @@ def create_client():
             './client/config.ini:/config.ini',
             './client/data:/data',
         ],
+        'tty': True,
         'networks': [
             NETWORK_NAME,
         ],

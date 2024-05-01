@@ -77,8 +77,8 @@ class ClientHandler:
 
                 protocolHandler.ack()
         
-        except (SocketBroken,OSError) as e:
-            logging.error(f'action: receive_message | result: fail | error: {e}')
+        except (SocketBroken, OSError) as e:
+            logging.error(f'action: receive_message | result: fail | error: {str(e)}')
         finally:
             if client_sock:
                 logging.debug(f'action: release_client_socket | result: success')
