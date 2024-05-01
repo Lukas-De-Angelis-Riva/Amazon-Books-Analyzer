@@ -1,0 +1,7 @@
+Title,description,authors,image,previewLink,publisher,publishedDate,infoLink,categories,ratingsCount
+"The C Programming Language",,"['Brian Kernighan','Dennis Ritchie']",,,Prentice Hall, 1978,,"['Computers', 'Manual']",
+"Structure and Interpretation of Computer Programs",,"['Harold Abelson','Gerald Jay Sussman', 'Julie Sussman']",,,MIT Press, 1984,,"['Computers', 'Manual']",
+"Distributed Systems: Concepts and Design, 5th Edition",,"['G. Coulouris','J. Dollimore','t. Kindberg', 'G. Blair']",,,Addison Wesley,2012,,"['Computers']",
+"Distributed Systems, 3rd Edition",,"['M. Van Steen', 'A. Tanenbaum']",,,Pearson Education,2017,,"['Computers']",
+"Distributed Systems for Systems Architects",,"['P. Verissimo','L. Rodriguez']",,,Kluwer Academic Publishers,2001,,"['Computers']",
+"Designing Data-Intensive Applications",,['Martin Kleppmann'],,,"O'Reilly Media",2017,,"['Computers']",
