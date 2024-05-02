@@ -1,4 +1,4 @@
-FROM python-base:latest
+FROM server-base:latest
 RUN pip install -U textblob
 RUN python3 -m textblob.download_corpora
 

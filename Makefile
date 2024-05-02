@@ -1,5 +1,5 @@
 docker-image:
-	docker build -f ./base-images/python-base.dockerfile -t "python-base:latest" .
+	docker build -f ./base-images/server-base.dockerfile -t "server-base:latest" .
 	docker build -f ./client/Dockerfile -t "client:latest" .
 	docker build -f ./server/clientHandler/Dockerfile -t "client_handler:latest" .
 	docker build -f ./server/query1/worker/Dockerfile -t "query1_worker:latest" .

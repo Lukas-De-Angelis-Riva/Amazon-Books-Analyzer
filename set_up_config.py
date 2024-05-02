@@ -17,9 +17,9 @@ set_up_config('client/config.ini',
     RESULT_PORT = RESULT_PORT,
     RESULT_IP = RESULT_IP,
     LOGGING_LEVEL = 'INFO',
-    CHUNK_SIZE_BOOK = 100,
+    CHUNK_SIZE_BOOK = 1200,
     BOOK_FILE_PATH = 'data/books_data.csv',
-    CHUNK_SIZE_REVIEW = 100,
+    CHUNK_SIZE_REVIEW = 200,
     REVIEW_FILE_PATH = 'data/books_rating.csv',
     RESULTS_PATH = 'results.csv',
 )
@@ -33,7 +33,7 @@ set_up_config('server/clientHandler/config.ini',
 ### WORKER
 set_up_config('server/query1/worker/config.ini', 
     LOGGING_LEVEL = 'INFO',
-    CHUNK_SIZE = 100,
+    CHUNK_SIZE = 1200,
     PUBLISHED_DATE_MIN = 2000,
     PUBLISHED_DATE_MAX = 2023,
     CATEGORY = 'computers',
@@ -44,12 +44,12 @@ set_up_config('server/query1/worker/config.ini',
 ### WORKER
 set_up_config('server/query2/worker/config.ini',
     LOGGING_LEVEL = 'INFO',
-    CHUNK_SIZE = 100,
+    CHUNK_SIZE = 2500,
 )
 ### SYNCH
 set_up_config('server/query2/synchronizer/config.ini',
     LOGGING_LEVEL = 'INFO',
-    CHUNK_SIZE = 100,
+    CHUNK_SIZE = 5000,
     MIN_DECADES = 10,
 )
 
@@ -57,14 +57,14 @@ set_up_config('server/query2/synchronizer/config.ini',
 ### WORKER
 set_up_config('server/query3/worker/config.ini',
     LOGGING_LEVEL = 'INFO',
-    CHUNK_SIZE = 100,
+    CHUNK_SIZE = 850,
     MINIMUN_DATE = 1990,
     MAXIMUN_DATE = 1999,
 )
 ### SYNCH
 set_up_config('server/query3/synchronizer/config.ini',
     LOGGING_LEVEL = 'INFO',
-    CHUNK_SIZE = 100,
+    CHUNK_SIZE = 900,
     MIN_AMOUNT_REVIEWS = 500,
     N_TOP = 10,
 )
@@ -73,14 +73,14 @@ set_up_config('server/query3/synchronizer/config.ini',
 ### WORKER
 set_up_config('server/query5/worker/config.ini',
     LOGGING_LEVEL = 'INFO',
-    CHUNK_SIZE = 100,
+    CHUNK_SIZE = 1500,
     CATEGORY = 'Fiction',
 )
 ### SYNCH
 set_up_config('server/query5/synchronizer/config.ini',
     LOGGING_LEVEL = 'INFO',
-    CHUNK_SIZE = 100,
-    PERCENTILE = 80,
+    CHUNK_SIZE = 1800,
+    PERCENTILE = 90,
 )
 
 # RESULT HANDLER

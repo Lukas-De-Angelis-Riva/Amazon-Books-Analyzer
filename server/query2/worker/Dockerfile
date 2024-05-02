@@ -1,4 +1,4 @@
-FROM python-base:latest
+FROM server-base:latest
 
 COPY server/query2/worker /
 COPY server/query2/serializer /utils/serializer
