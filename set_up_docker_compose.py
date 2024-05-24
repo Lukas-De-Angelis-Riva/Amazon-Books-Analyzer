@@ -43,6 +43,10 @@ def create_middleware():
             'timeout': '10s',
             'retries': '5',
         },
+        'volumes': [
+            './rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro',
+            './rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro'
+        ],
         'networks': [
             NETWORK_NAME,
         ],

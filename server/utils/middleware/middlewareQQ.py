@@ -7,13 +7,9 @@ class MiddlewareQQ(Middleware):
 
         # Declare IN-queue
         self.in_queue_name = in_queue_name
-        self.channel.queue_declare(queue=in_queue_name, durable=True)
-        logging.debug(f'action: declare_in_queue | queue_name: {in_queue_name}')
 
         # Declare OUT-queue
         self.out_queue_name = out_queue_name
-        self.channel.queue_declare(queue=out_queue_name, durable=True)
-        logging.debug(f'action: declare_out_queue | queue_name: {out_queue_name}')
 
     def listen(self, callback):
         self.consuming_queue(callback, self.in_queue_name)

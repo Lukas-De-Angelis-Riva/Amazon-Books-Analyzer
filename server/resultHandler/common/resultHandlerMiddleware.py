@@ -8,7 +8,6 @@ class ResultHandlerMiddleware(Middleware):
         super().__init__()
 
         # Declare results exchange (publisher-subscriber)
-        self.channel.exchange_declare(exchange='results', exchange_type='direct')
         result = self.channel.queue_declare(queue='', exclusive=True)
         self.result_queue_name = result.method.queue
         logging.debug(f'action: declare_in_exchange | exchange: results')
