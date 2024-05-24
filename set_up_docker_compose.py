@@ -37,24 +37,16 @@ def create_middleware():
         'ports': [
             '15672:15672'
         ],
+        'healthcheck':{
+            'test': 'rabbitmq-diagnostics check_port_connectivity',
+            'interval': '10s',
+            'timeout': '10s',
+            'retries': '5',
+        },
         'networks': [
             NETWORK_NAME,
         ],
     }
-
-def create_middleware_side():
-    config = {}
-    config['version'] = '3.9'
-    config['name'] = 'tp1-middleware'
-
-    config['networks'] = {}
-    config['networks'][NETWORK_NAME] = create_network(external = False)
-
-    config['services'] = {}
-    config['services']['rabbitmq'] = create_middleware()
-
-    with open('docker-compose-middleware.yaml', 'w') as file:
-        yaml.dump(config, file)
 
 ###################
 ### SERVER SIDE ###
@@ -216,6 +208,11 @@ def create_resultHandler():
         'volumes': [
             './server/resultHandler/config.ini:/config.ini',
         ],
+        'depends_on': {
+            'rabbitmq': {
+                'condition':'service_healthy'
+            }
+        },
         'networks': [
             NETWORK_NAME,
         ],
@@ -235,7 +232,9 @@ def create_clientHandler():
         ],
         'depends_on':
             [f'query1Worker{i+1}' for i in range(AMOUNT_OF_QUERY1_WORKERS)] + \
-            [f'query2Worker{i+1}' for i in range(AMOUNT_OF_QUERY2_WORKERS)],
+            [f'query2Worker{i+1}' for i in range(AMOUNT_OF_QUERY2_WORKERS)] + \
+            [f'query3Worker{i+1}' for i in range(AMOUNT_OF_QUERY3_WORKERS)] + \
+            [f'query5Worker{i+1}' for i in range(AMOUNT_OF_QUERY5_WORKERS)],
         'networks': [
             NETWORK_NAME,
         ],
@@ -244,13 +243,17 @@ def create_clientHandler():
 def create_server_side():
     config = {}
     config['version'] = '3.9'
-    config['name'] = 'tp1-server'
+    config['name'] = 'tp2-server'
 
+    # NETWORK
     config['networks'] = {}
-    config['networks'][NETWORK_NAME] = create_network(external = True)
+    config['networks'][NETWORK_NAME] = create_network(external = False)
+
+    # MIDDLEWARE
+    config['services'] = {}
+    config['services']['rabbitmq'] = create_middleware()
 
     # CLIENT HANDLER
-    config['services'] = {}
     config['services']['clientHandler'] = create_clientHandler()
 
     # QUERY 1
@@ -314,6 +317,6 @@ def create_client_side():
         yaml.dump(config, file)
 
 if __name__ == '__main__':
-    create_middleware_side()
+    #create_middleware_side()
     create_server_side()
     create_client_side()

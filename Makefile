@@ -1,6 +1,9 @@
-docker-image:
-	docker build -f ./base-images/server-base.dockerfile -t "server-base:latest" .
+docker-image-client:
 	docker build -f ./client/Dockerfile -t "client:latest" .
+.PHONY: docker-image-client
+
+docker-image-system:
+	docker build -f ./base-images/server-base.dockerfile -t "server-base:latest" .
 	docker build -f ./server/clientHandler/Dockerfile -t "client_handler:latest" .
 	docker build -f ./server/query1/worker/Dockerfile -t "query1_worker:latest" .
 	docker build -f ./server/query2/worker/Dockerfile -t "query2_worker:latest" .
@@ -10,19 +13,14 @@ docker-image:
 	docker build -f ./server/query5/worker/Dockerfile -t "query5_worker:latest" .
 	docker build -f ./server/query5/synchronizer/Dockerfile -t "query5_synchronizer:latest" .
 	docker build -f ./server/resultHandler/Dockerfile -t "result_handler:latest" .
-.PHONY: docker-image
+.PHONY: docker-image-system
 
-middleware-run: docker-image
-	docker compose -f docker-compose-middleware.yaml up -d --build
-	docker compose -f docker-compose-middleware.yaml logs -f
-.PHONY: middleware-run
-
-system-run: docker-image
+system-run: docker-image-system
 	docker compose -f docker-compose-server.yaml up -d --build
 	docker compose -f docker-compose-server.yaml logs -f
 .PHONY: system-run	
 
-client-run: docker-image
+client-run: docker-image-client
 	sudo docker compose -f docker-compose-client.yaml build
 	sudo docker compose -f docker-compose-client.yaml run --rm client python main.py
 .PHONY: client-run
@@ -30,8 +28,6 @@ client-run: docker-image
 system-shutdown:
 	docker compose -f docker-compose-server.yaml stop -t 10
 	docker compose -f docker-compose-server.yaml down
-	docker compose -f docker-compose-middleware.yaml stop -t 10
-	docker compose -f docker-compose-middleware.yaml down 
 .PHONY: system-shutdown
 
 system-logs:
