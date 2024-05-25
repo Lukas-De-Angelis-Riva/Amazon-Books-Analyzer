@@ -1,20 +1,27 @@
 import logging
 
 from utils.worker import Worker
-from utils.middleware.middlewareQQ import MiddlewareQQ
+from utils.middleware.middleware import Middleware
 from utils.serializer.q5ReviewInSerializer import Q5ReviewInSerializer
 from utils.serializer.q5PartialSerializer import Q5PartialSerializer
 
 class Query5Worker(Worker):
     def __init__(self, peers, chunk_size, books):
-        middleware = MiddlewareQQ(in_queue_name='Q5-Reviews',
-                                  out_queue_name='Q5-Sync')
+        middleware = Middleware()
+        middleware.consume(queue_name='Q5-Reviews', callback=self.recv)
+
         super().__init__(middleware=middleware,
                          in_serializer=Q5ReviewInSerializer(),
                          out_serializer=Q5PartialSerializer(),
                          peers=peers,
                          chunk_size=chunk_size,)
         self.results = books
+
+    def forward_data(self, data):
+        self.middleware.produce(data, 'Q5-Sync')
+
+    def resend(self, data):
+        self.middleware.requeue(data, 'Q5-Reviews')
 
     def work(self, input):
         review = input

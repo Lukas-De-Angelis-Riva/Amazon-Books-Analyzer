@@ -2,14 +2,14 @@ import logging
 
 from utils.worker import Worker
 from dto.q5Partial import Q5Partial
-from utils.middleware.middlewareEQ import MiddlewareEQ
+from utils.middleware.middleware import Middleware
 from utils.serializer.q5BookInSerializer import Q5BookInSerializer
 
 class BookReceiver(Worker):
     def __init__(self, books, category):
-        middleware = MiddlewareEQ(exchange='Q5-Books',
-                                  tag='',
-                                  out_queue_name=None)
+        middleware = Middleware()
+        middleware.subscribe(topic='Q5-Books', tag='', callback=self.recv)
+
         super().__init__(middleware=middleware,
                          in_serializer=Q5BookInSerializer(),
                          out_serializer=None,
@@ -17,6 +17,12 @@ class BookReceiver(Worker):
                          chunk_size=0)
         self.books = books
         self.category = category.lower()
+
+    def forward_data(self, data):
+        return # THERE IS NO NEED. IT DOESNT FORWARD ANY DATA | THIS CLASS'LL BE ERASED
+
+    def resend(self, data):
+        return # THERE IS NO NEED. CONSUMES FROM EXCHANGE
 
     def work(self, input):
         book = input

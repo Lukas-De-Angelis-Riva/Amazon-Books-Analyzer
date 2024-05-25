@@ -1,16 +1,15 @@
 import logging
 
 from utils.worker import Worker
-from utils.middleware.middlewareQE import MiddlewareQE
+from utils.middleware.middleware import Middleware
 from utils.protocol import make_eof
 from utils.serializer.q3PartialSerializer import Q3PartialSerializer
 from utils.serializer.q3OutSerializer import Q3OutSerializer
 
 class Query3Synchronizer(Worker):
     def __init__(self, chunk_size, min_amount_reviews, n_top):
-        middleware = MiddlewareQE(in_queue_name='Q3-Sync',
-                                  exchange='results',
-                                  tag='Q3')
+        middleware = Middleware()
+        middleware.consume(queue_name='Q3-Sync', callback=self.recv)
         super().__init__(middleware=middleware,
                          in_serializer=Q3PartialSerializer(),
                          out_serializer=Q3OutSerializer(),
@@ -18,6 +17,12 @@ class Query3Synchronizer(Worker):
                          chunk_size=chunk_size,)
         self.min_amount_reviews = min_amount_reviews
         self.n_top = n_top
+
+    def forward_data(self, data):
+        self.middleware.publish(data, 'results', self.tag)
+
+    def resend(self, data):
+        self.middleware.requeue(data, 'Q3-Sync')
 
     def work(self, input):
         partial = input
@@ -34,6 +39,7 @@ class Query3Synchronizer(Worker):
         logging.debug(f'action: filtering_result Q3 | result: success | n: {n} >> {len(self.results)}')
 
         # First send Q3 results
+        self.tag = 'Q3'
         super().send_results()
         super().handle_eof(eof)
         logging.debug(f'action: send_results Q3 | result: success')
@@ -42,7 +48,7 @@ class Query3Synchronizer(Worker):
         self.results = self.get_top()
         logging.debug(f'action: filtering_result Q4 | result: success | n: {len(self.results)}')
 
-        self.middleware.change_tag('Q4')
+        self.tag = 'Q4'
         super().send_results()
         super().handle_eof(eof)
         logging.debug(f'action: send_results Q4 | result: success')
