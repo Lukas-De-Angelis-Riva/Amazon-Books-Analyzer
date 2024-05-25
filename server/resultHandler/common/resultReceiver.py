@@ -25,21 +25,9 @@ class ResultReceiver(Process):
 
         # TODO: BEST IF SUBSCRIBE ALLOWS A LIST OF TAGS
         self.middleware = Middleware()
-        qname = self.middleware.subscribe(topic='results', tag='Q1',
-                                          callback=self.save_results,
-                                          queue_name=None)
-        self.middleware.subscribe(topic='results', tag='Q2',
-                                  callback=self.save_results,
-                                  queue_name=qname)
-        self.middleware.subscribe(topic='results', tag='Q3',
-                                  callback=self.save_results,
-                                  queue_name=qname)
-        self.middleware.subscribe(topic='results', tag='Q4',
-                                  callback=self.save_results,
-                                  queue_name=qname)
-        self.middleware.subscribe(topic='results', tag='Q5',
-                                  callback=self.save_results,
-                                  queue_name=qname)
+        self.middleware.subscribe(topic='results',
+                                  tags=['Q1', 'Q2', 'Q3', 'Q4', 'Q5'],
+                                  callback=self.save_results)
 
         self.file_lock = file_lock
         self.file_name = file_name

@@ -14,7 +14,7 @@ class Query3Worker(Worker):
 
         middleware = Middleware()
         middleware.consume(queue_name='Q3-Reviews', callback=self.recv)
-        middleware.subscribe(topic='Q3-Books', tag='', callback=self.recv_book)
+        middleware.subscribe(topic='Q3-Books', tags=[], callback=self.recv_book)
 
         super().__init__(middleware=middleware,
                          in_serializer=Q3ReviewInSerializer(),

@@ -13,7 +13,7 @@ class Query5Worker(Worker):
     def __init__(self, category, peers, chunk_size):
         middleware = Middleware()
         middleware.consume(queue_name='Q5-Reviews', callback=self.recv)
-        middleware.subscribe(topic='Q5-Books', tag='', callback=self.recv_book)
+        middleware.subscribe(topic='Q5-Books', tags=[], callback=self.recv_book)
 
         super().__init__(middleware=middleware,
                          in_serializer=Q5ReviewInSerializer(),

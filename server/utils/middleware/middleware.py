@@ -42,7 +42,10 @@ class Middleware:
         self.channel.basic_consume(queue=queue_name,
                                    on_message_callback=self.__make_callback(callback))
 
-    def subscribe(self, topic:str, tag:str, callback, queue_name:str=None):
+    def subscribe(self, topic:str, tags:list, callback, queue_name:str=None):
+        if len(tags) == 0:
+            tags = ['']
+
         if not queue_name:
             logging.debug(f"action: subscribe | setting_up | qname: not specified")
             result = self.channel.queue_declare(queue='', exclusive=True)
@@ -50,9 +53,10 @@ class Middleware:
             logging.debug(f"action: subscribe | creating_queue | qname: {queue_name}")
         else:
             logging.debug(f"action: subscribe | setting_up | qname: {queue_name}")
-        
-        self.channel.queue_bind(exchange=topic, queue=queue_name, routing_key=tag)
-        logging.debug(f"action: subscribe | binding_queue | qname: {queue_name} | topic/tag: {topic}/{tag}")
+
+        for tag in tags:
+            self.channel.queue_bind(exchange=topic, queue=queue_name, routing_key=tag)
+            logging.debug(f"action: subscribe | binding_queue | qname: {queue_name} | topic/tag: {topic}/{tag}")
 
         self.consume(queue_name, callback)
         return queue_name
