@@ -32,6 +32,12 @@ class Worker(Listener):
         self.send_results()
         self.handle_eof(eof)
 
+    def forward_data(self, data):
+        raise RuntimeError("Must be redefined")
+
+    def resend(self, data):
+        return
+
     def send_results(self):
         chunk = []
         for result in self.results.values():
@@ -39,11 +45,11 @@ class Worker(Listener):
             chunk.append(result)
             if len(chunk) >= self.chunk_size:
                 data = self.out_serializer.to_bytes(chunk)
-                self.middleware.publish(data)
+                self.forward_data(data)
                 chunk = []
         if chunk:
             data = self.out_serializer.to_bytes(chunk)
-            self.middleware.publish(data)
+            self.forward_data(data)
 
     def handle_eof(self, eof):
         closed_peers = get_closed_peers(eof)
@@ -54,9 +60,9 @@ class Worker(Listener):
             # Send EOF to other peers.
             logging.debug(f'action: recv EOF | result: in_progress | peers = {self.peers} | closed_peers: {closed_peers}')
             new_eof = make_eof(closed_peers + 1)
-            self.middleware.resend(new_eof)
+            self.resend(new_eof)
         else:
             # All my peers are closed, send EOF to ResultQueue
             logging.debug(f'action: recv EOF | result: in_progress | peers = {self.peers} | closed_peers: {closed_peers}')
             last_eof = make_eof(0)
-            self.middleware.publish(last_eof)
+            self.forward_data(last_eof)

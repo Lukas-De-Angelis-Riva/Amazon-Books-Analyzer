@@ -16,7 +16,7 @@ class Listener():
     def recv_eof(self, eof):
         raise RuntimeError("Must be redefined")
 
-    def recv(self, raw):
+    def recv(self, raw, key):
         if is_eof(raw):
             self.recv_eof(raw)
             return False
@@ -25,10 +25,6 @@ class Listener():
         return True
 
     def run(self):
-        logging.debug(f'action: listen | result: in_progress')
-        self.middleware.listen(self.recv)
-        logging.debug(f'action: listen | result: success')
-
         self.middleware.start()
         return self.exitcode
 

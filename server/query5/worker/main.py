@@ -2,7 +2,6 @@ import os
 import logging
 from configparser import ConfigParser
 
-from common.bookReceiver import BookReceiver
 from common.query5Worker import Query5Worker
 
 def initialize_config():
@@ -47,13 +46,7 @@ def main():
     logging.debug(f"action: config | result: success | logging_level: {logging_level}")
 
     # Initialize server and start server loop
-    books = {}
-    bookHandler = BookReceiver(books, config_params["category"])
-    exitcode = bookHandler.run()
-    if exitcode != 0:
-        return
-
-    worker = Query5Worker(peers, chunk_size, books)
+    worker = Query5Worker(config_params["category"], peers, chunk_size)
     exitcode = worker.run()
     return exitcode
 

@@ -13,7 +13,6 @@ class Middleware:
         self.connection = pika.BlockingConnection(
                                pika.ConnectionParameters(host=HOST))
         self.channel = self.connection.channel()
-        self.callback_func = self.__no_callback
         self.active_channel = False
 
     def start(self):
@@ -26,17 +25,43 @@ class Middleware:
             self.channel.close()
             self.connection.close()
 
-    def callback(self, ch, method, properties, body):
-        keep_going = self.callback_func(body)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-        if not keep_going:
-            self.stop()
-            return
-
     def stop(self):
         self.channel.stop_consuming()
 
-    def send_msg(self, routing_key, data, exchange=''):
+    def __make_callback(self, callback):
+        def __wrapper(ch, method, properties, body):
+            keep_going = callback(body, method.routing_key)
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            if not keep_going:
+                self.stop()
+                return
+        return __wrapper
+
+    def consume(self, queue_name: str, callback):
+        logging.debug(f"action: consume | qname: {queue_name}")
+        self.channel.basic_consume(queue=queue_name,
+                                   on_message_callback=self.__make_callback(callback))
+
+    def subscribe(self, topic:str, tags:list, callback, queue_name:str=None):
+        if len(tags) == 0:
+            tags = ['']
+
+        if not queue_name:
+            logging.debug(f"action: subscribe | setting_up | qname: not specified")
+            result = self.channel.queue_declare(queue='', exclusive=True)
+            queue_name = result.method.queue
+            logging.debug(f"action: subscribe | creating_queue | qname: {queue_name}")
+        else:
+            logging.debug(f"action: subscribe | setting_up | qname: {queue_name}")
+
+        for tag in tags:
+            self.channel.queue_bind(exchange=topic, queue=queue_name, routing_key=tag)
+            logging.debug(f"action: subscribe | binding_queue | qname: {queue_name} | topic/tag: {topic}/{tag}")
+
+        self.consume(queue_name, callback)
+        return queue_name
+
+    def __send_msg(self, data, exchange:str, routing_key:str):
         self.channel.basic_publish(
             exchange=exchange,
             routing_key=routing_key,
@@ -45,15 +70,12 @@ class Middleware:
                 delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE
         ))
 
-    def consuming_queue(self, callback, queue_consume):
-        if self.active_channel:
-            raise ChannelAlreadyConsuming()
+    def produce(self, data, out_queue_name):
+        return self.__send_msg(data=data, exchange='', routing_key=out_queue_name)
 
-        self.active_channel = True
-        self.callback_func = callback
-        logging.debug(f"action: consuming_queue | queue: {queue_consume}")
-        self.channel.basic_consume(queue=queue_consume,
-                                   on_message_callback=self.callback)
+    def requeue(self, data, in_queue_name):
+        # Same as produce, but better semantic
+        return self.produce(data, in_queue_name)
 
-    def __no_callback(self, body):
-        logging.error("No callback set")
+    def publish(self, data, topic, tag):
+        return self.__send_msg(data=data, exchange=topic, routing_key=tag)

@@ -9,7 +9,7 @@ from utils.serializer.q3OutSerializer import Q3OutSerializer
 from utils.serializer.q5OutSerializer import Q5OutSerializer
 from utils.protocol import is_eof
 
-from common.resultHandlerMiddleware import ResultHandlerMiddleware
+from utils.middleware.middleware import Middleware
 
 class ResultReceiver(Process):
     def __init__(self, file_name, file_lock):
@@ -22,7 +22,13 @@ class ResultReceiver(Process):
             'Q5': Q5OutSerializer(),
         }
         self.eofs = {'Q1': False,'Q2': False, 'Q3': False, 'Q4': False, 'Q5': False}
-        self.middleware = ResultHandlerMiddleware()
+
+        # TODO: BEST IF SUBSCRIBE ALLOWS A LIST OF TAGS
+        self.middleware = Middleware()
+        self.middleware.subscribe(topic='results',
+                                  tags=['Q1', 'Q2', 'Q3', 'Q4', 'Q5'],
+                                  callback=self.save_results)
+
         self.file_lock = file_lock
         self.file_name = file_name
         self.stop_lock = Lock()
@@ -30,22 +36,22 @@ class ResultReceiver(Process):
     def run(self):
         signal.signal(signal.SIGTERM, self.__handle_signal)
 
-        logging.debug(f'action: listen_results | result: in_progress')
-        self.middleware.listen_results(self.save_results)
-        logging.debug(f'action: listen_results | result: success')
-
         logging.debug(f'action: middleware_start | start')
         self.middleware.start()
         logging.debug(f'action: middleware_start | end')
 
     def save_results(self, results_raw, results_type):
         results = self.deserialize_result(results_raw, results_type)
+        logging.debug(f'action: save_results({results_type}) | result: in_progress | n: {len(results)}')
+        if len(results) == 0:
+            logging.debug(f'action: save_results({results_type}) | result: success')
+            return True
 
         with self.stop_lock, self.file_lock, open(self.file_name, 'a', encoding='UTF8') as file:
             writer = csv.writer(file)
 
             for result in results:
-                logging.debug(f'action: receive_result | result: success | value: {result}')
+                logging.debug(f'action: save_result({results_type})_i | result: success | value: {result}')
                 if results_type == 'Q1':
                     writer.writerow(['Q1', result.title, result.authors, result.publisher])
                 elif results_type == 'Q2':
@@ -58,21 +64,24 @@ class ResultReceiver(Process):
                     writer.writerow(['Q5', result])
                 else:
                     continue
+        logging.debug(f'action: save_results({results_type}) | result: success')
+        return True
 
     def write_eof(self):
-        with self.file_lock, open(self.file_name, 'a', encoding='UTF8') as file:
+        with self.stop_lock, self.file_lock, open(self.file_name, 'a', encoding='UTF8') as file:
             writer = csv.writer(file)
             writer.writerow(['EOF'])
     
     def deserialize_result(self, bytes_raw, type):
-        reader = io.BytesIO(bytes_raw)
-        results = self.serializers[type].from_chunk(reader)        
         if is_eof(bytes_raw):
             self.eofs[type] = True
             logging.debug(f'action: recv EOF {type}| result: success')
             if all(self.eofs.values()):
                 self.write_eof()
+            return []
 
+        reader = io.BytesIO(bytes_raw)
+        results = self.serializers[type].from_chunk(reader)
         return results
 
     def __handle_signal(self, signum, frame):

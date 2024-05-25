@@ -2,21 +2,26 @@ import logging
 from math import ceil
 
 from utils.worker import Worker
-from utils.middleware.middlewareQE import MiddlewareQE
+from utils.middleware.middleware import Middleware
 from utils.serializer.q5PartialSerializer import Q5PartialSerializer
 from utils.serializer.q5OutSerializer import Q5OutSerializer
 
 class Query5Synchronizer(Worker):
     def __init__(self, chunk_size, percentage):
-        middleware = MiddlewareQE(in_queue_name='Q5-Sync',
-                                  exchange='results',
-                                  tag='Q5')
+        middleware = Middleware()
+        middleware.consume(queue_name='Q5-Sync', callback=self.recv)
         super().__init__(middleware=middleware,
                          in_serializer=Q5PartialSerializer(),
                          out_serializer=Q5OutSerializer(),
                          peers=1,
                          chunk_size=chunk_size,)
         self.percentage = percentage
+
+    def forward_data(self, data):
+        self.middleware.publish(data, 'results', 'Q5')
+
+    def resend(self, data):
+        self.middleware.requeue(data, 'Q5-Sync')
 
     def work(self, input):
         partial = input
