@@ -25,6 +25,7 @@ def initialize_config():
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
         config_params["chunk_size"] = int(os.getenv('CHUNK_SIZE', config["DEFAULT"]["CHUNK_SIZE"]))
         config_params["peers"] = int(os.environ['PEERS'])
+        config_params["peer_id"] = int(os.environ['PEER_ID'])
 
         config_params["published_date_min"] = int(os.getenv('PUBLISHED_DATE_MIN', config["DEFAULT"]["PUBLISHED_DATE_MIN"]))
         config_params["published_date_max"] = int(os.getenv('PUBLISHED_DATE_MAX', config["DEFAULT"]["PUBLISHED_DATE_MAX"]))
@@ -43,6 +44,7 @@ def main():
     logging_level = config_params["logging_level"]
     chunk_size = config_params["chunk_size"]
     peers = config_params['peers']
+    peer_id = config_params['peer_id']
 
     published_date_min = config_params["published_date_min"]
     published_date_max = config_params["published_date_max"]
@@ -57,7 +59,7 @@ def main():
 
     # Initialize server and start server loop
     matches = matching_function(published_date_min, published_date_max, category, title)
-    worker = Query1Worker(peers, chunk_size, matches)
+    worker = Query1Worker(peer_id, peers, chunk_size, matches)
     exitcode = worker.run()
     return exitcode
 

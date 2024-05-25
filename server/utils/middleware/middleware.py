@@ -32,11 +32,16 @@ class Middleware:
 
     def __make_callback(self, callback):
         def __wrapper(ch, method, properties, body):
-            keep_going = callback(body, method.routing_key)
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-            if not keep_going:
+            response = callback(body, method.routing_key)
+            if response == 0:
+                ch.basic_ack(delivery_tag=method.delivery_tag)
                 self.stop()
                 return
+            elif response == 1:
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                return
+            else:  # response == 2:
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
         return __wrapper
 
     def consume(self, queue_name: str, callback):

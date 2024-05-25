@@ -67,6 +67,7 @@ def create_query1Worker(i):
             'PYTHONUNBUFFERED=1',
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
             'PEERS='+str(AMOUNT_OF_QUERY1_WORKERS),
+            'PEER_ID='+str(i),
         ],
         'volumes': [
             './server/query1/worker/config.ini:/config.ini',
@@ -281,7 +282,7 @@ def create_server_side():
     config['services']['query2Synchronizer'] = create_query2Synchronizer()
 
     # QUERY 3 & 4
-    for i in range(AMOUNT_OF_QUERY1_WORKERS):
+    for i in range(AMOUNT_OF_QUERY3_WORKERS):
         config['services'][f'query3Worker{i+1}'] = create_query3Worker(i+1)
     config['services']['query3Synchronizer'] = create_query3Synchronizer()
 
