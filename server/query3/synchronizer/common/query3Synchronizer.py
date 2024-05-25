@@ -2,9 +2,9 @@ import logging
 
 from utils.worker import Worker
 from utils.middleware.middleware import Middleware
-from utils.protocol import make_eof
-from utils.serializer.q3PartialSerializer import Q3PartialSerializer
-from utils.serializer.q3OutSerializer import Q3OutSerializer
+from utils.serializer.q3PartialSerializer import Q3PartialSerializer    # type: ignore
+from utils.serializer.q3OutSerializer import Q3OutSerializer            # type: ignore
+
 
 class Query3Synchronizer(Worker):
     def __init__(self, chunk_size, min_amount_reviews, n_top):
@@ -42,7 +42,7 @@ class Query3Synchronizer(Worker):
         self.tag = 'Q3'
         super().send_results()
         super().handle_eof(eof)
-        logging.debug(f'action: send_results Q3 | result: success')
+        logging.debug('action: send_results Q3 | result: success')
 
         # Then send Q4 results
         self.results = self.get_top()
@@ -51,12 +51,12 @@ class Query3Synchronizer(Worker):
         self.tag = 'Q4'
         super().send_results()
         super().handle_eof(eof)
-        logging.debug(f'action: send_results Q4 | result: success')
+        logging.debug('action: send_results Q4 | result: success')
 
     def filter_results(self):
-        return {k:v for k, v in self.results.items() if v.n >= self.min_amount_reviews}
+        return {k: v for k, v in self.results.items() if v.n >= self.min_amount_reviews}
 
     def get_top(self):
         n = min(self.n_top, len(self.results))
         _sorted_keys = sorted(self.results, key=lambda k: self.results[k].scoreAvg, reverse=True)[:n]
-        return {k:v for k, v in self.results.items() if k in _sorted_keys}
+        return {k: v for k, v in self.results.items() if k in _sorted_keys}

@@ -3,16 +3,17 @@ from utils.protocol import SIZE_LENGTH
 from utils.protocol import string_to_bytes, string_from_bytes
 from utils.protocol import code_to_bytes
 
+
 class Q5OutTypes():
     CHUNK = 0
     RESULT = 1
     TITLE = 2
 
-class Q5OutSerializer(Serializer):
 
+class Q5OutSerializer(Serializer):
     def make_raw_dict(self):
         return {
-            Q5OutTypes.TITLE : b'',
+            Q5OutTypes.TITLE: b'',
         }
 
     def from_raw_dict(self, raw_dict):
@@ -28,11 +29,11 @@ class Q5OutSerializer(Serializer):
             raw_title += string_to_bytes(title, Q5OutTypes.TITLE)
 
             raw_chunk += code_to_bytes(Q5OutTypes.RESULT)
-            raw_chunk += int.to_bytes(len(raw_title), SIZE_LENGTH, 'big') 
+            raw_chunk += int.to_bytes(len(raw_title), SIZE_LENGTH, 'big')
             raw_chunk += raw_title
 
         result = code_to_bytes(Q5OutTypes.CHUNK)
-        result += int.to_bytes(len(chunk), SIZE_LENGTH, 'big') 
+        result += int.to_bytes(len(chunk), SIZE_LENGTH, 'big')
         result += raw_chunk
 
         return result

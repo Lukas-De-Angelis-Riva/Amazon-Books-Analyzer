@@ -3,14 +3,15 @@ import unittest
 
 from dto.q3Partial import Q3Partial
 from model.review import Review
-from utils.serializer.q3PartialSerializer import Q3PartialSerializer 
+from utils.serializer.q3PartialSerializer import Q3PartialSerializer  # type: ignore
+
 
 class TestUtils(unittest.TestCase):
 
     def test_empty_partialq3_update_correctly(self):
         partial = Q3Partial(
             title='The C programming language',
-            authors=['Dennis Ritchie','Brian Kernighan'],
+            authors=['Dennis Ritchie', 'Brian Kernighan'],
             n=0,
             scoreAvg=0.0,
         )
@@ -28,7 +29,7 @@ class TestUtils(unittest.TestCase):
     def test_partialq3_update_correctly(self):
         partial = Q3Partial(
             title='The C programming language',
-            authors=['Dennis Ritchie','Brian Kernighan'],
+            authors=['Dennis Ritchie', 'Brian Kernighan'],
             n=10,
             scoreAvg=4.5,
         )
@@ -46,13 +47,13 @@ class TestUtils(unittest.TestCase):
     def test_partialq3_merge_correctly(self):
         partial1 = Q3Partial(
             title='The C programming language',
-            authors=['Dennis Ritchie','Brian Kernighan'],
+            authors=['Dennis Ritchie', 'Brian Kernighan'],
             n=10,
             scoreAvg=4.5,
         )
         partial2 = Q3Partial(
             title='The C programming language',
-            authors=['Dennis Ritchie','Brian Kernighan'],
+            authors=['Dennis Ritchie', 'Brian Kernighan'],
             n=5,
             scoreAvg=5.0,
         )
@@ -67,13 +68,13 @@ class TestUtils(unittest.TestCase):
 
         partial1 = Q3Partial(
             title='The C programming language',
-            authors=['Dennis Ritchie','Brian Kernighan'],
+            authors=['Dennis Ritchie', 'Brian Kernighan'],
             n=10,
             scoreAvg=4.5,
         )
         partial2 = Q3Partial(
             title='The C programming language',
-            authors=['Dennis Ritchie','Brian Kernighan'],
+            authors=['Dennis Ritchie', 'Brian Kernighan'],
             n=5,
             scoreAvg=5.0,
         )
@@ -94,6 +95,7 @@ class TestUtils(unittest.TestCase):
         assert partial2.authors == _partial2.authors
         assert partial2.n == _partial2.n
         assert abs(partial2.scoreAvg - _partial2.scoreAvg) < 1e-4
+
 
 if __name__ == '__main__':
     unittest.main()

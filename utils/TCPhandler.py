@@ -1,10 +1,11 @@
 class SocketBroken(Exception):
     pass
 
-"""
-This class will handle the TCP socket management, 
-preventing "short reads" and "short sends."
-"""
+
+# This class will handle the TCP socket management,
+# preventing "short reads" and "short sends."
+
+
 class TCPHandler:
 
     def __init__(self, socket):

@@ -1,5 +1,6 @@
 from model.book import Book
 
+
 class Q2Partial:
     def __init__(self, author: str, decades: list):
         self.author = author

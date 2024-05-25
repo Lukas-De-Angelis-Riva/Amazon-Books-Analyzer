@@ -1,7 +1,8 @@
 import io
 import unittest
 
-from utils.serializer.q2OutSerializer import Q2OutSerializer
+from utils.serializer.q2OutSerializer import Q2OutSerializer    # type: ignore
+
 
 class TestUtils(unittest.TestCase):
     def test_resultq2serializer(self):
@@ -22,6 +23,7 @@ class TestUtils(unittest.TestCase):
         assert result1 == _result1
         assert result2 == _result2
         assert result3 == _result3
+
 
 if __name__ == '__main__':
     unittest.main()

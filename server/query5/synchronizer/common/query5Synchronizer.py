@@ -3,8 +3,9 @@ from math import ceil
 
 from utils.worker import Worker
 from utils.middleware.middleware import Middleware
-from utils.serializer.q5PartialSerializer import Q5PartialSerializer
-from utils.serializer.q5OutSerializer import Q5OutSerializer
+from utils.serializer.q5PartialSerializer import Q5PartialSerializer    # type: ignore
+from utils.serializer.q5OutSerializer import Q5OutSerializer            # type: ignore
+
 
 class Query5Synchronizer(Worker):
     def __init__(self, chunk_size, percentage):
@@ -43,7 +44,7 @@ class Query5Synchronizer(Worker):
     def filter_results(self):
         percentile = self.get_percentile()
         logging.debug(f'action: filtering_result | result: in_progress | percentile: {percentile}')
-        return {k:v.title for k, v in self.results.items() if v.sentimentAvg >= percentile}
+        return {k: v.title for k, v in self.results.items() if v.sentimentAvg >= percentile}
 
     def send_results(self):
         n = len(self.results)

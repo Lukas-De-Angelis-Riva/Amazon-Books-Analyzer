@@ -1,12 +1,14 @@
-import pika
+import pika     # type: ignore
 import logging
 import traceback
 logging.getLogger('pika').setLevel(logging.ERROR)
 
 HOST = 'rabbitmq'
 
+
 class ChannelAlreadyConsuming(Exception):
     pass
+
 
 class Middleware:
     def __init__(self):
@@ -42,12 +44,12 @@ class Middleware:
         self.channel.basic_consume(queue=queue_name,
                                    on_message_callback=self.__make_callback(callback))
 
-    def subscribe(self, topic:str, tags:list, callback, queue_name:str=None):
+    def subscribe(self, topic: str, tags: list, callback, queue_name: str = None):
         if len(tags) == 0:
             tags = ['']
 
         if not queue_name:
-            logging.debug(f"action: subscribe | setting_up | qname: not specified")
+            logging.debug("action: subscribe | setting_up | qname: not specified")
             result = self.channel.queue_declare(queue='', exclusive=True)
             queue_name = result.method.queue
             logging.debug(f"action: subscribe | creating_queue | qname: {queue_name}")
@@ -61,14 +63,15 @@ class Middleware:
         self.consume(queue_name, callback)
         return queue_name
 
-    def __send_msg(self, data, exchange:str, routing_key:str):
+    def __send_msg(self, data, exchange: str, routing_key: str):
         self.channel.basic_publish(
             exchange=exchange,
             routing_key=routing_key,
             body=data,
             properties=pika.BasicProperties(
                 delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE
-        ))
+            )
+        )
 
     def produce(self, data, out_queue_name):
         return self.__send_msg(data=data, exchange='', routing_key=out_queue_name)

@@ -3,9 +3,10 @@ import unittest
 
 from dto.q2Partial import Q2Partial
 from model.book import Book
-from utils.serializer.q2PartialSerializer import Q2PartialSerializer
+from utils.serializer.q2PartialSerializer import Q2PartialSerializer    # type: ignore
 
 from utils.protocol import intarr_to_bytes, intarr_from_bytes, TlvTypes, SIZE_LENGTH
+
 
 class TestUtils(unittest.TestCase):
 
@@ -16,7 +17,6 @@ class TestUtils(unittest.TestCase):
         for decade in decades:
             assert decade in _decades, f"decade {decade} not present"
 
-
     def test_empty_partialq2_update_correctly(self):
         partial = Q2Partial(
             author='Dennis Ritchie',
@@ -24,7 +24,7 @@ class TestUtils(unittest.TestCase):
         )
         new_book = Book(
             title='The C programming language',
-            authors=['Dennis Ritchie','Brian Kernighan'],
+            authors=['Dennis Ritchie', 'Brian Kernighan'],
             publisher='Prentice Hall',
             publishedDate='1978',
             categories=['Programming', 'Manual'],
@@ -41,7 +41,7 @@ class TestUtils(unittest.TestCase):
         )
         new_book = Book(
             title='The C programming language',
-            authors=['Dennis Ritchie','Brian Kernighan'],
+            authors=['Dennis Ritchie', 'Brian Kernighan'],
             publisher='Prentice Hall',
             publishedDate='1978',
             categories=['Programming', 'Manual'],
@@ -54,13 +54,12 @@ class TestUtils(unittest.TestCase):
         assert 1970 in partial.decades
         assert len(partial.decades) == 3
 
-
     def test_partialq2_merge_correctly(self):
         partial1 = Q2Partial(
             author='Dennis Ritchie',
             decades=[1990, 2000])
         partial2 = Q2Partial(
-            author = 'Dennis Ritchie',
+            author='Dennis Ritchie',
             decades=[1970, 2000])
 
         partial1.merge(partial2)
@@ -74,11 +73,11 @@ class TestUtils(unittest.TestCase):
         serializer = Q2PartialSerializer()
 
         partial1 = Q2Partial(
-            author= 'Dennis Ritchie',
+            author='Dennis Ritchie',
             decades=[1970, 1990, 2000]
         )
         partial2 = Q2Partial(
-            author= 'Brian Kernighan',
+            author='Brian Kernighan',
             decades=[1970, 1980]
         )
 
@@ -94,6 +93,7 @@ class TestUtils(unittest.TestCase):
 
         assert partial2.author == _partial2.author
         assert partial2.decades == _partial2.decades
+
 
 if __name__ == '__main__':
     unittest.main()

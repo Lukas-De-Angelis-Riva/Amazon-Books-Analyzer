@@ -5,7 +5,9 @@ class Book:
         self.publisher = publisher
         self.publishedDate = publishedDate
         self.categories = categories
+
     def __repr__(self):
         return f'Book(\"{self.title}\" - {self.authors})'
+
     def __str__(self):
         return f'Book(\"{self.title}\" - {self.authors})'

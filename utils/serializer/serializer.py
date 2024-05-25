@@ -1,6 +1,7 @@
 from utils.protocol import TlvTypes, SIZE_LENGTH
 from utils.protocol import integer_from_bytes
 
+
 class Serializer:
     def read_t(self, reader):
         _type_raw = reader.read(TlvTypes.SIZE_CODE_MSG)
@@ -18,7 +19,7 @@ class Serializer:
     def from_chunk(self, reader, header=True, n_chunks=None):
         if header:
             _, n_chunks = self.read_tl(reader)
-        
+
         _list = []
         for i in range(n_chunks):
             _tlv_type, tlv_len = self.read_tl(reader)
@@ -38,12 +39,11 @@ class Serializer:
 
             length = self.read_l(reader)
             bytes_readed += SIZE_LENGTH
-   
+
             raw_field = reader.read(length)
             bytes_readed += length
 
-
-            if type(raw_dict[field_type]) == list:
+            if isinstance(raw_dict[field_type], list):
                 raw_dict[field_type].append(raw_field)
             else:
                 raw_dict[field_type] = raw_field

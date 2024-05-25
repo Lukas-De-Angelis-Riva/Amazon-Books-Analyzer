@@ -3,14 +3,15 @@ from common.query3Synchronizer import Query3Synchronizer
 import logging
 import os
 
+
 def initialize_config():
     """ Parse env variables or config file to find program config params
 
     Function that search and parse program configuration parameters in the
-    program environment variables first and the in a config file. 
-    If at least one of the config parameters is not found a KeyError exception 
-    is thrown. If a parameter could not be parsed, a ValueError is thrown. 
-    If parsing succeeded, the function returns a ConfigParser object 
+    program environment variables first and the in a config file.
+    If at least one of the config parameters is not found a KeyError exception
+    is thrown. If a parameter could not be parsed, a ValueError is thrown.
+    If parsing succeeded, the function returns a ConfigParser object
     with config parameters
     """
 
@@ -50,6 +51,7 @@ def main():
     exitcode = worker.run()
     return exitcode
 
+
 def initialize_log(logging_level):
     """
     Python custom logging initialization
@@ -62,6 +64,7 @@ def initialize_log(logging_level):
         level=logging_level,
         datefmt='%Y-%m-%d %H:%M:%S',
     )
+
 
 if __name__ == "__main__":
     main()

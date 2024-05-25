@@ -3,8 +3,9 @@ import logging
 from utils.worker import Worker
 from utils.middleware.middleware import Middleware
 from dto.q2Partial import Q2Partial
-from utils.serializer.q2InSerializer import Q2InSerializer
-from utils.serializer.q2PartialSerializer import Q2PartialSerializer
+from utils.serializer.q2InSerializer import Q2InSerializer              # type: ignore
+from utils.serializer.q2PartialSerializer import Q2PartialSerializer    # type: ignore
+
 
 class Query2Worker(Worker):
     def __init__(self, peers, chunk_size):
@@ -29,4 +30,4 @@ class Query2Worker(Worker):
             if author not in self.results:
                 self.results[author] = Q2Partial(author, [])
             self.results[author].update(book)
-            logging.debug(f'action: new_book | result: update | author: {author} | date: {book.publishedDate}')        
+            logging.debug(f'action: new_book | result: update | author: {author} | date: {book.publishedDate}')

@@ -4,6 +4,7 @@ import signal
 from utils.middleware.middleware import Middleware
 from utils.protocol import is_eof
 
+
 class Listener():
     def __init__(self, middleware: Middleware):
         signal.signal(signal.SIGTERM, self.__handle_signal)
@@ -30,6 +31,6 @@ class Listener():
 
     def __handle_signal(self, signum, frame):
         self.exitcode = -signum
-        logging.debug(f'action: stop_handler | result: in_progress | signal {signum}')
+        logging.debug('action: stop_handler | result: in_progress | signal {signum}')
         self.middleware.stop()
-        logging.debug(f'action: stop_handler | result: success')
+        logging.debug('action: stop_handler | result: success')

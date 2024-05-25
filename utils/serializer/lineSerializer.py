@@ -3,6 +3,7 @@ from utils.protocol import TlvTypes, SIZE_LENGTH
 from utils.protocol import string_to_bytes, string_from_bytes
 from utils.protocol import code_to_bytes
 
+
 class LineSerializer(Serializer):
     def make_raw_dict(self):
         return {

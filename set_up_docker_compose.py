@@ -1,6 +1,5 @@
 # pip install yaml
 import yaml
-import argparse
 
 from config import LOGGING_LEVEL
 from config import AMOUNT_OF_QUERY1_WORKERS
@@ -9,6 +8,7 @@ from config import AMOUNT_OF_QUERY3_WORKERS
 from config import AMOUNT_OF_QUERY5_WORKERS
 
 NETWORK_NAME = "amazon-network"
+
 
 def create_network(external: bool):
     net = {
@@ -24,9 +24,10 @@ def create_network(external: bool):
 
     return net
 
-##################
-### MIDDLEWARE ###
-##################
+##############
+# MIDDLEWARE #
+##############
+
 
 def create_middleware():
     return {
@@ -37,7 +38,7 @@ def create_middleware():
         'ports': [
             '15672:15672'
         ],
-        'healthcheck':{
+        'healthcheck': {
             'test': 'rabbitmq-diagnostics check_port_connectivity',
             'interval': '10s',
             'timeout': '10s',
@@ -52,9 +53,10 @@ def create_middleware():
         ],
     }
 
-###################
-### SERVER SIDE ###
-###################
+###############
+# SERVER SIDE #
+###############
+
 
 def create_query1Worker(i):
     return {
@@ -77,6 +79,7 @@ def create_query1Worker(i):
         ],
     }
 
+
 def create_query2Worker(i):
     return {
         'container_name': f'query2Worker{i}',
@@ -98,9 +101,10 @@ def create_query2Worker(i):
         ],
     }
 
+
 def create_query2Synchronizer():
     return {
-        'container_name': f'query2Synchronizer',
+        'container_name': 'query2Synchronizer',
         'image': 'query2_synchronizer:latest',
         'entrypoint': 'python3 /main.py',
         'environment': [
@@ -117,6 +121,7 @@ def create_query2Synchronizer():
             NETWORK_NAME,
         ],
     }
+
 
 def create_query3Worker(i):
     return {
@@ -139,9 +144,10 @@ def create_query3Worker(i):
         ],
     }
 
+
 def create_query3Synchronizer():
     return {
-        'container_name': f'query3Synchronizer',
+        'container_name': 'query3Synchronizer',
         'image': 'query3_synchronizer:latest',
         'entrypoint': 'python3 /main.py',
         'environment': [
@@ -158,6 +164,7 @@ def create_query3Synchronizer():
             NETWORK_NAME,
         ],
     }
+
 
 def create_query5Worker(i):
     return {
@@ -180,9 +187,10 @@ def create_query5Worker(i):
         ],
     }
 
+
 def create_query5Synchronizer():
     return {
-        'container_name': f'query5Synchronizer',
+        'container_name': 'query5Synchronizer',
         'image': 'query5_synchronizer:latest',
         'entrypoint': 'python3 /main.py',
         'environment': [
@@ -200,6 +208,7 @@ def create_query5Synchronizer():
         ],
     }
 
+
 def create_resultHandler():
     return {
         'container_name': 'resultHandler',
@@ -214,13 +223,14 @@ def create_resultHandler():
         ],
         'depends_on': {
             'rabbitmq': {
-                'condition':'service_healthy'
+                'condition': 'service_healthy'
             }
         },
         'networks': [
             NETWORK_NAME,
         ],
     }
+
 
 def create_clientHandler():
     return {
@@ -235,14 +245,15 @@ def create_clientHandler():
             './server/clientHandler/config.ini:/config.ini',
         ],
         'depends_on':
-            [f'query1Worker{i+1}' for i in range(AMOUNT_OF_QUERY1_WORKERS)] + \
-            [f'query2Worker{i+1}' for i in range(AMOUNT_OF_QUERY2_WORKERS)] + \
-            [f'query3Worker{i+1}' for i in range(AMOUNT_OF_QUERY3_WORKERS)] + \
+            [f'query1Worker{i+1}' for i in range(AMOUNT_OF_QUERY1_WORKERS)] +
+            [f'query2Worker{i+1}' for i in range(AMOUNT_OF_QUERY2_WORKERS)] +
+            [f'query3Worker{i+1}' for i in range(AMOUNT_OF_QUERY3_WORKERS)] +
             [f'query5Worker{i+1}' for i in range(AMOUNT_OF_QUERY5_WORKERS)],
         'networks': [
             NETWORK_NAME,
         ],
     }
+
 
 def create_server_side():
     config = {}
@@ -251,7 +262,7 @@ def create_server_side():
 
     # NETWORK
     config['networks'] = {}
-    config['networks'][NETWORK_NAME] = create_network(external = False)
+    config['networks'][NETWORK_NAME] = create_network(external=False)
 
     # MIDDLEWARE
     config['services'] = {}
@@ -268,7 +279,7 @@ def create_server_side():
     for i in range(AMOUNT_OF_QUERY2_WORKERS):
         config['services'][f'query2Worker{i+1}'] = create_query2Worker(i+1)
     config['services']['query2Synchronizer'] = create_query2Synchronizer()
-        
+
     # QUERY 3 & 4
     for i in range(AMOUNT_OF_QUERY1_WORKERS):
         config['services'][f'query3Worker{i+1}'] = create_query3Worker(i+1)
@@ -284,9 +295,10 @@ def create_server_side():
     with open('docker-compose-server.yaml', 'w') as file:
         yaml.dump(config, file)
 
-###################
-### CLIENT SIDE ###
-###################
+
+###############
+# CLIENT SIDE #
+###############
 def create_client():
     return {
         'container_name': 'client',
@@ -306,13 +318,14 @@ def create_client():
         ],
     }
 
+
 def create_client_side():
     config = {}
     config['version'] = '3.9'
     config['name'] = 'tp1-client'
 
     config['networks'] = {}
-    config['networks'][NETWORK_NAME] = create_network(external = True)
+    config['networks'][NETWORK_NAME] = create_network(external=True)
 
     config['services'] = {}
     config['services']['client'] = create_client()
@@ -320,7 +333,7 @@ def create_client_side():
     with open('docker-compose-client.yaml', 'w') as file:
         yaml.dump(config, file)
 
+
 if __name__ == '__main__':
-    #create_middleware_side()
     create_server_side()
     create_client_side()

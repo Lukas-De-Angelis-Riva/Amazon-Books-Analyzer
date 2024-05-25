@@ -3,13 +3,14 @@ import csv
 import io
 import logging
 from multiprocessing import Process, Lock
-from utils.serializer.q1OutSerializer import Q1OutSerializer
-from utils.serializer.q2OutSerializer import Q2OutSerializer
-from utils.serializer.q3OutSerializer import Q3OutSerializer
-from utils.serializer.q5OutSerializer import Q5OutSerializer
+from utils.serializer.q1OutSerializer import Q1OutSerializer    # type: ignore
+from utils.serializer.q2OutSerializer import Q2OutSerializer    # type: ignore
+from utils.serializer.q3OutSerializer import Q3OutSerializer    # type: ignore
+from utils.serializer.q5OutSerializer import Q5OutSerializer    # type: ignore
 from utils.protocol import is_eof
 
 from utils.middleware.middleware import Middleware
+
 
 class ResultReceiver(Process):
     def __init__(self, file_name, file_lock):
@@ -21,7 +22,7 @@ class ResultReceiver(Process):
             'Q4': Q3OutSerializer(),
             'Q5': Q5OutSerializer(),
         }
-        self.eofs = {'Q1': False,'Q2': False, 'Q3': False, 'Q4': False, 'Q5': False}
+        self.eofs = {'Q1': False, 'Q2': False, 'Q3': False, 'Q4': False, 'Q5': False}
 
         # TODO: BEST IF SUBSCRIBE ALLOWS A LIST OF TAGS
         self.middleware = Middleware()
@@ -36,9 +37,9 @@ class ResultReceiver(Process):
     def run(self):
         signal.signal(signal.SIGTERM, self.__handle_signal)
 
-        logging.debug(f'action: middleware_start | start')
+        logging.debug('action: middleware_start | start')
         self.middleware.start()
-        logging.debug(f'action: middleware_start | end')
+        logging.debug('action: middleware_start | end')
 
     def save_results(self, results_raw, results_type):
         results = self.deserialize_result(results_raw, results_type)
@@ -71,7 +72,7 @@ class ResultReceiver(Process):
         with self.stop_lock, self.file_lock, open(self.file_name, 'a', encoding='UTF8') as file:
             writer = csv.writer(file)
             writer.writerow(['EOF'])
-    
+
     def deserialize_result(self, bytes_raw, type):
         if is_eof(bytes_raw):
             self.eofs[type] = True
@@ -85,9 +86,9 @@ class ResultReceiver(Process):
         return results
 
     def __handle_signal(self, signum, frame):
-        logging.debug(f'action: stop_receiver | result: in_progress')
+        logging.debug('action: stop_receiver | result: in_progress')
         self.middleware.stop()
         # leaving time to save_results to write and release file and file_lock
         self.stop_lock.acquire()
         self.stop_lock.release()
-        logging.debug(f'action: stop_receiver | result: success')
+        logging.debug('action: stop_receiver | result: success')

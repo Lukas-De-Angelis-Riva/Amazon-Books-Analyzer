@@ -1,10 +1,11 @@
 import struct
 
 from utils.TCPhandler import TCPHandler
-from utils.protocol import TlvTypes, UnexpectedType, SIZE_LENGTH, is_eof, make_eof, make_heartbeat
+from utils.protocol import TlvTypes, UnexpectedType, SIZE_LENGTH, make_eof
 from utils.serializer.bookSerializer import BookSerializer
 from utils.serializer.reviewSerializer import ReviewSerializer
 from utils.serializer.lineSerializer import LineSerializer
+
 
 class ProtocolHandler:
     def __init__(self, socket):
@@ -22,12 +23,12 @@ class ProtocolHandler:
     def ack(self):
         bytes = int.to_bytes(TlvTypes.ACK, TlvTypes.SIZE_CODE_MSG, 'big')
         result = self.TCPHandler.send_all(bytes)
-        assert result == len(bytes), f'TCP Error: cannot send ACK'
+        assert result == len(bytes), 'TCP Error: cannot send ACK'
 
     def send_eof(self):
         eof = make_eof(0)
         result = self.TCPHandler.send_all(eof)
-        assert result == len(eof), f'TCP Error: cannot send EOF'
+        assert result == len(eof), 'TCP Error: cannot send EOF'
 
     def send_book_eof(self):
         self.send_eof()
@@ -55,7 +56,7 @@ class ProtocolHandler:
         It reads a fixed amount of bytes (SIZE_CODE_MSG+SIZE_LENGTH)
         """
         _type_raw = self.TCPHandler.read(TlvTypes.SIZE_CODE_MSG)
-        _type = struct.unpack('!i',_type_raw)[0]
+        _type = struct.unpack('!i', _type_raw)[0]
 
         _len_raw = self.TCPHandler.read(SIZE_LENGTH)
         _len = struct.unpack('!i', _len_raw)[0]
@@ -76,27 +77,27 @@ class ProtocolHandler:
 
         elif tlv_type == TlvTypes.LINE_CHUNK:
             return TlvTypes.LINE_CHUNK, self.line_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
-        
+
         else:
             raise UnexpectedType()
 
     def poll_results(self):
         bytes = int.to_bytes(TlvTypes.POLL, TlvTypes.SIZE_CODE_MSG, 'big')
         result = self.TCPHandler.send_all(bytes)
-        assert result == len(bytes), f'TCP Error: cannot send POLL'
+        assert result == len(bytes), 'TCP Error: cannot send POLL'
         return self.read()
-    
+
     def is_result_eof(self, t):
         return t == TlvTypes.EOF
 
     def is_ack(self, t):
         return t == TlvTypes.ACK
-    
+
     def is_result_wait(self, t):
         return t == TlvTypes.WAIT
 
     def is_results(self, tlv_type):
-       return tlv_type == TlvTypes.LINE_CHUNK
+        return tlv_type == TlvTypes.LINE_CHUNK
 
     def is_book_eof(self, t):
         if self.eof_books_received:
@@ -114,11 +115,11 @@ class ProtocolHandler:
         return False
 
     def is_book(self, tlv_type):
-       return tlv_type == TlvTypes.BOOK_CHUNK
+        return tlv_type == TlvTypes.BOOK_CHUNK
 
     def is_review(self, tlv_type):
         return tlv_type == TlvTypes.REVIEW_CHUNK
-    
+
     def close(self):
-        return
         # cerrar la conexion
+        return

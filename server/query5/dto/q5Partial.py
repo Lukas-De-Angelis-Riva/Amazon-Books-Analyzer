@@ -1,9 +1,11 @@
 from model.review import Review
 from textblob import TextBlob
 
+
 def sentiment(text):
     blob = TextBlob(text)
     return blob.sentiment.polarity
+
 
 class Q5Partial:
     def __init__(self, title: str, n: int = 0, sentimentAvg: float = 0):
@@ -18,9 +20,10 @@ class Q5Partial:
         return f'Q5Partial(Title:{self.title} | n: {self.n} | avg: {self.sentimentAvg})'
 
     def update(self, review: Review):
-        avg = self.sentimentAvg; n = self.n
+        avg = self.sentimentAvg
+        n = self.n
         _sentiment = sentiment(review.text)
-        
+
         self.sentimentAvg = (avg*n + _sentiment)/(n+1)
         self.n += 1
 

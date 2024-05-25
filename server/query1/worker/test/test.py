@@ -2,8 +2,9 @@ import io
 import unittest
 
 from model.book import Book
-from utils.serializer.q1InSerializer import Q1InSerializer
-from utils.serializer.q1OutSerializer import Q1OutSerializer
+from utils.serializer.q1InSerializer import Q1InSerializer      # type: ignore
+from utils.serializer.q1OutSerializer import Q1OutSerializer    # type: ignore
+
 
 class TestUtils(unittest.TestCase):
 
@@ -20,7 +21,7 @@ class TestUtils(unittest.TestCase):
 
         book2 = Book(
             title='The C programming language',
-            authors=['Dennis Ritchie','Brian Kernighan'],
+            authors=['Dennis Ritchie', 'Brian Kernighan'],
             publisher='Prentice Hall',
             publishedDate='1978',
             categories=['Programming', 'Manual'],
@@ -58,7 +59,7 @@ class TestUtils(unittest.TestCase):
 
         book2 = Book(
             title='The C programming language',
-            authors=['Dennis Ritchie','Brian Kernighan'],
+            authors=['Dennis Ritchie', 'Brian Kernighan'],
             publisher='Prentice Hall',
             publishedDate='',
             categories=[],
@@ -78,6 +79,7 @@ class TestUtils(unittest.TestCase):
         assert book2.title == _book2.title
         assert book2.authors == _book2.authors
         assert book2.publisher == _book2.publisher
+
 
 if __name__ == '__main__':
     unittest.main()

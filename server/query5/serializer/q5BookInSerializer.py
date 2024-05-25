@@ -4,30 +4,31 @@ from utils.protocol import string_to_bytes, string_from_bytes
 from utils.protocol import code_to_bytes
 from model.book import Book
 
+
 class Q5BookInTypes():
     CHUNK = 0
     BOOK = 1
     TITLE = 2
     CATEGORIES = 3
 
+
 class Q5BookInSerializer(Serializer):
     def make_raw_dict(self):
         return {
-            Q5BookInTypes.TITLE : b'',
-            Q5BookInTypes.CATEGORIES : [],
+            Q5BookInTypes.TITLE: b'',
+            Q5BookInTypes.CATEGORIES: [],
         }
-
 
     def from_raw_dict(self, raw_dict):
         assert raw_dict[Q5BookInTypes.TITLE], "Invalid book: no title provided"
         assert raw_dict[Q5BookInTypes.CATEGORIES], "Invalid book: no categories provided"
 
         return Book(
-            title = string_from_bytes(raw_dict[Q5BookInTypes.TITLE]),
-            authors = [],
-            publisher = "",
-            publishedDate = "",
-            categories = [
+            title=string_from_bytes(raw_dict[Q5BookInTypes.TITLE]),
+            authors=[],
+            publisher="",
+            publishedDate="",
+            categories=[
                 string_from_bytes(raw_category) for raw_category in raw_dict[Q5BookInTypes.CATEGORIES]
             ],
         )

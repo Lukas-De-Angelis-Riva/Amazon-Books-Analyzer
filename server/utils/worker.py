@@ -4,6 +4,7 @@ import io
 from utils.listener import Listener
 from utils.protocol import get_closed_peers, make_eof
 
+
 class Worker(Listener):
     def __init__(self, middleware, in_serializer, out_serializer, peers, chunk_size):
         super().__init__(middleware)
@@ -14,7 +15,7 @@ class Worker(Listener):
         self.chunk_size = chunk_size
 
     def do_after_work(self):
-        return 
+        return
 
     def work(self, input):
         return
@@ -54,7 +55,7 @@ class Worker(Listener):
     def handle_eof(self, eof):
         closed_peers = get_closed_peers(eof)
         if closed_peers == -1:
-            logging.error(f'action: close | result: fail | e = Error to parse eof')
+            logging.error('action: close | result: fail | e = Error to parse eof')
 
         if closed_peers < self.peers - 1:
             # Send EOF to other peers.

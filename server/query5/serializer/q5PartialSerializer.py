@@ -6,6 +6,7 @@ from utils.protocol import float_to_bytes, float_from_bytes
 from utils.protocol import code_to_bytes
 from dto.q5Partial import Q5Partial
 
+
 class Q5PartialTypes():
     CHUNK = 0
     PARTIAL = 1
@@ -13,8 +14,8 @@ class Q5PartialTypes():
     N = 3
     AVG = 4
 
-class Q5PartialSerializer(Serializer):
 
+class Q5PartialSerializer(Serializer):
     def make_raw_dict(self):
         return {
             Q5PartialTypes.TITLE: b'',

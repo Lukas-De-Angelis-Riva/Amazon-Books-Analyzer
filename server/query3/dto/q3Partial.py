@@ -1,5 +1,6 @@
 from model.review import Review
 
+
 class Q3Partial:
     def __init__(self, title: str, authors: list, n: int = 0, scoreAvg: float = 0):
         self.title = title
@@ -14,7 +15,8 @@ class Q3Partial:
         return f'Q3Partial(Title:{self.title}, author: {self.authors}, n: {self.n}, scoreAvg: {self.scoreAvg})'
 
     def update(self, review: Review):
-        avg = self.scoreAvg; n = self.n
+        avg = self.scoreAvg
+        n = self.n
 
         self.scoreAvg = (avg*n + review.score)/(n+1)
         self.n += 1

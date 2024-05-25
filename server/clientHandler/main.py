@@ -3,6 +3,7 @@ from common.clientHandler import ClientHandler
 import logging
 import os
 
+
 def initialize_log(logging_level):
     """
     Python custom logging initialization
@@ -16,14 +17,15 @@ def initialize_log(logging_level):
         datefmt='%Y-%m-%d %H:%M:%S',
     )
 
+
 def initialize_config():
     """ Parse env variables or config file to find program config params
 
     Function that search and parse program configuration parameters in the
-    program environment variables first and the in a config file. 
-    If at least one of the config parameters is not found a KeyError exception 
-    is thrown. If a parameter could not be parsed, a ValueError is thrown. 
-    If parsing succeeded, the function returns a ConfigParser object 
+    program environment variables first and the in a config file.
+    If at least one of the config parameters is not found a KeyError exception
+    is thrown. If a parameter could not be parsed, a ValueError is thrown.
+    If parsing succeeded, the function returns a ConfigParser object
     with config parameters
     """
 
@@ -43,6 +45,7 @@ def initialize_config():
 
     return config_params
 
+
 def main():
     config_params = initialize_config()
     logging_level = config_params["logging_level"]
@@ -58,6 +61,7 @@ def main():
     # Initialize server and start server loop
     clientHandler = ClientHandler(config_params)
     clientHandler.run()
+
 
 if __name__ == "__main__":
     main()

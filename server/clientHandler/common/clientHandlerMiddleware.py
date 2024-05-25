@@ -1,5 +1,6 @@
 from utils.middleware.middleware import Middleware
 
+
 class ClientHandlerMiddleware(Middleware):
     def __init__(self):
         super().__init__()

@@ -6,6 +6,7 @@ from utils.protocol import float_to_bytes, float_from_bytes
 from utils.protocol import code_to_bytes
 from dto.q3Partial import Q3Partial
 
+
 class Q3PartialTypes():
     CHUNK = 0
     PARTIAL = 1
@@ -14,8 +15,8 @@ class Q3PartialTypes():
     N = 4
     AVG = 5
 
-class Q3PartialSerializer(Serializer):
 
+class Q3PartialSerializer(Serializer):
     def make_raw_dict(self):
         return {
             Q3PartialTypes.TITLE: b'',

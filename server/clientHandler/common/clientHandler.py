@@ -1,4 +1,4 @@
-import socket 
+import socket
 import signal
 import logging
 
@@ -14,6 +14,7 @@ from utils.serializer.q5ReviewInSerializer import Q5ReviewInSerializer
 from utils.protocolHandler import ProtocolHandler
 from utils.TCPhandler import SocketBroken
 from utils.protocol import make_eof
+
 
 class ClientHandler:
     def __init__(self, config_params):
@@ -44,20 +45,19 @@ class ClientHandler:
         self.q5ReviewInSerializer = Q5ReviewInSerializer()
 
         self.middleware = ClientHandlerMiddleware()
-        
+
     def run(self):
-        logging.info(f'action: run server | result: success')
+        logging.info('action: run server | result: success')
         while self._server_on:
-            client_sock = self.__accept_new_connection() 
+            client_sock = self.__accept_new_connection()
             if client_sock:
                 self.__handle_client_connection(client_sock)
 
         self._server_socket.close()
-        logging.debug(f'action: release_socket | result: success')
+        logging.debug('action: release_socket | result: success')
         self.middleware.stop()
-        logging.debug(f'action: release_rabbitmq_conn | result: success')
-        logging.info(f'action: stop_server | result: success')
-
+        logging.debug('action: release_rabbitmq_conn | result: success')
+        logging.info('action: stop_server | result: success')
 
     def __handle_client_connection(self, client_sock):
         try:
@@ -76,14 +76,14 @@ class ClientHandler:
                     keep_reading = self.__handle_review_eof()
 
                 protocolHandler.ack()
-        
+
         except (SocketBroken, OSError) as e:
             logging.error(f'action: receive_message | result: fail | error: {str(e)}')
         finally:
             if client_sock:
-                logging.debug(f'action: release_client_socket | result: success')
+                logging.debug('action: release_client_socket | result: success')
                 client_sock.close()
-                logging.debug(f'action: finishing | result: success')
+                logging.debug('action: finishing | result: success')
 
     def __handle_book_eof(self):
         eof = make_eof()
@@ -92,7 +92,7 @@ class ClientHandler:
         self.middleware.send_booksQ3(eof)
         self.middleware.send_booksQ5(eof)
 
-        logging.debug(f'action: send_books | value: EOF | result: success')
+        logging.debug('action: send_books | value: EOF | result: success')
         return True
 
     def __handle_books(self, value):
@@ -116,14 +116,14 @@ class ClientHandler:
         return True
 
     def __handle_review_eof(self):
-        logging.debug(f'action: read review_eof | result: success')
+        logging.debug('action: read review_eof | result: success')
         eof = make_eof(0)
         self.middleware.send_reviewsQ3(eof)
         self.middleware.send_reviewsQ5(eof)
         return False
-        
+
     def __handle_reviews(self, reviews):
-        #  It's responsible for separating the relevant 
+        #  It's responsible for separating the relevant
         #  fields for each query and sending them to different queues.
         logging.debug(f'action: received reviews | result: success | N: {len(reviews)}')
 
@@ -146,13 +146,13 @@ class ClientHandler:
             return c
         except OSError as e:
             if self._server_on:
-                logging.error(f'action: accept_connections | result: fail')
+                logging.error(f'action: accept_connections | result: fail | error: {str(e)}')
             else:
-                logging.debug(f'action: stop_accept_connections | result: success')
+                logging.debug('action: stop_accept_connections | result: success')
             return
 
     def __handle_signal(self, signum, frame):
         logging.info(f'action: stop_server | result: in_progress | signal {signum}')
         self._server_on = False
         self._server_socket.shutdown(socket.SHUT_RDWR)
-        logging.debug(f'action: shutdown_socket | result: success')
+        logging.debug('action: shutdown_socket | result: success')

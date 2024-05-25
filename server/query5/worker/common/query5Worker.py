@@ -5,9 +5,10 @@ from utils.protocol import is_eof
 from utils.worker import Worker
 from utils.middleware.middleware import Middleware
 from dto.q5Partial import Q5Partial
-from utils.serializer.q5ReviewInSerializer import Q5ReviewInSerializer
-from utils.serializer.q5PartialSerializer import Q5PartialSerializer
-from utils.serializer.q5BookInSerializer import Q5BookInSerializer
+from utils.serializer.q5ReviewInSerializer import Q5ReviewInSerializer  # type: ignore
+from utils.serializer.q5PartialSerializer import Q5PartialSerializer    # type: ignore
+from utils.serializer.q5BookInSerializer import Q5BookInSerializer      # type: ignore
+
 
 class Query5Worker(Worker):
     def __init__(self, category, peers, chunk_size):
@@ -25,9 +26,9 @@ class Query5Worker(Worker):
         self.results = {}
         self.all_books_received = False
 
-    ###################
-    ### BOOK WORKER ###
-    ###################
+    ###############
+    # BOOK WORKER #
+    ###############
     def save_book(self, book):
         logging.debug(f'action: new_book | book: {book}')
         if self.category in [c.lower() for c in book.categories]:
@@ -44,14 +45,15 @@ class Query5Worker(Worker):
     def recv_book(self, raw, key):
         if is_eof(raw):
             self.all_books_received = True
-            return True # Because we still want to receive reviews...
+            # Because we still want to receive reviews...
+            return True
 
         self.recv_raw_book(raw)
         return True
 
-    #####################
-    ### REVIEW WORKER ###
-    #####################
+    #################
+    # REVIEW WORKER #
+    #################
     def forward_data(self, data):
         self.middleware.produce(data, 'Q5-Sync')
 
@@ -68,6 +70,6 @@ class Query5Worker(Worker):
 
     def send_results(self):
         n = len(self.results)
-        self.results = {k:v for k, v in self.results.items() if v.n > 0}
+        self.results = {k: v for k, v in self.results.items() if v.n > 0}
         logging.debug(f'action: filtering_result | result: success | n: {n} >> {len(self.results)}')
         super().send_results()

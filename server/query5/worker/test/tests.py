@@ -3,7 +3,8 @@ import unittest
 
 from dto.q5Partial import Q5Partial
 from model.review import Review
-from utils.serializer.q5PartialSerializer import Q5PartialSerializer 
+from utils.serializer.q5PartialSerializer import Q5PartialSerializer    # type: ignore
+
 
 class TestUtils(unittest.TestCase):
     def test_empty_partialq3_update_correctly(self):
@@ -50,7 +51,7 @@ class TestUtils(unittest.TestCase):
             id=0,
             title='The C programming language',
             score=5.0,
-            text='A really good manual' # positive text
+            text='A really good manual'
         )
         partial1.update(review1)
 
@@ -63,10 +64,10 @@ class TestUtils(unittest.TestCase):
             id=0,
             title='The C programming language',
             score=5.0,
-            text='This manual is useless' # negative text
+            text='This manual is useless'
         )
         partial2.update(review2)
-        
+
         assert partial1.sentimentAvg > partial2.sentimentAvg
 
     def test_partialq3_merge_correctly(self):
@@ -114,6 +115,7 @@ class TestUtils(unittest.TestCase):
         assert partial2.title == _partial2.title
         assert partial2.n == _partial2.n
         assert abs(partial2.sentimentAvg - _partial2.sentimentAvg) < 1e-4
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -4,6 +4,7 @@ from multiprocessing import Lock
 from common.resultReceiver import ResultReceiver
 from common.resultSender import ResultSender
 
+
 class ResultHandler():
     def __init__(self, config_params):
         signal.signal(signal.SIGTERM, self.__handle_signal)
@@ -16,10 +17,12 @@ class ResultHandler():
         self.psnd = ResultReceiver(self.file_name, self.lock)
         self.prcv = ResultSender(self.ip, self.port, self.file_name, self.lock)
 
-        self.psnd.start() ; self.prcv.start()
-        logging.info(f'action: run handler | result: success')
-        self.psnd.join() ; self.prcv.join()
-        logging.info(f'action: stop_handler | result: sucess')
+        self.psnd.start()
+        self.prcv.start()
+        logging.info('action: run handler | result: success')
+        self.psnd.join()
+        self.prcv.join()
+        logging.info('action: stop_handler | result: sucess')
 
     def __handle_signal(self, signum, frame):
         logging.info(f'action: stop_handler | result: in_progress | signal: SIGTERM({signum})')

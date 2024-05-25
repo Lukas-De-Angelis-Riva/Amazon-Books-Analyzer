@@ -2,8 +2,9 @@ import logging
 
 from utils.worker import Worker
 from utils.middleware.middleware import Middleware
-from utils.serializer.q2PartialSerializer import Q2PartialSerializer
-from utils.serializer.q2OutSerializer import Q2OutSerializer
+from utils.serializer.q2PartialSerializer import Q2PartialSerializer    # type: ignore
+from utils.serializer.q2OutSerializer import Q2OutSerializer            # type: ignore
+
 
 class Query2Synchronizer(Worker):
     def __init__(self, chunk_size, min_decades):
