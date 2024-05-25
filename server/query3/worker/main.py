@@ -2,7 +2,6 @@ import os
 import logging
 from configparser import ConfigParser
 
-from common.bookReceiver import BookReceiver
 from common.query3Worker import Query3Worker
 
 def initialize_config():
@@ -48,13 +47,7 @@ def main():
     logging.debug(f"action: config | result: success | logging_level: {logging_level}")
 
     # Initialize server and start server loop
-    books = {}
-    bookHandler = BookReceiver(books, config_params['minimun_date'], config_params['maximun_date'])
-    exitcode = bookHandler.run()
-    if exitcode != 0:
-        return
-
-    worker = Query3Worker(peers, chunk_size, books)
+    worker = Query3Worker(config_params['minimun_date'], config_params['maximun_date'], peers, chunk_size)
     exitcode = worker.run()
     return exitcode
 
