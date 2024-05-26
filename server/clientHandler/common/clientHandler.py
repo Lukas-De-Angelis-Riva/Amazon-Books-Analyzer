@@ -46,6 +46,9 @@ class ClientHandler:
 
         self.middleware = ClientHandlerMiddleware()
 
+        self.total_books = 0
+        self.total_reviews = 0
+
     def run(self):
         logging.info('action: run server | result: success')
         while self._server_on:
@@ -86,8 +89,11 @@ class ClientHandler:
                 logging.debug('action: finishing | result: success')
 
     def __handle_book_eof(self):
+
+        eofq1 = make_eof(i=self.total_books)
+        self.middleware.send_eofQ1(eofq1)
+
         eof = make_eof()
-        self.middleware.send_booksQ1(eof)
         self.middleware.send_booksQ2(eof)
         self.middleware.send_booksQ3(eof)
         self.middleware.send_booksQ5(eof)
@@ -96,6 +102,8 @@ class ClientHandler:
         return True
 
     def __handle_books(self, value):
+        self.total_books += len(value)
+
         # Query 1:
         data_q1 = self.q1InSerializer.to_bytes(value)
         self.middleware.send_booksQ1(data_q1)
@@ -123,6 +131,8 @@ class ClientHandler:
         return False
 
     def __handle_reviews(self, reviews):
+        self.total_reviews += len(reviews)
+
         #  It's responsible for separating the relevant
         #  fields for each query and sending them to different queues.
         logging.debug(f'action: received reviews | result: success | N: {len(reviews)}')

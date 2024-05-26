@@ -5,6 +5,9 @@ class ClientHandlerMiddleware(Middleware):
     def __init__(self):
         super().__init__()
 
+    def send_eofQ1(self, bytes):
+        self.publish(bytes, topic='Q1-EOF', tag='1')
+
     def send_booksQ1(self, bytes):
         self.produce(bytes, 'Q1-Books')
 
