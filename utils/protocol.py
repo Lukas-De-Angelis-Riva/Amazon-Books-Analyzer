@@ -55,6 +55,13 @@ def get_eof_argument(bytes):
     return -1
 
 
+def get_eof_argument(bytes):
+    if len(bytes) == TlvTypes.SIZE_CODE_MSG + SIZE_LENGTH:
+        data, n = struct.unpack("!ii", bytes)
+        return n
+    return -1
+
+
 def get_closed_peers(bytes):
     if len(bytes) == TlvTypes.SIZE_CODE_MSG + SIZE_LENGTH:
         data, n = struct.unpack("!ii", bytes)
