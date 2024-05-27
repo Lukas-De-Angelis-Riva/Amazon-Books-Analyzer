@@ -2,7 +2,7 @@ import logging
 import io
 
 from utils.listener2 import Listener2
-from utils.protocol import make_eof, get_eof_argument
+from utils.protocol import make_eof2, get_eof_argument2
 
 
 class Worker2(Listener2):
@@ -17,8 +17,11 @@ class Worker2(Listener2):
         self.worked = 0
         self.remaining = -1
         self.received_eof = False
-
+        self.total_sent = 0
         self.is_leader = (self.peer_id == self.peers)
+
+    def forward_eof(self, eof):
+        raise RuntimeError("Must be redefined")
 
     def forward_data(self, data):
         raise RuntimeError("Must be redefined")
@@ -48,10 +51,10 @@ class Worker2(Listener2):
         self.worked += len(input_chunk)
 
         if self.remaining >= 0 and self.remaining == self.worked:
-            logging.debug('action: recv_raw | status: success | forwarding_eof')
             self.send_results()
-            eof = make_eof(i=0)
-            self.forward_data(eof)
+            logging.debug('action: recv_eof | status: success | forwarding_eof')
+            eof = make_eof2(total=len(self.results)+self.total_sent, worked=0, sent=0)
+            self.forward_eof(eof)
 
         # TODO: return Middleware.ACK
         return True
@@ -74,22 +77,23 @@ class Worker2(Listener2):
 
     def recv_eof(self, eof, key):
         logging.debug('action: recv_eof | status: in_progress')
-        self.send_results()
-
-        remaining = get_eof_argument(eof)
+        total, worked, sent = get_eof_argument2(eof)
+        remaining = total - worked
         logging.debug(f'action: recv_eof | status: in_progress | worked: {self.worked} | remaining: {remaining-self.worked}')
         if self.is_leader:
-            if remaining == self.worked:
-                logging.debug('action: recv_eof | status: success | forwarding_eof ')
-                eof = make_eof(i=0)
-                self.forward_data(eof)
+            if worked + self.worked >= total:
+                self.send_results()
+                logging.debug('action: recv_eof | status: success | forwarding_eof')
+                eof = make_eof2(total=len(self.results)+sent, worked=0, sent=0)
+                self.forward_eof(eof)
             else:
                 logging.debug(f'action: recv_eof | status: waiting | total_left: {remaining-self.worked}')
+                self.total_sent = sent
                 self.remaining = remaining
         else:
+            self.send_results()
             logging.debug(f'action: recv_eof | status: success | sending_eof_to: {self.peer_id+1}')
-            new_remaining = remaining - self.worked
-            eof = make_eof(i=new_remaining)
+            eof = make_eof2(total=total, worked=worked+self.worked, sent=len(self.results)+sent)
             self.send_to_peer(data=eof, peer_id=self.peer_id+1)
         self.received_eof = True
 

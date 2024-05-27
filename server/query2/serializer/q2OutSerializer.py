@@ -5,9 +5,9 @@ from utils.protocol import code_to_bytes
 
 
 class Q2OutTypes():
-    CHUNK = 0
-    RESULT = 1
-    AUTHOR = 2
+    CHUNK = 20
+    RESULT = 21
+    AUTHOR = 22
 
 
 class Q2OutSerializer(Serializer):

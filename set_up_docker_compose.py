@@ -90,6 +90,7 @@ def create_query2Worker(i):
             'PYTHONUNBUFFERED=1',
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
             'PEERS='+str(AMOUNT_OF_QUERY2_WORKERS),
+            'PEER_ID='+str(i),
         ],
         'volumes': [
             './server/query2/worker/config.ini:/config.ini',

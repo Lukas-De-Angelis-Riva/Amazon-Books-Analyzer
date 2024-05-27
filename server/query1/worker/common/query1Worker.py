@@ -20,6 +20,9 @@ class Query1Worker(Worker2):
         self.matching_books = []
         self.matches = matches
 
+    def forward_eof(self, eof):
+        self.middleware.publish(eof, 'results', 'Q1')
+
     def forward_data(self, data):
         self.middleware.publish(data, 'results', 'Q1')
 

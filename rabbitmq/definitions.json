@@ -70,6 +70,15 @@
         "arguments": {}
       },
       {
+        "name": "Q2-EOF",
+        "vhost": "/",
+        "type": "direct",
+        "durable": false,
+        "auto_delete": false,
+        "internal": false,
+        "arguments": {}
+      },
+      {
         "name": "Q3-Books",
         "vhost": "/",
         "type": "direct",

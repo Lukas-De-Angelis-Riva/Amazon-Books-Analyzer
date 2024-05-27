@@ -42,14 +42,10 @@ class TlvTypes():
 
 
 def is_eof(bytes):
-    if len(bytes) == TlvTypes.SIZE_CODE_MSG:
-        data = struct.unpack("!i", bytes)[0]
-        return data == TlvTypes.EOF
-    elif len(bytes) == TlvTypes.SIZE_CODE_MSG+SIZE_LENGTH:
-        data, n = struct.unpack("!ii", bytes)
-        return data == TlvTypes.EOF
-    else:
-        return False
+    if len(bytes) >= TlvTypes.SIZE_CODE_MSG:
+        t = struct.unpack("!i", bytes[0:TlvTypes.SIZE_CODE_MSG])[0]
+        return t == TlvTypes.EOF
+    return False
 
 
 def get_eof_argument(bytes):
@@ -69,6 +65,24 @@ def get_closed_peers(bytes):
 def make_wait():
     bytes = code_to_bytes(TlvTypes.WAIT)
     bytes += int.to_bytes(i, SIZE_LENGTH, 'big')
+    return bytes
+
+
+def get_eof_argument2(bytes):
+    if len(bytes) == TlvTypes.SIZE_CODE_MSG + 3 * SIZE_LENGTH:
+        t, total, worked, sent = struct.unpack("!iiii", bytes)
+        return total, worked, sent
+    return None, None, None
+
+
+# total: total amount of individual data received
+# worked: total amount of data worked by your peers
+# sent: total amount of data sent by your peers to next stage
+def make_eof2(total, worked, sent):
+    bytes = code_to_bytes(TlvTypes.EOF)
+    bytes += int.to_bytes(total, SIZE_LENGTH, 'big')
+    bytes += int.to_bytes(worked, SIZE_LENGTH, 'big')
+    bytes += int.to_bytes(sent, SIZE_LENGTH, 'big')
     return bytes
 
 
