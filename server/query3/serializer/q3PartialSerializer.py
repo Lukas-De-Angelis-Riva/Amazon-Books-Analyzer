@@ -8,12 +8,12 @@ from dto.q3Partial import Q3Partial
 
 
 class Q3PartialTypes():
-    CHUNK = 0
-    PARTIAL = 1
-    TITLE = 2
-    AUTHORS = 3
-    N = 4
-    AVG = 5
+    CHUNK = 30
+    PARTIAL = 31
+    TITLE = 32
+    AUTHORS = 33
+    N = 34
+    AVG = 35
 
 
 class Q3PartialSerializer(Serializer):

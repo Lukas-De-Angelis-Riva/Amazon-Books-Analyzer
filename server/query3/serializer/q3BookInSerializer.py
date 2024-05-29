@@ -6,11 +6,11 @@ from model.book import Book
 
 
 class Q3BookInTypes():
-    CHUNK = 0
-    BOOK = 1
-    TITLE = 2
-    AUTHORS = 3
-    PUBLISHED_DATE = 4
+    CHUNK = 30
+    BOOK = 31
+    TITLE = 32
+    AUTHORS = 33
+    PUBLISHED_DATE = 34
 
 
 class Q3BookInSerializer(Serializer):

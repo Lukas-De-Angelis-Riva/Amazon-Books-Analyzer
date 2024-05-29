@@ -134,6 +134,7 @@ def create_query3Worker(i):
             'PYTHONUNBUFFERED=1',
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
             'PEERS='+str(AMOUNT_OF_QUERY3_WORKERS),
+            'PEER_ID='+str(i),
         ],
         'volumes': [
             './server/query3/worker/config.ini:/config.ini',
