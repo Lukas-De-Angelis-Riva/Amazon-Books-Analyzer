@@ -1,13 +1,13 @@
 import logging
 
-from utils.worker2 import Worker2
+from utils.worker import Worker
 from utils.middleware.middleware import Middleware
 from dto.q2Partial import Q2Partial
 from utils.serializer.q2InSerializer import Q2InSerializer              # type: ignore
 from utils.serializer.q2PartialSerializer import Q2PartialSerializer    # type: ignore
 
 
-class Query2Worker(Worker2):
+class Query2Worker(Worker):
     def __init__(self, peer_id, peers, chunk_size):
         middleware = Middleware()
         middleware.consume(queue_name='Q2-Books', callback=self.recv_raw)

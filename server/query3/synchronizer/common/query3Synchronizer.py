@@ -1,13 +1,13 @@
 import logging
 
-from utils.worker2 import Worker2
+from utils.worker import Worker
 from utils.middleware.middleware import Middleware
 from utils.serializer.q3PartialSerializer import Q3PartialSerializer    # type: ignore
 from utils.serializer.q3OutSerializer import Q3OutSerializer            # type: ignore
 from utils.protocol import make_eof2, get_eof_argument2
 
 
-class Query3Synchronizer(Worker2):
+class Query3Synchronizer(Worker):
     def __init__(self, chunk_size, min_amount_reviews, n_top):
         middleware = Middleware()
         middleware.consume(queue_name='Q3-Sync', callback=self.recv_raw)

@@ -1,11 +1,11 @@
 import logging
 import io
 
-from utils.listener2 import Listener2
+from utils.listener import Listener
 from utils.protocol import make_eof2, get_eof_argument2
 
 
-class Worker2(Listener2):
+class Worker(Listener):
     def __init__(self, middleware, in_serializer, out_serializer, peer_id, peers, chunk_size):
         super().__init__(middleware)
         self.peer_id = peer_id

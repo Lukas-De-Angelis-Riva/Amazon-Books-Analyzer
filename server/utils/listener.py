@@ -4,7 +4,7 @@ import signal
 from utils.middleware.middleware import Middleware
 
 
-class Listener2():
+class Listener():
     def __init__(self, middleware: Middleware):
         signal.signal(signal.SIGTERM, self.__handle_signal)
         self.middleware = middleware

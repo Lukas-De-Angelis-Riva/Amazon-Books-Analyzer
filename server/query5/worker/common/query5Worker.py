@@ -2,7 +2,7 @@ import logging
 import io
 
 from utils.protocol import is_eof
-from utils.worker2 import Worker2
+from utils.worker import Worker
 from utils.middleware.middleware import Middleware
 from dto.q5Partial import Q5Partial
 from utils.serializer.q5ReviewInSerializer import Q5ReviewInSerializer  # type: ignore
@@ -11,7 +11,7 @@ from utils.serializer.q5BookInSerializer import Q5BookInSerializer      # type: 
 from utils.protocol import get_eof_argument2
 
 
-class Query5Worker(Worker2):
+class Query5Worker(Worker):
     def __init__(self, category, peer_id, peers, chunk_size):
         middleware = Middleware()
 

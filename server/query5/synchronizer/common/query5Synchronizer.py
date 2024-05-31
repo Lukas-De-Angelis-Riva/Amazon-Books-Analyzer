@@ -1,13 +1,13 @@
 import logging
 from math import ceil
 
-from utils.worker2 import Worker2
+from utils.worker import Worker
 from utils.middleware.middleware import Middleware
 from utils.serializer.q5PartialSerializer import Q5PartialSerializer    # type: ignore
 from utils.serializer.q5OutSerializer import Q5OutSerializer            # type: ignore
 
 
-class Query5Synchronizer(Worker2):
+class Query5Synchronizer(Worker):
     def __init__(self, chunk_size, percentage):
         middleware = Middleware()
         middleware.consume(queue_name='Q5-Sync', callback=self.recv_raw)
