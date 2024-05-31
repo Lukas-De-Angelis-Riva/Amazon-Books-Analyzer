@@ -8,11 +8,11 @@ from dto.q5Partial import Q5Partial
 
 
 class Q5PartialTypes():
-    CHUNK = 0
-    PARTIAL = 1
-    TITLE = 2
-    N = 3
-    AVG = 4
+    CHUNK = 50
+    PARTIAL = 51
+    TITLE = 52
+    N = 53
+    AVG = 54
 
 
 class Q5PartialSerializer(Serializer):

@@ -75,7 +75,6 @@ class Query3Worker(Worker2):
     #################
     # REVIEW WORKER #
     #################
-
     def forward_eof(self, eof):
         self.middleware.publish(data=eof, topic='Q3-EOF', tag='SYNC')
 

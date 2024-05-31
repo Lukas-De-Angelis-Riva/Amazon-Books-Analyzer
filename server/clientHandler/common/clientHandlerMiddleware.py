@@ -14,6 +14,9 @@ class ClientHandlerMiddleware(Middleware):
     def send_eofQ3(self, bytes):
         self.publish(bytes, topic='Q3-EOF', tag='1')
 
+    def send_eofQ5(self, bytes):
+        self.publish(bytes, topic='Q5-EOF', tag='1')
+
     def send_booksQ1(self, bytes):
         self.produce(bytes, 'Q1-Books')
 
