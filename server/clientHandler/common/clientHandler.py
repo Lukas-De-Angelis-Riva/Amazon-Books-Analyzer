@@ -13,7 +13,7 @@ from utils.serializer.q5BookInSerializer import Q5BookInSerializer
 from utils.serializer.q5ReviewInSerializer import Q5ReviewInSerializer
 from utils.protocolHandler import ProtocolHandler
 from utils.TCPhandler import SocketBroken
-from utils.protocol import make_eof
+from utils.protocol import make_eof, make_eof2
 
 
 class ClientHandler:
@@ -89,12 +89,9 @@ class ClientHandler:
                 logging.debug('action: finishing | result: success')
 
     def __handle_book_eof(self):
-
-        eofq1 = make_eof(i=self.total_books)
-        self.middleware.send_eofQ1(eofq1)
-
-        eof = make_eof()
-        self.middleware.send_booksQ2(eof)
+        eof = make_eof2(total=self.total_books, worked=0, sent=0)
+        self.middleware.send_eofQ1(eof)
+        self.middleware.send_eofQ2(eof)
         self.middleware.send_booksQ3(eof)
         self.middleware.send_booksQ5(eof)
 
@@ -125,9 +122,9 @@ class ClientHandler:
 
     def __handle_review_eof(self):
         logging.debug('action: read review_eof | result: success')
-        eof = make_eof(0)
-        self.middleware.send_reviewsQ3(eof)
-        self.middleware.send_reviewsQ5(eof)
+        eof = make_eof2(total=self.total_reviews, worked=0, sent=0)
+        self.middleware.send_eofQ3(eof)
+        self.middleware.send_eofQ5(eof)
         return False
 
     def __handle_reviews(self, reviews):

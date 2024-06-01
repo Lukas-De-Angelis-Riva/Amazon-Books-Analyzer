@@ -6,10 +6,10 @@ from model.book import Book
 
 
 class Q5BookInTypes():
-    CHUNK = 0
-    BOOK = 1
-    TITLE = 2
-    CATEGORIES = 3
+    CHUNK = 50
+    BOOK = 51
+    TITLE = 52
+    CATEGORIES = 53
 
 
 class Q5BookInSerializer(Serializer):

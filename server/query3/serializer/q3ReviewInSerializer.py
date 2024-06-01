@@ -7,10 +7,10 @@ from model.review import Review
 
 
 class Q3ReviewInTypes():
-    CHUNK = 0
-    REVIEW = 1
-    TITLE = 2
-    SCORE = 3
+    CHUNK = 30
+    REVIEW = 31
+    TITLE = 32
+    SCORE = 33
 
 
 class Q3ReviewInSerializer(Serializer):

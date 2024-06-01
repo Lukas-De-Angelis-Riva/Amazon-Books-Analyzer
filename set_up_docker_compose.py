@@ -90,6 +90,7 @@ def create_query2Worker(i):
             'PYTHONUNBUFFERED=1',
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
             'PEERS='+str(AMOUNT_OF_QUERY2_WORKERS),
+            'PEER_ID='+str(i),
         ],
         'volumes': [
             './server/query2/worker/config.ini:/config.ini',
@@ -133,6 +134,7 @@ def create_query3Worker(i):
             'PYTHONUNBUFFERED=1',
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
             'PEERS='+str(AMOUNT_OF_QUERY3_WORKERS),
+            'PEER_ID='+str(i),
         ],
         'volumes': [
             './server/query3/worker/config.ini:/config.ini',
@@ -176,6 +178,7 @@ def create_query5Worker(i):
             'PYTHONUNBUFFERED=1',
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
             'PEERS='+str(AMOUNT_OF_QUERY5_WORKERS),
+            'PEER_ID='+str(i),
         ],
         'volumes': [
             './server/query5/worker/config.ini:/config.ini',

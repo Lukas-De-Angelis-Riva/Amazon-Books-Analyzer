@@ -6,11 +6,11 @@ from model.book import Book
 
 
 class Q1OutTypes():
-    CHUNK = 0
-    RESULT = 1
-    TITLE = 2
-    AUTHORS = 3
-    PUBLISHER = 4
+    CHUNK = 10
+    RESULT = 11
+    TITLE = 12
+    AUTHORS = 13
+    PUBLISHER = 14
 
 
 class Q1OutSerializer(Serializer):

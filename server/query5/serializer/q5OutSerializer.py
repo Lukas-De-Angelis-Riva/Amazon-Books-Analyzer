@@ -5,9 +5,9 @@ from utils.protocol import code_to_bytes
 
 
 class Q5OutTypes():
-    CHUNK = 0
-    RESULT = 1
-    TITLE = 2
+    CHUNK = 50
+    RESULT = 51
+    TITLE = 52
 
 
 class Q5OutSerializer(Serializer):
