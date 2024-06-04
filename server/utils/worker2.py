@@ -75,27 +75,47 @@ class Worker2(Listener2):
             self.forward_data(data)
         logging.debug('action: send_results | status: success')
 
-    def recv_eof(self, eof, key):
-        logging.debug('action: recv_eof | status: in_progress')
-        total, worked, sent = get_eof_argument2(eof)
-        remaining = total - worked
-        logging.debug(f'action: recv_eof | status: in_progress | worked: {self.worked} | remaining: {remaining-self.worked}')
-        if self.is_leader:
-            if worked + self.worked >= total:
+    def recv_eof(self, raw, key):
+        total = get_eof_argument(raw)
+        logging.debug(f'action: recv_eof | status: success | total: {total}')
+
+        token = make_token(peer_id=self.peer_id, total=total, worked=0, sent=0)
+        next_id = self.peer_id + 1 if self.peer_id != self.peers else 1 # ids start on 1
+        send_to_peer(data=token, peer_id=next_id)
+        logging.debug(f'action: send_token | status: success | sent_to: {next_id}')
+
+
+    def recv_token(self, raw, key):
+        peer_id, total, worked, sent = get_token_args(raw)
+        worked += self.worked
+        logging.debug(f'action: recv_eof_from_peer | status: in_progress | worked: {worked} | remaining: {total - worked}')
+        
+        # leader is the one that closes the ring,
+        # i.e. counter clockwise neighbor
+        prev_id = peer_id - 1 if peer_id >= 2 else self.peers
+        is_leader = self.peer_id == prev_id
+
+        if is_leader:
+            if worked >= total:
                 self.send_results()
-                logging.debug('action: recv_eof | status: success | forwarding_eof')
+                sent += len(self.results)
                 eof = make_eof2(total=len(self.results)+sent, worked=0, sent=0)
                 self.forward_eof(eof)
+                logging.debug('action: recv_eof_from_peer | status: success | forwarding_eof')
             else:
-                logging.debug(f'action: recv_eof | status: waiting | total_left: {remaining-self.worked}')
+                logging.debug(f'action: recv_eof_from_peer | status: waiting | total_left: {total-worked}')
                 self.total_sent = sent
-                self.remaining = remaining
+                self.remaining = total - worked 
         else:
             self.send_results()
+            sent += len(self.results)
+
             logging.debug(f'action: recv_eof | status: success | sending_eof_to: {self.peer_id+1}')
-            eof = make_eof2(total=total, worked=worked+self.worked, sent=len(self.results)+sent)
-            self.send_to_peer(data=eof, peer_id=self.peer_id+1)
+            token = make_token(peer_id=peer_id, total=total, worked=worked, sent=sent)
+            next_id = self.peer_id + 1 if self.peer_id != self.peers else 1 # ids start on 1
+            self.send_to_peer(data=token, peer_id=next_id)
         self.received_eof = True
 
         # TODO: return Middleware.ACK
         return True
+

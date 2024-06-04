@@ -21,8 +21,8 @@ system-run: docker-image-system
 .PHONY: system-run	
 
 client-run: docker-image-client
-	sudo docker compose -f docker-compose-client.yaml build
-	sudo docker compose -f docker-compose-client.yaml run --rm client python main.py
+	docker compose -f docker-compose-client.yaml build
+	docker compose -f docker-compose-client.yaml run --rm client python main.py
 .PHONY: client-run
 
 system-shutdown:

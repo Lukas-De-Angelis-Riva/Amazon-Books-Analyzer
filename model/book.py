@@ -11,3 +11,4 @@ class Book:
 
     def __str__(self):
         return f'Book(\"{self.title}\" - {self.authors})'
+

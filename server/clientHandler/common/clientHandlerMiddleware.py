@@ -6,7 +6,7 @@ class ClientHandlerMiddleware(Middleware):
         super().__init__()
 
     def send_eofQ1(self, bytes):
-        self.publish(bytes, topic='Q1-EOF', tag='1')
+        self.publish(bytes, 'Q1-EOF')
 
     def send_eofQ2(self, bytes):
         self.publish(bytes, topic='Q2-EOF', tag='1')
