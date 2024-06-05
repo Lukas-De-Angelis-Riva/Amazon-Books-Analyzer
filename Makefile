@@ -13,6 +13,7 @@ docker-image-system:
 	docker build -f ./server/query5/worker/Dockerfile -t "query5_worker:latest" .
 	docker build -f ./server/query5/synchronizer/Dockerfile -t "query5_synchronizer:latest" .
 	docker build -f ./server/resultHandler/Dockerfile -t "result_handler:latest" .
+	docker build -f ./server/doctor/Dockerfile -t "doctor:latest" .
 .PHONY: docker-image-system
 
 system-run: docker-image-system

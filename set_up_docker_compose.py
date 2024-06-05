@@ -6,6 +6,7 @@ from config import AMOUNT_OF_QUERY1_WORKERS
 from config import AMOUNT_OF_QUERY2_WORKERS
 from config import AMOUNT_OF_QUERY3_WORKERS
 from config import AMOUNT_OF_QUERY5_WORKERS
+from config import AMOUNT_OF_DOCTOR
 
 NETWORK_NAME = "amazon-network"
 
@@ -56,6 +57,26 @@ def create_middleware():
 ###############
 # SERVER SIDE #
 ###############
+
+
+def create_doctor(i):
+    return {
+        'container_name': f'doctor{i}',
+        'image': 'doctor:latest',
+        'entrypoint': 'python3 /main.py',
+        'environment': [
+            'PYTHONUNBUFFERED=1',
+            f'LOGGING_LEVEL={LOGGING_LEVEL}',
+            'PEERS='+str(AMOUNT_OF_DOCTOR),
+            'PEER_ID='+str(i),
+        ],
+        'volumes': [
+            './server/doctor/config.ini:/config.ini',
+        ],
+        'networks': [
+            NETWORK_NAME,
+        ],
+    }
 
 
 def create_query1Worker(i):
@@ -258,15 +279,15 @@ def create_clientHandler():
 
 def create_server_side():
     config = {}
-    config['version'] = '3.9'
     config['name'] = 'tp2-server'
 
     # NETWORK
     config['networks'] = {}
     config['networks'][NETWORK_NAME] = create_network(external=False)
 
-    # MIDDLEWARE
     config['services'] = {}
+    """
+    # MIDDLEWARE
     config['services']['rabbitmq'] = create_middleware()
 
     # CLIENT HANDLER
@@ -290,8 +311,13 @@ def create_server_side():
     for i in range(AMOUNT_OF_QUERY5_WORKERS):
         config['services'][f'query5Worker{i+1}'] = create_query5Worker(i+1)
     config['services']['query5Synchronizer'] = create_query5Synchronizer()
+    """
+    
+    # DOCTOR
+    for i in range(AMOUNT_OF_DOCTOR):
+        config['services'][f'doctor{i+1}'] = create_doctor(i+1)
 
-    config['services']['resultHandler'] = create_resultHandler()
+    # config['services']['resultHandler'] = create_resultHandler()
 
     with open('docker-compose-server.yaml', 'w') as file:
         yaml.dump(config, file)
@@ -322,7 +348,6 @@ def create_client():
 
 def create_client_side():
     config = {}
-    config['version'] = '3.9'
     config['name'] = 'tp1-client'
 
     config['networks'] = {}

@@ -2,7 +2,7 @@ SERVER_IP = 'ClientHandler'
 SERVER_PORT = 12345
 RESULT_IP = 'ResultHandler'
 RESULT_PORT = 12345
-
+DOCTOR_PORT = 12348
 
 def set_up_config(path, **kargs):
     with open(path, 'w') as f:
@@ -84,3 +84,9 @@ set_up_config('server/resultHandler/config.ini',
               SERVER_PORT=RESULT_PORT,
               SERVER_IP=RESULT_IP,
               FILE_NAME='results.csv')
+
+# DOCTOR
+set_up_config('server/doctor/config.ini',
+              LOGGING_LEVEL='INFO',
+              DOCTOR_PORT=DOCTOR_PORT)
+
