@@ -21,7 +21,7 @@ class MessageType(enum.Enum):
     DATA = b"\x00"
     EOF = b"\x01"
     ACK = b"\x02"
-    NACK = b"\x02"
+    NACK = b"\x03"
 
 
 class Message():
