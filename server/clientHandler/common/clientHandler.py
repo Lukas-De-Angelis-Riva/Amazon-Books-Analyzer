@@ -89,12 +89,10 @@ class ClientHandler:
                 logging.debug('action: finishing | result: success')
 
     def __handle_book_eof(self):
-
         eof = make_eof2(total=self.total_books, worked=0, sent=0)
         self.middleware.send_eofQ1(eof)
         self.middleware.send_eofQ2(eof)
         self.middleware.send_booksQ3(eof)
-        eof = make_eof()
         self.middleware.send_booksQ5(eof)
 
         logging.debug('action: send_books | value: EOF | result: success')
@@ -126,9 +124,7 @@ class ClientHandler:
         logging.debug('action: read review_eof | result: success')
         eof = make_eof2(total=self.total_reviews, worked=0, sent=0)
         self.middleware.send_eofQ3(eof)
-
-        eof = make_eof(0)
-        self.middleware.send_reviewsQ5(eof)
+        self.middleware.send_eofQ5(eof)
         return False
 
     def __handle_reviews(self, reviews):

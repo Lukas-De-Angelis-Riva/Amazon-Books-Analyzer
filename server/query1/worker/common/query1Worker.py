@@ -1,11 +1,11 @@
 import logging
-from utils.worker2 import Worker2
+from utils.worker import Worker
 from utils.middleware.middleware import Middleware
 from utils.serializer.q1InSerializer import Q1InSerializer      # type: ignore
 from utils.serializer.q1OutSerializer import Q1OutSerializer    # type: ignore
 
 
-class Query1Worker(Worker2):
+class Query1Worker(Worker):
     def __init__(self, peer_id, peers, chunk_size, matches):
         middleware = Middleware()
         middleware.consume(queue_name='Q1-Books', callback=self.recv_raw)

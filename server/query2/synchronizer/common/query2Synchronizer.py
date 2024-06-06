@@ -1,12 +1,12 @@
 import logging
 
-from utils.worker2 import Worker2
+from utils.worker import Worker
 from utils.middleware.middleware import Middleware
 from utils.serializer.q2PartialSerializer import Q2PartialSerializer    # type: ignore
 from utils.serializer.q2OutSerializer import Q2OutSerializer            # type: ignore
 
 
-class Query2Synchronizer(Worker2):
+class Query2Synchronizer(Worker):
     def __init__(self, chunk_size, min_decades):
         middleware = Middleware()
         middleware.consume(queue_name='Q2-Sync', callback=self.recv_raw)

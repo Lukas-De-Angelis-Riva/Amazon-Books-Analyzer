@@ -2,7 +2,7 @@ import logging
 import io
 
 from utils.protocol import is_eof
-from utils.worker2 import Worker2
+from utils.worker import Worker
 from utils.middleware.middleware import Middleware
 from dto.q3Partial import Q3Partial
 from utils.serializer.q3ReviewInSerializer import Q3ReviewInSerializer  # type: ignore
@@ -11,7 +11,7 @@ from utils.serializer.q3BookInSerializer import Q3BookInSerializer      # type: 
 from utils.protocol import get_eof_argument2
 
 
-class Query3Worker(Worker2):
+class Query3Worker(Worker):
     def __init__(self, minimum_date, maximum_date, peer_id, peers, chunk_size):
         middleware = Middleware()
         middleware.consume(queue_name='Q3-Reviews',
@@ -75,7 +75,6 @@ class Query3Worker(Worker2):
     #################
     # REVIEW WORKER #
     #################
-
     def forward_eof(self, eof):
         self.middleware.publish(data=eof, topic='Q3-EOF', tag='SYNC')
 

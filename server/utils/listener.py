@@ -2,7 +2,6 @@ import logging
 import signal
 
 from utils.middleware.middleware import Middleware
-from utils.protocol import is_eof
 
 
 class Listener():
@@ -10,20 +9,6 @@ class Listener():
         signal.signal(signal.SIGTERM, self.__handle_signal)
         self.middleware = middleware
         self.exitcode = 0
-
-    def recv_raw(self, raw):
-        raise RuntimeError("Must be redefined")
-
-    def recv_eof(self, eof):
-        raise RuntimeError("Must be redefined")
-
-    def recv(self, raw, key):
-        if is_eof(raw):
-            self.recv_eof(raw)
-            return False
-
-        self.recv_raw(raw)
-        return True
 
     def run(self):
         self.middleware.start()
