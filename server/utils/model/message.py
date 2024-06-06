@@ -10,11 +10,10 @@ TYPE_LEN = 1
 
 # HEADER OFFSETS
 MSG_ID = 0
-MSG_CLI_ID = MSG_ID + UUID_LEN 
+MSG_CLI_ID = MSG_ID + UUID_LEN
 MSG_TYPE = MSG_CLI_ID + UUID_LEN
-MSG_ARGS_LEN = MSG_TYPE + TYPE_LEN 
+MSG_ARGS_LEN = MSG_TYPE + TYPE_LEN
 MSG_ARGS = MSG_ARGS_LEN + 4
-#
 
 
 class MessageType(enum.Enum):
@@ -27,7 +26,7 @@ class MessageType(enum.Enum):
 class Message():
 
     def __init__(self, client_id: UUID, type: MessageType, data: bytes, args: dict = {}):
-        self.ID = uuid4() # random 16 bytes UUID
+        self.ID = uuid4()   # random 16 bytes UUID
 
         if not isinstance(client_id, UUID):
             raise TypeError("`client_id` must be of type uuid.UUID")
@@ -44,16 +43,15 @@ class Message():
         if isinstance(args, dict) and len(args) > 0:
             self.args = args
         else:
-            self.args = {} 
-
+            self.args = {}
 
     def to_bytes(self) -> bytes:
-        # header 
+        # header
         raw = self.ID.bytes
         raw += self.client_id.bytes
         raw += self.type.value
 
-        # metadata + body 
+        # metadata + body
         raw_args = b""
 
         if self.args:
@@ -62,7 +60,7 @@ class Message():
         raw += len(raw_args).to_bytes(length=4)
         raw += raw_args
         raw += self.data
-        return raw 
+        return raw
 
     @classmethod
     def from_bytes(cls, raw) -> Self:
@@ -86,5 +84,3 @@ class Message():
         )
         m.ID = ID
         return m
-
-

@@ -9,7 +9,6 @@ class Query1Worker(Worker):
     def __init__(self, peer_id, peers, chunk_size, matches):
         middleware = Middleware()
         middleware.consume(queue_name='Q1-Books', callback=self.recv_raw)
-        middleware.subscribe(topic='Q1-EOF', tags=[], callback=self.recv_eof)
         middleware.subscribe(topic='Q1-RING', tags=[str(peer_id)], callback=self.recv_token)
 
         super().__init__(middleware=middleware,

@@ -2,11 +2,11 @@ import logging
 import io
 
 from utils.listener import Listener
-from utils.protocol import make_eof2, get_eof_argument2
+from utils.model.message import Message, MessageType
+from utils.model.token import Token
 
-
-TOTAL = "total"
-WORKED = "worked"
+REMAINING = "remaining"
+CLI_ID = "client_id"
 SENT = "sent"
 
 
@@ -23,7 +23,7 @@ class Worker(Listener):
         self.remaining = -1
         self.received_eof = False
         self.total_sent = 0
-        self.is_leader = (self.peer_id == self.peers)
+        self.is_leader = False
 
     def forward_eof(self, eof):
         raise RuntimeError("Must be redefined")
@@ -41,12 +41,18 @@ class Worker(Listener):
         return
 
     def recv_raw(self, raw, key):
+        msg = Message.from_bytes(raw)
+        # get cliend_ID
+        if msg.type == MessageType.EOF:
+            total = int.from_bytes(msg.data, 'big')
+            return self.recv_eof(total, msg.client_id)
+
         if not self.is_leader and self.received_eof:
             logging.debug('action: recv_raw | status: unexpected_raw | NACK')
             # TODO: return Middleware.NACK
             return 2
 
-        reader = io.BytesIO(raw)
+        reader = io.BytesIO(msg.data)
         input_chunk = self.in_serializer.from_chunk(reader)
         logging.debug(f'action: recv_raw | status: new_chunk | len(chunk): {len(input_chunk)}')
 
@@ -54,18 +60,23 @@ class Worker(Listener):
             self.work(input)
         self.do_after_work()
         self.worked += len(input_chunk)
+        self.remaining -= len(input_chunk)
 
-
-        if self.remaining >= 0 and self.remaining == self.worked:
-            self.send_results()
-            logging.debug('action: recv_eof | status: success | forwarding_eof')
-            eof = make_eof2(total=len(self.results)+self.total_sent, worked=0, sent=0)
+        if self.remaining == 0:
+            self.send_results(client_id=...)
+            sent = self.total_sent + len(self.results)
+            eof = Message(
+                client_id=...,
+                type=MessageType.EOF,
+                data=sent.to_bytes(length=4),
+            )
+            # forward to next stage
             self.forward_eof(eof)
 
         # TODO: return Middleware.ACK
         return True
 
-    def send_results(self):
+    def send_results(self, client_id):
         chunk = []
         logging.debug(f'action: send_results | status: in_progress | len(results): {len(self.results)}')
         for result in self.results.values():
@@ -73,68 +84,78 @@ class Worker(Listener):
             if len(chunk) >= self.chunk_size:
                 logging.debug(f'action: send_results | status: in_progress | forwarding_chunk | len(chunk): {len(chunk)}')
                 data = self.out_serializer.to_bytes(chunk)
-                self.forward_data(data)
+                msg = Message(
+                    client_id=client_id,
+                    type=MessageType.DATA,
+                    data=data
+                )
+                self.forward_data(msg.to_bytes())
                 chunk = []
         if chunk:
             logging.debug(f'action: send_results | status: in_progress | forwarding_chunk | len(chunk): {len(chunk)}')
             data = self.out_serializer.to_bytes(chunk)
-            self.forward_data(data)
+            msg = Message(
+                client_id=client_id,
+                type=MessageType.DATA,
+                data=data
+            )
+            self.forward_data(msg.to_bytes())
         logging.debug('action: send_results | status: success')
 
-    def recv_eof(self, raw, key):
-        total = utils.EOF.from_bytes(raw)
+    def recv_eof(self, total, client_id):
         logging.debug('action: recv_eof_from_client_handler | status: success')
-
-        token = utils.Token(
-            peer_id=self.peer_id, 
+        prev_peer_id = ((self.peer_id - 2) % self.peers) + 1
+        token = Token(
+            leader=prev_peer_id,
             metadata={
-                TOTAL: total, 
-                WORKED: 0,
-                SENT: 0
+                CLI_ID: client_id,
+                REMAINING: total,
+                SENT: 0,
             },
         )
-        next_id = self.peer_id + 1 % self.peers
-        self.send_to_peer(token.to_bytes(), next_id)
-        logging.debug('action: send_eof_to_peers | status: success')
-        
+        return self.recv_token(token.to_bytes(), key=str(self.peer_id))
+
     def recv_token(self, raw, key):
-        logging.debug('action: recv_eof_from_peer | status: in_progress')
-        token = utils.Token.from_bytes(raw)
+        logging.debug('action: recv_eof_from_peer | status: in_progress | worked: {self.worked}')
+        token = Token.from_bytes(raw)
+        token.metadata[REMAINING] -= self.worked
 
-        next_id = 1 if self.peer_id == self.peers else self.peer_id + 1 # ids start on 1
-        logging.debug(f'action: recv_eof | status: in_progress | worked: {worked} | remaining: {total-worked}')
-        
-        # next is the peer that issued the token => current is `leader`
-        if next_id == token.metadata[PEER_ID]:
-            if worked >= total:
-                self.send_results()
-                sent += len(self.results)
+        if self.peer_id == token.leader and token.metadata[REMAINING] > 0:
+            # leader must wait
+            logging.debug(f'action: recv_eof | status: waiting | total_left: {token.metadata[REMAINING]}')
+            self.total_sent = token.metadata[SENT]
+            self.remaining = token.metadata[REMAINING]
+            self.is_leader = True
 
-                eof = utils.EOF(total=sent)
-                self.forward_eof(eof) # forward to next stage
-                logging.debug('action: recv_eof_from_peer | status: success | forwarding_eof')
-            else:
-                logging.debug(f'action: recv_eof_from_peer | status: waiting | total_left: {total-worked}')
-                self.total_sent = token.Sent
-                self.remaining = token.Total - token.Worked 
+        elif token.metadata[REMAINING] <= 0:
+            # anyone can forward eof
+            self.send_results(token.metadata[CLI_ID])
+            sent = token.metadata[SENT] + len(self.results)
+
+            eof = Message(
+                client_id=token.metadata[CLI_ID],
+                type=MessageType.EOF,
+                data=sent.to_bytes(length=4),
+            )
+            # forward to next stage
+            self.forward_eof(eof)
+            logging.debug('action: recv_eof_from_peer | status: success | forwarding_eof')
         else:
-            self.send_results()
-            token.metadata[WORKED] += self.worked
-            sent += len(self.results)
+            # remaining data and not the leader, then ring token
+            self.send_results(token.metadata[CLI_ID])
+            next_id = (self.peer_id % self.peers) + 1
             logging.debug(f'action: recv_eof_from_peer | status: success | sending_eof_to: {next_id}')
-
-            token = utils.Token(
-                peer_id=self.peer_id, 
+            new_token = Token(
+                leader=token.leader,
                 metadata={
-                    TOTAL: total, 
-                    WORKED: worked,
-                    SENT: sent, 
+                    CLI_ID: token.metadata[CLI_ID],
+                    REMAINING: token.metadata[REMAINING],
+                    SENT: token.metadata[SENT] + len(self.results),
                 },
             )
-            self.send_to_peer(data=token, peer_id=next_id)
+            self.send_to_peer(data=new_token.to_bytes(), peer_id=next_id)
 
         self.received_eof = True
 
         # TODO: return Middleware.ACK
         return True
-
