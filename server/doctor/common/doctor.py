@@ -26,11 +26,9 @@ Algoritmo de Bully:
 4. Si P recibe un mensaje de elección de otro proceso con un ID inferior, envía
    un mensaje de respuesta y, si aún no ha iniciado una elección, inicia el 
    proceso de elección desde el principio, enviando un mensaje de elección a los
-   procesos con números más altos. []
+   procesos con números más altos. [X]
 
 5. Si P recibe un mensaje del Coordinador, trata al remitente como el coordinador.[X]
-
-https://github.com/alperari/bully/blob/main/bully.py ????
 """
 
 class Doctor:
@@ -49,9 +47,11 @@ class Doctor:
         self.lock_ok_received= threading.Lock()
         self.lock_in_election = threading.Lock()
 
+        self.patients = {}
+        self.last_heartbeat = 0
+        self.event = threading.Event()
+
         self.messageHandler = MessageHandler(self.my_ip, self.port)
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind((self.my_ip , self.port))
 
         signal.signal(signal.SIGTERM, self.__handle_signal)
 
@@ -84,104 +84,135 @@ class Doctor:
     
     def higher_ip(self, ip):
         return self.my_ip < ip
-
-
-    def send_message(self, message, ip):
-        try:
-            self.sock.sendto(message.encode(), (ip, self.port))
-        except socket.gaierror as e:
-            print(f"{ip} is dead")
+    
+    def am_leader(self):
+        return self.get_leader_id() == self.process_id
 
     def receive_message(self):
         while self.on:
-            data, addr = self.sock.recvfrom(1024)
-            message = data.decode()
+            message, addr = self.messageHandler.receive_message()
             self.handle_message(message, addr)
 
+    def handle_message(self, message, addr):
+        mType = message["type"]
+        
+        if mType == MessageType.ELECTION:
+            self.handle_election_message(message,addr)
+        if mType == MessageType.OK:
+            self.handler_ok_message(addr)
+        if mType == MessageType.COORDINATOR:
+            self.handler_coordinator_message(message)
+        if mType == MessageType.HEARTBEAT:
+            self.handle_heartbeat_message(message, addr)
 
+    def handle_election_message(self, message, addr):
+        sender_id = message["id"]
+        if sender_id < self.process_id:
+            self.messageHandler.send_message(addr, MessageType.OK)
+            if not self.get_in_election(): 
+                self.start_election()
 
-    def handle_message(self, message, sender_ip):
-        if message.startswith("ELECTION"):
-            sender_id = int(message.split()[1])
-            if sender_id < self.process_id:
-                self.send_message(f"OK {self.process_id}", sender_ip[0])
-                if not self.get_in_election(): 
-                    self.start_election()
+    def handler_ok_message(self,addr):
+        self.set_ok_received(True)
+        print(f"[OK] Received OK from {addr}")
 
-        elif message.startswith("OK"):
-            self.set_ok_received(True)
-            print(f"Received OK from {sender_ip}")
+    def handler_coordinator_message(self, message):
+        sender_id = message["id"]
+        if sender_id < self.process_id:
+            if not self.get_in_election(): 
+                self.start_election()
+        else:
+            self.set_leader_id(sender_id)
+            self.set_in_election(False)
+            print(f"[COORDINATOR] {self.leader_id} is the leader")
 
-        elif message.startswith("COORDINATOR"):
-            sender_id = int(message.split()[1])
-
-            if sender_id < self.process_id:
-                if not self.get_in_election(): 
-                    self.start_election()
-            else:
-                self.set_leader_id(int(message.split()[1]))
-                self.set_in_election(False)
-                print(f"[COORDINATOR] {self.leader_id} is the leader")
-
-
-    
+    def handle_heartbeat_message(self,message, addr):
+        sender_id = message["id"]
+        if self.am_leader():
+            self.patients[sender_id] = True
+        else:
+            self.last_heartbeat = time.time()
+            self.messageHandler.send_message(addr, MessageType.HEARTBEAT,self.process_id)
 
     def start_election(self):
         self.set_in_election(True)
         if self.process_id == self.peers_amount:
             return self.announce_coordinator()
              
-        
         self.set_ok_received(False)
         for peer_ip in self.peers:
             if not self.is_my_ip(peer_ip) and \
                 self.higher_ip(peer_ip) and \
                 self.get_ok_received() == False:
                 print(f"[ELECTION] send msg to {peer_ip}:{self.port}")
-                self.send_message(f"ELECTION {self.process_id}", peer_ip)
-    
+                self.messageHandler.send_message((peer_ip,self.port),
+                                                 MessageType.ELECTION,
+                                                 self.process_id)
+                
         # Wait a bit for responses
         threading.Timer(5,self.result_election).start()
 
     def result_election(self):
-        if not self.ok_received and not self.leader_id:
+        if not self.get_ok_received() and not self.get_leader_id():
             print(f"[ELECTION] start Coordinator soy leader")
             return self.announce_coordinator()
 
-        if self.ok_received and not self.leader_id:
+        if self.get_ok_received() and not self.get_leader_id():
             print(f"[ELECTION] start election soy leader")
             return self.start_election()
 
     def announce_coordinator(self):
         print(f"[COORDINATOR] {self.my_ip}:{self.port} is the leader")
-        self.leader_id = self.process_id
-        for peer in self.peers:
-            if not self.is_my_ip(peer):
-                self.send_message(f"COORDINATOR {self.process_id}", peer)
+        self.set_leader_id(self.process_id)
+        for peer_ip in self.peers:
+            if not self.is_my_ip(peer_ip):
+                self.messageHandler.send_message((peer_ip,self.port),
+                                                 MessageType.COORDINATOR,
+                                                 self.process_id)
+
 
     def run(self):
-        if self.process_id == self.peers_amount:
-            return
-        
         threading.Thread(target=self.receive_message).start()
         time.sleep(5)  # Wait for other processes to start
 
         self.start_election()
+        self.liveloop()
 
+    def is_leader_alive(self):
+        return 15>(time.time() - self.last_heartbeat)  
+
+    def liveloop(self):
+        self.last_heartbeat = time.time()
         while self.on:
-            time.sleep(3)
-            print(f"{self.leader_id} is the leader")
-            self.func()
+            if self.am_leader():   
+                print(f"{self.process_id} is the leader")
+                self.heald_check()
+            else:
+                self.event.wait(5)  
+                if self.is_leader_alive():
+                    print(f"{self.get_leader_id()} is the leader")
+                else:
+                    print("El lider a muerto")
+                    self.set_leader_id(None)
+                    self.start_election()
 
-    def func(self):
-        data = self.messageHandler.serialize(MessageType.OK,self.process_id,)
-        print(data)
+    def heald_check(self):
+        for peer_ip in self.peers:
+            self.messageHandler.send_message((peer_ip,self.port),
+                                             MessageType.HEARTBEAT,
+                                             self.process_id)
+            
+        self.event.wait(2)
 
-        msg = self.messageHandler.deserialize(data)
-        print(msg)
 
     def __handle_signal(self, signum, frame):
         logging.info(f'action: stop_server | result: in_progress | signal {signum}')
         self.on = False
-        self.sock.close()
+        self.messageHandler.close()
         logging.debug('action: shutdown_socket | result: success')
+
+
+"""
+ToDo: todos levantados menos el 4 y lo levanto
+
+"""
