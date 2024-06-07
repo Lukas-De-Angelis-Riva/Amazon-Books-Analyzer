@@ -1,31 +1,40 @@
 import logging
 
-from utils.worker import Worker
+from utils.synchronizer import Synchronizer
 from utils.middleware.middleware import Middleware
 from utils.serializer.q2PartialSerializer import Q2PartialSerializer    # type: ignore
 from utils.serializer.q2OutSerializer import Q2OutSerializer            # type: ignore
 
+IN_QUEUE_NAME = 'Q2-Sync'
+OUT_TOPIC = 'results'
+TAG = 'Q2'
 
-class Query2Synchronizer(Worker):
-    def __init__(self, chunk_size, min_decades):
+
+class Query2Synchronizer(Synchronizer):
+    def __init__(self, n_workers, min_decades):
         middleware = Middleware()
-        middleware.consume(queue_name='Q2-Sync', callback=self.recv_raw)
-        middleware.subscribe(topic='Q2-EOF', tags=['SYNC'], callback=self.recv_eof)
-        super().__init__(middleware=middleware,
-                         in_serializer=Q2PartialSerializer(),
-                         out_serializer=Q2OutSerializer(),
-                         peer_id=1,
-                         peers=1,
-                         chunk_size=chunk_size,)
+        middleware.consume(queue_name=IN_QUEUE_NAME, callback=self.recv)
+        super().__init__(
+            middleware=middleware,
+            n_workers=n_workers,
+            in_serializer=Q2PartialSerializer(),
+            out_serializer=Q2OutSerializer(),
+            # This synchronizer doesn't aggregate, so chunk_size does not matter.
+            # Also, it is not used in 'Synchronizer' abstraction. So might be deleted
+            chunk_size=1
+        )
         self.min_decades = min_decades
 
     def forward_eof(self, eof):
-        self.middleware.publish(eof, 'results', 'Q2')
+        self.middleware.publish(eof, OUT_TOPIC, TAG)
 
     def forward_data(self, data):
-        self.middleware.publish(data, 'results', 'Q2')
+        self.middleware.publish(data, OUT_TOPIC, TAG)
 
-    def send_to_peer(self, data, peer_id):
+    # Dummy synchronizer, just forwards chunks
+    def process_chunk(self, chunk):
+        data = self.out_serializer.to_bytes(chunk)
+        self.forward_data(data)
         return
 
     def work(self, input):
