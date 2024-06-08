@@ -1,5 +1,4 @@
 from uuid import UUID, uuid4
-from typing import Self
 
 import pickle
 import enum
@@ -57,18 +56,18 @@ class Message():
         if self.args:
             raw_args = pickle.dumps(self.args)
 
-        raw += len(raw_args).to_bytes(length=4)
+        raw += len(raw_args).to_bytes(length=4, byteorder='big')
         raw += raw_args
         raw += self.data
         return raw
 
     @classmethod
-    def from_bytes(cls, raw) -> Self:
+    def from_bytes(cls, raw):
         ID = UUID(bytes=raw[MSG_ID: MSG_CLI_ID])
         client_id = UUID(bytes=raw[MSG_CLI_ID: MSG_TYPE])
         type = MessageType(value=raw[MSG_TYPE: MSG_ARGS_LEN])
 
-        args_len = int.from_bytes(raw[MSG_ARGS_LEN: MSG_ARGS])
+        args_len = int.from_bytes(bytes=raw[MSG_ARGS_LEN: MSG_ARGS], byteorder='big')
 
         if args_len > 0:
             args = pickle.loads(raw[MSG_ARGS: MSG_ARGS + args_len])

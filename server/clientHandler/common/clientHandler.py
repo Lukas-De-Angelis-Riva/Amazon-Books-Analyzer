@@ -144,6 +144,7 @@ class ClientHandler:
         grouped = [[] for _ in range(n)]
         for book in books:
             grouped[shard(get_key(book), n)].append(book)     # dame, titulo, autor
+        return grouped
 
     def __explode_by_authors(self, books):
         new_books = []
@@ -167,9 +168,13 @@ class ClientHandler:
             i = worker_i - 1
             self.total_books['Q1'][worker_i] += len(value_grouped[i])
             data_q1_wi = self.q1InSerializer.to_bytes(value_grouped[i])
-            # TODO CREATE MESSAGE
+            msg = Message(
+                client_id=client_id,
+                type=MessageType.DATA,
+                data=data_q1_wi
+            )
             self.middleware.produce(
-                data=data_q1_wi,
+                data=msg.to_bytes(),
                 out_queue_name=OUT_BOOKS_QUEUE(query_id=1, worker_id=worker_i)
             )
 
@@ -181,8 +186,13 @@ class ClientHandler:
             i = worker_i - 1
             self.total_books['Q2'][worker_i] += len(value_grouped[i])
             data_q2_wi = self.q2InSerializer.to_bytes(value_grouped[i])
+            msg = Message(
+                client_id=client_id,
+                type=MessageType.DATA,
+                data=data_q2_wi
+            )
             self.middleware.produce(
-                data=data_q2_wi,
+                data=msg.to_bytes(),
                 out_queue_name=OUT_BOOKS_QUEUE(query_id=2, worker_id=worker_i)
             )
 
@@ -204,6 +214,7 @@ class ClientHandler:
         return True
 
     def __handle_review_eof(self, client_id):
+        return
         logging.debug('action: read review_eof | result: success')
         eof = make_eof2(total=self.total_reviews, worked=0, sent=0)
         self.middleware.send_eofQ3(eof)
@@ -211,6 +222,7 @@ class ClientHandler:
         return False
 
     def __handle_reviews(self, reviews, client_id):
+        return
         self.total_reviews += len(reviews)
 
         #  It's responsible for separating the relevant

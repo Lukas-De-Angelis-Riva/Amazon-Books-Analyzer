@@ -34,7 +34,7 @@ class Query2Worker(Worker):
     def forward_data(self, data):
         self.middleware.produce(data, out_queue_name())
 
-    def work(self, input):
+    def work(self, input, client_id):
         book = input
         logging.debug(f'action: new_book | book: {book}')
         for author in book.authors:
@@ -43,14 +43,14 @@ class Query2Worker(Worker):
             self.results[author].update(book)
             logging.debug(f'action: new_book | result: update | author: {author} | date: {book.publishedDate}')
 
-    def do_after_work(self):
+    def do_after_work(self, client_id):
         return
 
     def filter_results(self):
         return {k: v.author for k, v in self.results.items() if len(v.decades) >= self.min_decades}
 
-    def send_results(self):
+    def send_results(self, client_id):
         n = len(self.results)
         self.results = self.filter_results()
         logging.debug(f'action: filtering_result | result: success | n: {n} >> {len(self.results)}')
-        return super().send_results()
+        return super().send_results(client_id)

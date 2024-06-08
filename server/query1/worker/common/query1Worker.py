@@ -1,9 +1,9 @@
 import logging
-from utils.worker import Worker
+from utils.worker import Worker, WORKER_ID
 from utils.middleware.middleware import Middleware
 from utils.serializer.q1InSerializer import Q1InSerializer      # type: ignore
 from utils.serializer.q1OutSerializer import Q1OutSerializer    # type: ignore
-
+from utils.model.message import Message, MessageType
 
 def IN_QUEUE_NAME(peer_id):
     return f'Q1-Books-{peer_id}'
@@ -33,16 +33,24 @@ class Query1Worker(Worker):
     def forward_data(self, data):
         self.middleware.produce(data, OUT_QUEUE_NAME())
 
-    def work(self, input):
+    def work(self, input, client_id):
         book = input
         logging.debug(f'action: new_book | book: {book}')
         if self.matches(book):
             logging.debug(f'action: new_book | result: match | book: {book}')
             self.matching_books.append(book)
 
-    def do_after_work(self):
+    def do_after_work(self, client_id):
         if self.matching_books:
             data = self.out_serializer.to_bytes(self.matching_books)
-            self.forward_data(data)
+            msg = Message(
+                client_id=client_id,
+                type=MessageType.DATA,
+                data=data,
+                args={
+                    WORKER_ID: self.peer_id,
+                }
+            )
+            self.forward_data(msg.to_bytes())
             self.total_sent += len(self.matching_books)
         self.matching_books = []

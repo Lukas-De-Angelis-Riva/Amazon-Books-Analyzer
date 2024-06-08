@@ -27,10 +27,10 @@ class Worker(Listener):
     def forward_data(self, data):
         raise RuntimeError("Must be redefined")
 
-    def work(self, input):
+    def work(self, input, client_id):
         return
 
-    def do_after_work(self):
+    def do_after_work(self, client_id):
         return
 
     def send_chunk(self, chunk, client_id):
@@ -89,8 +89,8 @@ class Worker(Listener):
         input_chunk = self.in_serializer.from_chunk(reader)
         logging.debug(f'action: recv_raw | status: new_chunk | len(chunk): {len(input_chunk)}')
         for input in input_chunk:
-            self.work(input)
-        self.do_after_work()
+            self.work(input, client_id)
+        self.do_after_work(client_id)
         self.total_worked += len(input_chunk)
 
         if self.total_expected == self.total_worked:

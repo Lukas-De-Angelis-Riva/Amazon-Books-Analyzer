@@ -1,5 +1,3 @@
-from typing import Self
-
 import pickle
 
 
@@ -15,7 +13,7 @@ class Token():
         return raw
 
     @classmethod
-    def from_bytes(cls, raw) -> Self:
+    def from_bytes(cls, raw):
         leader = int.from_bytes(raw[:4])
         metadata = pickle.loads(raw[4:])
         return cls(leader, metadata)

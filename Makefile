@@ -6,6 +6,7 @@ docker-image-system:
 	docker build -f ./base-images/server-base.dockerfile -t "server-base:latest" .
 	docker build -f ./server/clientHandler/Dockerfile -t "client_handler:latest" .
 	docker build -f ./server/query1/worker/Dockerfile -t "query1_worker:latest" .
+	docker build -f ./server/query1/synchronizer/Dockerfile -t "query1_synchronizer:latest" .	
 	docker build -f ./server/query2/worker/Dockerfile -t "query2_worker:latest" .
 	docker build -f ./server/query2/synchronizer/Dockerfile -t "query2_synchronizer:latest" .
 	docker build -f ./server/query3/worker/Dockerfile -t "query3_worker:latest" .
