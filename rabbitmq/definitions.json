@@ -8,24 +8,6 @@
             "auto_delete": false,
             "internal": false,
             "arguments": {}
-        },
-        {
-            "name": "Q3-Books",
-            "vhost": "/",
-            "type": "direct",
-            "durable": false,
-            "auto_delete": false,
-            "internal": false,
-            "arguments": {}
-        },
-        {
-            "name": "Q5-Books",
-            "vhost": "/",
-            "type": "direct",
-            "durable": false,
-            "auto_delete": false,
-            "internal": false,
-            "arguments": {}
         }
     ],
     "queues": [
@@ -192,62 +174,6 @@
         }
     ],
     "bindings": [
-        {
-            "source": "Q3-Books",
-            "vhost": "/",
-            "destination": "Q3-Books-1",
-            "destination_type": "queue",
-            "routing_key": "",
-            "arguments": {}
-        },
-        {
-            "source": "Q3-Books",
-            "vhost": "/",
-            "destination": "Q3-Books-2",
-            "destination_type": "queue",
-            "routing_key": "",
-            "arguments": {}
-        },
-        {
-            "source": "Q5-Books",
-            "vhost": "/",
-            "destination": "Q5-Books-1",
-            "destination_type": "queue",
-            "routing_key": "",
-            "arguments": {}
-        },
-        {
-            "source": "Q5-Books",
-            "vhost": "/",
-            "destination": "Q5-Books-2",
-            "destination_type": "queue",
-            "routing_key": "",
-            "arguments": {}
-        },
-        {
-            "source": "Q5-Books",
-            "vhost": "/",
-            "destination": "Q5-Books-3",
-            "destination_type": "queue",
-            "routing_key": "",
-            "arguments": {}
-        },
-        {
-            "source": "Q5-Books",
-            "vhost": "/",
-            "destination": "Q5-Books-4",
-            "destination_type": "queue",
-            "routing_key": "",
-            "arguments": {}
-        },
-        {
-            "source": "Q5-Books",
-            "vhost": "/",
-            "destination": "Q5-Books-5",
-            "destination_type": "queue",
-            "routing_key": "",
-            "arguments": {}
-        },
         {
             "source": "results",
             "vhost": "/",

@@ -56,8 +56,6 @@ def set_up_Q3_queues():
     definitions["queues"].append(QUEUE_DEF('Q3-Sync'))
     for i in range(1, AMOUNT_OF_QUERY3_WORKERS+1):
         definitions["queues"].append(QUEUE_DEF(f'Q3-Books-{i}'))
-        definitions["bindings"].append(BINDING_DEF(f'Q3-Books-{i}', 'Q3-Books', ''))
-
         definitions["queues"].append(QUEUE_DEF(f'Q3-Reviews-{i}'))
 
 
@@ -65,8 +63,6 @@ def set_up_Q5_queues():
     definitions["queues"].append(QUEUE_DEF('Q5-Sync'))
     for i in range(1, AMOUNT_OF_QUERY5_WORKERS+1):
         definitions["queues"].append(QUEUE_DEF(f'Q5-Books-{i}'))
-        definitions["bindings"].append(BINDING_DEF(f'Q5-Books-{i}', 'Q5-Books', ''))
-
         definitions["queues"].append(QUEUE_DEF(f'Q5-Reviews-{i}'))
 
 
@@ -78,8 +74,6 @@ def set_up_RH_queues():
 
 def set_up_exchanges():
     definitions["exchanges"].append(EXCHANGE_DEF('results', 'direct'))
-    definitions["exchanges"].append(EXCHANGE_DEF('Q3-Books', 'direct'))
-    definitions["exchanges"].append(EXCHANGE_DEF('Q5-Books', 'direct'))
 
 
 definitions = {}
