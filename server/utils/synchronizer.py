@@ -20,38 +20,18 @@ class Synchronizer(Listener):
         self.worked_by_worker = {i: 0 for i in range(1, n_workers+1)}
         self.total_by_worker = {i: -1 for i in range(1, n_workers+1)}
 
-    def forward_eof(self, eof):
+    def process_chunk(self, chunk, client_id):
         raise RuntimeError("Must be redefined")
 
-    def forward_data(self, data):
-        raise RuntimeError("Must be redefined")
+    def terminator(self, client_id):
+        raise RuntimeError("Hasta la vista, baby.")
 
-    def process_chunk(self, chunk):
-        raise RuntimeError("Must be redefined")
-
-    def send_eof(self, client_id):
-        eof = Message(
-            client_id=client_id,
-            type=MessageType.EOF,
-            data=b'',
-            args={
-                # TODO: REFACTOR!!
-                # QUERY1, QUERY2, QUERY3 this IDEA
-                TOTAL: sum(self.total_by_worker.values())
-
-                # QUERY4, QUERY5 PRE-PROCESS, THEN SEND. SOMETHING LIKE:
-                # TOTAL = len(self.results) // Query4: máx 10, Query5: ~10%
-            }
-        )
-        self.forward_eof(eof)
-        return
-
-    def all_chunks_received(self):
+    def _all_chunks_received(self):
         return all(
             (self.total_by_worker[i] == self.worked_by_worker[i]) for i in range(1, self.n_workers+1)
         )
 
-    def all_eofs_received(self):
+    def _all_eofs_received(self):
         return all(
             self.eof_workers.values()
         )
@@ -59,13 +39,13 @@ class Synchronizer(Listener):
     def recv(self, raw_msg, key):
         msg = Message.from_bytes(raw_msg)
         if msg.type == MessageType.EOF:
-            self.recv_eof(
+            self._recv_eof(
                 msg.args[WORKER_ID],
                 msg.args[TOTAL],
                 msg.client_id
             )
-        else:
-            self.recv_raw(
+        elif msg.type == MessageType.DATA:
+            self._recv_raw(
                 msg.data,
                 msg.args[WORKER_ID],
                 msg.client_id
@@ -74,21 +54,21 @@ class Synchronizer(Listener):
         # TODO: return Middleware.ACK
         return True
 
-    def recv_raw(self, data, worker_id, client_id, key):
+    def _recv_raw(self, data, worker_id, client_id):
         reader = io.BytesIO(data)
         input_chunk = self.in_serializer.from_chunk(reader)
-        self.process_chunk(input_chunk)
+        self.process_chunk(input_chunk, client_id)
         self.worked_by_worker[worker_id] += len(input_chunk)
 
-        if self.all_eofs_received() and self.all_chunks_received():
-            self.send_eof(client_id)
+        if self._all_eofs_received() and self._all_chunks_received():
+            self.terminator(client_id)
         return
 
-    def recv_eof(self, worker_id, total, client_id):
+    def _recv_eof(self, worker_id, total, client_id):
         logging.debug(f'action: recv_eof | client: {client_id} | worker_id: {worker_id} | status: success')
         self.eof_workers[worker_id] = True
         self.total_by_worker[worker_id] = total
 
-        if self.all_eofs_received() and self.all_chunks_received():
-            self.send_eof(client_id)
+        if self._all_eofs_received() and self._all_chunks_received():
+            self.terminator(client_id)
         return

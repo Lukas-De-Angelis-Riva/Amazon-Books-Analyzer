@@ -32,4 +32,10 @@ system-shutdown:
 
 system-logs:
 	docker compose -f docker-compose-server.yaml logs -f
+
+system-config:
+	# python3 set_up_config.py
+	python3 set_up_middleware_queues.py
+	python3 set_up_docker_compose.py
+	
 .PHONY: system-logs

@@ -1,129 +1,292 @@
 {
-    "queues": [
-      {
-        "name": "Q2-Sync",
-        "vhost": "/",
-        "durable": true,
-        "auto_delete": false,
-        "arguments": {}
-      },
-      {
-        "name": "Q3-Reviews",
-        "vhost": "/",
-        "durable": true,
-        "auto_delete": false,
-        "arguments": {}
-      },
-      {
-        "name": "Q3-Sync",
-        "vhost": "/",
-        "durable": true,
-        "auto_delete": false,
-        "arguments": {}
-      },
-      {
-        "name": "Q5-Sync",
-        "vhost": "/",
-        "durable": true,
-        "auto_delete": false,
-        "arguments": {}
-      },
-      {
-        "name": "Q5-Reviews",
-        "vhost": "/",
-        "durable": true,
-        "auto_delete": false,
-        "arguments": {}
-      },
-      {
-        "name": "Q1-Books",
-        "vhost": "/",
-        "durable": true,
-        "auto_delete": false,
-        "arguments": {}
-      },
-      {
-        "name": "Q2-Books",
-        "vhost": "/",
-        "durable": true,
-        "auto_delete": false,
-        "arguments": {}
-      }
-    ],
     "exchanges": [
-      {
-        "name": "results",
-        "vhost": "/",
-        "type": "direct",
-        "durable": false,
-        "auto_delete": false,
-        "internal": false,
-        "arguments": {}
-      },
-      {
-        "name": "Q1-RING",
-        "vhost": "/",
-        "type": "direct",
-        "durable": false,
-        "auto_delete": false,
-        "internal": false,
-        "arguments": {}
-      },
-      {
-        "name": "Q1-EOF",
-        "vhost": "/",
-        "type": "direct",
-        "durable": false,
-        "auto_delete": false,
-        "internal": false,
-        "arguments": {}
-      },
-      {
-        "name": "Q2-EOF",
-        "vhost": "/",
-        "type": "direct",
-        "durable": false,
-        "auto_delete": false,
-        "internal": false,
-        "arguments": {}
-      },
-      {
-        "name": "Q3-EOF",
-        "vhost": "/",
-        "type": "direct",
-        "durable": false,
-        "auto_delete": false,
-        "internal": false,
-        "arguments": {}
-      },
-      {
-        "name": "Q3-Books",
-        "vhost": "/",
-        "type": "direct",
-        "durable": false,
-        "auto_delete": false,
-        "internal": false,
-        "arguments": {}
-      },
-      {
-        "name": "Q5-EOF",
-        "vhost": "/",
-        "type": "direct",
-        "durable": false,
-        "auto_delete": false,
-        "internal": false,
-        "arguments": {}
-      },
-      {
-        "name": "Q5-Books",
-        "vhost": "/",
-        "type": "direct",
-        "durable": false,
-        "auto_delete": false,
-        "internal": false,
-        "arguments": {}
-      }
+        {
+            "name": "results",
+            "vhost": "/",
+            "type": "direct",
+            "durable": false,
+            "auto_delete": false,
+            "internal": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q3-Books",
+            "vhost": "/",
+            "type": "direct",
+            "durable": false,
+            "auto_delete": false,
+            "internal": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q5-Books",
+            "vhost": "/",
+            "type": "direct",
+            "durable": false,
+            "auto_delete": false,
+            "internal": false,
+            "arguments": {}
+        }
     ],
-    "bindings": []
-  }
-  
+    "queues": [
+        {
+            "name": "Q1-Sync",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q1-Books-1",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q1-Books-2",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q2-Sync",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q2-Books-1",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q2-Books-2",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q3-Sync",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q3-Books-1",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q3-Reviews-1",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q3-Books-2",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q3-Reviews-2",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q5-Sync",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q5-Books-1",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q5-Reviews-1",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q5-Books-2",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q5-Reviews-2",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q5-Books-3",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q5-Reviews-3",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q5-Books-4",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q5-Reviews-4",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q5-Books-5",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "Q5-Reviews-5",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "RH-Results",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        }
+    ],
+    "bindings": [
+        {
+            "source": "Q3-Books",
+            "vhost": "/",
+            "destination": "Q3-Books-1",
+            "destination_type": "queue",
+            "routing_key": "",
+            "arguments": {}
+        },
+        {
+            "source": "Q3-Books",
+            "vhost": "/",
+            "destination": "Q3-Books-2",
+            "destination_type": "queue",
+            "routing_key": "",
+            "arguments": {}
+        },
+        {
+            "source": "Q5-Books",
+            "vhost": "/",
+            "destination": "Q5-Books-1",
+            "destination_type": "queue",
+            "routing_key": "",
+            "arguments": {}
+        },
+        {
+            "source": "Q5-Books",
+            "vhost": "/",
+            "destination": "Q5-Books-2",
+            "destination_type": "queue",
+            "routing_key": "",
+            "arguments": {}
+        },
+        {
+            "source": "Q5-Books",
+            "vhost": "/",
+            "destination": "Q5-Books-3",
+            "destination_type": "queue",
+            "routing_key": "",
+            "arguments": {}
+        },
+        {
+            "source": "Q5-Books",
+            "vhost": "/",
+            "destination": "Q5-Books-4",
+            "destination_type": "queue",
+            "routing_key": "",
+            "arguments": {}
+        },
+        {
+            "source": "Q5-Books",
+            "vhost": "/",
+            "destination": "Q5-Books-5",
+            "destination_type": "queue",
+            "routing_key": "",
+            "arguments": {}
+        },
+        {
+            "source": "results",
+            "vhost": "/",
+            "destination": "RH-Results",
+            "destination_type": "queue",
+            "routing_key": "Q1",
+            "arguments": {}
+        },
+        {
+            "source": "results",
+            "vhost": "/",
+            "destination": "RH-Results",
+            "destination_type": "queue",
+            "routing_key": "Q2",
+            "arguments": {}
+        },
+        {
+            "source": "results",
+            "vhost": "/",
+            "destination": "RH-Results",
+            "destination_type": "queue",
+            "routing_key": "Q3",
+            "arguments": {}
+        },
+        {
+            "source": "results",
+            "vhost": "/",
+            "destination": "RH-Results",
+            "destination_type": "queue",
+            "routing_key": "Q4",
+            "arguments": {}
+        },
+        {
+            "source": "results",
+            "vhost": "/",
+            "destination": "RH-Results",
+            "destination_type": "queue",
+            "routing_key": "Q5",
+            "arguments": {}
+        }
+    ]
+}

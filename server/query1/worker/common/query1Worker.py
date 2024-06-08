@@ -5,18 +5,18 @@ from utils.serializer.q1InSerializer import Q1InSerializer      # type: ignore
 from utils.serializer.q1OutSerializer import Q1OutSerializer    # type: ignore
 
 
-def in_queue_name(peer_id):
+def IN_QUEUE_NAME(peer_id):
     return f'Q1-Books-{peer_id}'
 
 
-def out_queue_name():
+def OUT_QUEUE_NAME():
     return 'Q1-Sync'
 
 
 class Query1Worker(Worker):
     def __init__(self, peer_id, peers, chunk_size, matches):
         middleware = Middleware()
-        middleware.consume(queue_name=in_queue_name(peer_id), callback=self.recv)
+        middleware.consume(queue_name=IN_QUEUE_NAME(peer_id), callback=self.recv)
 
         super().__init__(middleware=middleware,
                          in_serializer=Q1InSerializer(),
@@ -28,10 +28,10 @@ class Query1Worker(Worker):
         self.matches = matches
 
     def forward_eof(self, eof):
-        self.middleware.produce(eof, out_queue_name())
+        self.middleware.produce(eof, OUT_QUEUE_NAME())
 
     def forward_data(self, data):
-        self.middleware.produce(data, out_queue_name())
+        self.middleware.produce(data, OUT_QUEUE_NAME())
 
     def work(self, input):
         book = input
@@ -46,6 +46,3 @@ class Query1Worker(Worker):
             self.forward_data(data)
             self.total_sent += len(self.matching_books)
         self.matching_books = []
-
-    def send_results(self, client_id):
-        return

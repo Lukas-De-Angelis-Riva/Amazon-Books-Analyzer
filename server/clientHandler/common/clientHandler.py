@@ -1,7 +1,10 @@
+import uuid
 import socket
 import signal
 import logging
 
+from model.book import Book
+from common.sharder import shard
 from common.clientHandlerMiddleware import ClientHandlerMiddleware
 from utils.serializer.bookSerializer import BookSerializer
 from utils.serializer.reviewSerializer import ReviewSerializer
@@ -13,7 +16,14 @@ from utils.serializer.q5BookInSerializer import Q5BookInSerializer
 from utils.serializer.q5ReviewInSerializer import Q5ReviewInSerializer
 from utils.protocolHandler import ProtocolHandler
 from utils.TCPhandler import SocketBroken
-from utils.protocol import make_eof, make_eof2
+from utils.protocol import make_eof2
+from utils.model.message import Message, MessageType
+
+TOTAL = "total"
+
+
+def OUT_BOOKS_QUEUE(query_id, worker_id):
+    return f'Q{query_id}-Books-{worker_id}'
 
 
 class ClientHandler:
@@ -46,8 +56,17 @@ class ClientHandler:
 
         self.middleware = ClientHandlerMiddleware()
 
-        self.total_books = 0
-        self.total_reviews = 0
+        self.total_books = {
+            'Q1': {i: 0 for i in range(1, 3)},     # config_params[WORKERS_Q1]
+            'Q2': {i: 0 for i in range(1, 3)},     # config_params[WORKERS_Q2]
+            'Q3': {i: 0 for i in range(1, 3)},     # config_params[WORKERS_Q3]
+            'Q5': {i: 0 for i in range(1, 6)},     # config_params[WORKERS_Q5]
+        }
+
+        self.total_reviews = {
+            'Q3': {i: 0 for i in range(1, 3)},     # config_params[WORKERS_Q3]
+            'Q5': {i: 0 for i in range(1, 6)},     # config_params[WORKERS_Q5]
+        }
 
     def run(self):
         logging.info('action: run server | result: success')
@@ -63,6 +82,7 @@ class ClientHandler:
         logging.info('action: stop_server | result: success')
 
     def __handle_client_connection(self, client_sock):
+        client_id = uuid.uuid4()
         try:
             protocolHandler = ProtocolHandler(client_sock)
             keep_reading = True
@@ -70,13 +90,13 @@ class ClientHandler:
                 t, value = protocolHandler.read()
 
                 if protocolHandler.is_review(t):
-                    keep_reading = self.__handle_reviews(value)
+                    keep_reading = self.__handle_reviews(value, client_id)
                 elif protocolHandler.is_book(t):
-                    keep_reading = self.__handle_books(value)
+                    keep_reading = self.__handle_books(value, client_id)
                 elif protocolHandler.is_book_eof(t):
-                    keep_reading = self.__handle_book_eof()
+                    keep_reading = self.__handle_book_eof(client_id)
                 elif protocolHandler.is_review_eof(t):
-                    keep_reading = self.__handle_review_eof()
+                    keep_reading = self.__handle_review_eof(client_id)
 
                 protocolHandler.ack()
 
@@ -88,46 +108,109 @@ class ClientHandler:
                 client_sock.close()
                 logging.debug('action: finishing | result: success')
 
-    def __handle_book_eof(self):
-        eof = make_eof2(total=self.total_books, worked=0, sent=0)
-        self.middleware.send_eofQ1(eof)
-        self.middleware.send_eofQ2(eof)
-        self.middleware.send_booksQ3(eof)
-        self.middleware.send_booksQ5(eof)
-
+    def __handle_book_eof(self, client_id):
+        for worker_i in self.total_books['Q1']:
+            eof = Message(
+                client_id=client_id,
+                type=MessageType.EOF,
+                data=b'',
+                args={
+                    TOTAL: self.total_books['Q1'][worker_i]
+                }
+            )
+            self.middleware.produce(
+                data=eof.to_bytes(),
+                out_queue_name=OUT_BOOKS_QUEUE(query_id=1, worker_id=worker_i),
+            )
+        for worker_i in self.total_books['Q2']:
+            eof = Message(
+                client_id=client_id,
+                type=MessageType.EOF,
+                data=b'',
+                args={
+                    TOTAL: self.total_books['Q2'][worker_i]
+                }
+            )
+            self.middleware.produce(
+                data=eof.to_bytes(),
+                out_queue_name=OUT_BOOKS_QUEUE(query_id=2, worker_id=worker_i),
+            )
+        #        self.middleware.send_booksQ3(eof)
+        #        self.middleware.send_booksQ5(eof)
         logging.debug('action: send_books | value: EOF | result: success')
         return True
 
-    def __handle_books(self, value):
-        self.total_books += len(value)
+    def __group_by_key(self, books, n, get_key):
+        grouped = [[] for _ in range(n)]
+        for book in books:
+            grouped[shard(get_key(book), n)].append(book)     # dame, titulo, autor
 
+    def __explode_by_authors(self, books):
+        new_books = []
+        for book in books:
+            for author in book.authors:
+                aux_book = Book(
+                    title=book.title,
+                    authors=[author],
+                    publisher=book.publisher,
+                    publishedDate=book.publishedDate,
+                    categories=book.categories,
+                )
+                new_books.append(aux_book)
+        return new_books
+
+    def __handle_books(self, value, client_id):
         # Query 1:
-        data_q1 = self.q1InSerializer.to_bytes(value)
-        self.middleware.send_booksQ1(data_q1)
+        q1_n_workers = 2
+        value_grouped = self.__group_by_key(value, q1_n_workers, lambda b: b.title)
+        for worker_i in range(1, q1_n_workers+1):
+            i = worker_i - 1
+            self.total_books['Q1'][worker_i] += len(value_grouped[i])
+            data_q1_wi = self.q1InSerializer.to_bytes(value_grouped[i])
+            # TODO CREATE MESSAGE
+            self.middleware.produce(
+                data=data_q1_wi,
+                out_queue_name=OUT_BOOKS_QUEUE(query_id=1, worker_id=worker_i)
+            )
 
         # Query 2:
-        data_q2 = self.q2InSerializer.to_bytes(value)
-        self.middleware.send_booksQ2(data_q2)
+        q2_n_workers = 2
+        exploded = self.__explode_by_authors(value)
+        value_grouped = self.__group_by_key(exploded, q2_n_workers, lambda b: b.authors[0])
+        for worker_i in range(1, q2_n_workers+1):
+            i = worker_i - 1
+            self.total_books['Q2'][worker_i] += len(value_grouped[i])
+            data_q2_wi = self.q2InSerializer.to_bytes(value_grouped[i])
+            self.middleware.produce(
+                data=data_q2_wi,
+                out_queue_name=OUT_BOOKS_QUEUE(query_id=2, worker_id=worker_i)
+            )
 
+        """
         # Query 3/4:
         data_q3 = self.q3BookInSerializer.to_bytes(value)
         self.middleware.send_booksQ3(data_q3)
+        for k in self.total_books['Q3']:
+            self.total_books['Q3'][k] += len(value)
 
         # Query 5:
         data_q5 = self.q5BookInSerializer.to_bytes(value)
         self.middleware.send_booksQ5(data_q5)
+        for k in self.total_books['Q5']:
+            self.total_books['Q5'][k] += len(value)
+        """
 
         logging.debug(f'action: send_books | len(value): {len(value)} | result: success')
         return True
 
-    def __handle_review_eof(self):
+    def __handle_review_eof(self, client_id):
         logging.debug('action: read review_eof | result: success')
         eof = make_eof2(total=self.total_reviews, worked=0, sent=0)
         self.middleware.send_eofQ3(eof)
         self.middleware.send_eofQ5(eof)
         return False
 
-    def __handle_reviews(self, reviews):
+    def __handle_reviews(self, reviews, client_id):
         self.total_reviews += len(reviews)
 
         #  It's responsible for separating the relevant
