@@ -5,7 +5,7 @@ import logging
 
 from utils.protocolHandler import ProtocolHandler
 from utils.TCPhandler import SocketBroken
-from common.queryManager import QueryManager
+from common.queryManager import QueryManager, QUERY1_ID, QUERY2_ID, QUERY3_ID, QUERY5_ID
 
 
 class ClientHandler:
@@ -33,7 +33,8 @@ class ClientHandler:
     def __handle_client_connection(self, client_sock):
         client_id = uuid.uuid4()
         try:
-            manager = QueryManager(client_id)
+            manager = QueryManager(client_id, workers_by_query={QUERY1_ID: 2, QUERY2_ID: 2, QUERY3_ID: 2, QUERY5_ID: 5})
+
             protocolHandler = ProtocolHandler(client_sock)
             keep_reading = True
             while keep_reading:
@@ -53,11 +54,10 @@ class ClientHandler:
                     keep_reading = False
                     logging.debug('action: review_eof | value: EOF | result: success')
                 protocolHandler.ack()
+            manager.stop()
         except (SocketBroken, OSError) as e:
             logging.error(f'action: receive_message | result: fail | error: {str(e)}')
         finally:
-            if manager:
-                manager.stop()
             if client_sock:
                 logging.debug('action: release_client_socket | result: success')
                 client_sock.close()

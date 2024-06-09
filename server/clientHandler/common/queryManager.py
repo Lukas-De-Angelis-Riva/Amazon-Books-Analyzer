@@ -47,15 +47,16 @@ def explode_by_authors(books):
 
 
 class QueryManager:
-    def __init__(self, client_id):
+    def __init__(self, client_id, workers_by_query):
         self.middleware = Middleware()
         self.client_id = client_id
+        self.workers_by_query = workers_by_query
 
         self.total_books = {
-            QUERY1_ID: {i: 0 for i in range(1, 3)},     # config_params[WORKERS_Q1]
-            QUERY2_ID: {i: 0 for i in range(1, 3)},     # config_params[WORKERS_Q2]
-            QUERY3_ID: {i: 0 for i in range(1, 3)},     # config_params[WORKERS_Q3]
-            QUERY5_ID: {i: 0 for i in range(1, 6)},     # config_params[WORKERS_Q5]
+            QUERY1_ID: {i: 0 for i in range(1, workers_by_query[QUERY1_ID]+1)},
+            QUERY2_ID: {i: 0 for i in range(1, workers_by_query[QUERY2_ID]+1)},
+            QUERY3_ID: {i: 0 for i in range(1, workers_by_query[QUERY3_ID]+1)},
+            QUERY5_ID: {i: 0 for i in range(1, workers_by_query[QUERY5_ID]+1)},
         }
         self.book_serializers = {
             QUERY1_ID: Q1InSerializer(),
@@ -69,8 +70,8 @@ class QueryManager:
             QUERY5_ID: Q5ReviewInSerializer(),
         }
         self.total_reviews = {
-            QUERY3_ID: {i: 0 for i in range(1, 3)},     # config_params[WORKERS_Q3]
-            QUERY5_ID: {i: 0 for i in range(1, 6)},     # config_params[WORKERS_Q5]
+            QUERY3_ID: {i: 0 for i in range(1, workers_by_query[QUERY3_ID]+1)},
+            QUERY5_ID: {i: 0 for i in range(1, workers_by_query[QUERY5_ID]+1)},
         }
 
     def __send_book_eof(self, query_id):
@@ -114,28 +115,20 @@ class QueryManager:
 
     def distribute_books(self, chunk):
         # Query 1:
-        # config_params[WORKERS_Q1]
-        q1_n_workers = 2
-        value_grouped_by_title = group_by_key(chunk, q1_n_workers, lambda b: b.title)
+        value_grouped_by_title = group_by_key(chunk, self.workers_by_query[QUERY1_ID], lambda b: b.title)
         self.__distribute_books(value_grouped_by_title, QUERY1_ID)
 
         # Query 2:
-        # config_params[WORKERS_Q2]
-        q2_n_workers = 2
         exploded = explode_by_authors(chunk)
-        value_grouped_by_author = group_by_key(exploded, q2_n_workers, lambda b: b.authors[0])
+        value_grouped_by_author = group_by_key(exploded, self.workers_by_query[QUERY2_ID], lambda b: b.authors[0])
         self.__distribute_books(value_grouped_by_author, QUERY2_ID)
 
         # Query 3/4:
-        # config_params[WORKERS_Q3]
-        q3_n_workers = 2
-        value_grouped_by_title = group_by_key(chunk, q3_n_workers, lambda b: b.title)
+        value_grouped_by_title = group_by_key(chunk, self.workers_by_query[QUERY3_ID], lambda b: b.title)
         self.__distribute_books(value_grouped_by_title, QUERY3_ID)
 
         # Query 5:
-        # config_params[WORKERS_Q5]
-        q5_n_workers = 5
-        value_grouped_by_title = group_by_key(chunk, q5_n_workers, lambda b: b.title)
+        value_grouped_by_title = group_by_key(chunk, self.workers_by_query[QUERY5_ID], lambda b: b.title)
         self.__distribute_books(value_grouped_by_title, QUERY5_ID)
 
     def __send_review_eof(self, query_id):
@@ -177,15 +170,11 @@ class QueryManager:
 
     def distribute_reviews(self, chunk):
         # Query 3/4:
-        # config_params[WORKERS_Q3]
-        q3_n_workers = 2
-        reviews_grouped_by_title = group_by_key(chunk, q3_n_workers, lambda r: r.title)
+        reviews_grouped_by_title = group_by_key(chunk, self.workers_by_query[QUERY3_ID], lambda r: r.title)
         self.__distribute_reviews(reviews_grouped_by_title, QUERY3_ID)
 
         # Query 5:
-        # config_params[WORKERS_Q5]
-        q5_n_workers = 5
-        reviews_grouped_by_author = group_by_key(chunk, q5_n_workers, lambda r: r.title)
+        reviews_grouped_by_author = group_by_key(chunk, self.workers_by_query[QUERY5_ID], lambda r: r.title)
         self.__distribute_reviews(reviews_grouped_by_author, QUERY5_ID)
 
     def stop(self):
