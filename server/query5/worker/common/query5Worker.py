@@ -1,27 +1,36 @@
 import logging
 import io
 
-from utils.protocol import is_eof
 from utils.worker import Worker
 from utils.middleware.middleware import Middleware
 from dto.q5Partial import Q5Partial
 from utils.serializer.q5ReviewInSerializer import Q5ReviewInSerializer  # type: ignore
 from utils.serializer.q5PartialSerializer import Q5PartialSerializer    # type: ignore
 from utils.serializer.q5BookInSerializer import Q5BookInSerializer      # type: ignore
-from utils.protocol import get_eof_argument2
+from utils.model.message import Message, MessageType
+
+
+def IN_BOOKS_QUEUE_NAME(peer_id):
+    return f'Q5-Books-{peer_id}'
+
+
+def IN_REVIEWS_QUEUE_NAME(peer_id):
+    return f'Q5-Reviews-{peer_id}'
+
+
+def OUT_QUEUE_NAME():
+    return 'Q5-Sync'
+
+
+TOTAL = 'total'
 
 
 class Query5Worker(Worker):
     def __init__(self, category, peer_id, peers, chunk_size):
         middleware = Middleware()
 
-        middleware.consume(queue_name='Q5-Reviews',
-                           callback=self.recv_raw)
-        middleware.subscribe(topic='Q5-EOF', tags=[str(peer_id)], callback=self.recv_eof)
-
-        middleware.subscribe(topic='Q5-Books',
-                             tags=[],
-                             callback=self.recv_book)
+        middleware.consume(queue_name=IN_BOOKS_QUEUE_NAME(peer_id), callback=self.recv_book)
+        middleware.consume(queue_name=IN_REVIEWS_QUEUE_NAME(peer_id), callback=self.recv)
 
         super().__init__(middleware=middleware,
                          in_serializer=Q5ReviewInSerializer(),
@@ -31,7 +40,6 @@ class Query5Worker(Worker):
                          chunk_size=chunk_size,)
         self.category = category.lower()
         self.book_serializer = Q5BookInSerializer()
-        self.results = {}
         self.n_books = 0
         self.all_books_received = False
 
@@ -52,50 +60,48 @@ class Query5Worker(Worker):
             self.save_book(input)
         self.n_books += len(input_chunk)
 
-    def recv_book(self, raw, key):
-        if is_eof(raw):
-            total, worked, sent = get_eof_argument2(raw)
-            logging.debug(f'action: recv_book_eof | total_books_sent: {total} | total_books_saved: {self.n_books}')
-            if total != self.n_books:
-                logging.debug(f'action: recv_book_eof | remaining {total-self.n_books} left')
+    def recv_book(self, raw_msg, key):
+        msg = Message.from_bytes(raw_msg)
+        if msg.type == MessageType.EOF:
+            if msg.args[TOTAL] != self.n_books:
+                logging.debug(f'action: recv_book_eof | remaining {msg.args[TOTAL]-self.n_books} left')
                 return 2
             else:
                 logging.debug('action: recv_book_eof | success | all_books_received')
                 self.all_books_received = True
                 return True
-        self.recv_raw_book(raw)
+        self.recv_raw_book(msg.data)
         return True
 
     #################
     # REVIEW WORKER #
     #################
-    def forward_eof(self, eof):
-        self.middleware.publish(data=eof, topic='Q5-EOF', tag='SYNC')
 
-    def forward_data(self, data):
-        self.middleware.produce(data, 'Q5-Sync')
-
-    def send_to_peer(self, data, peer_id):
-        self.middleware.publish(data=data, topic='Q5-EOF', tag=str(peer_id))
-
-    def recv_raw(self, raw, key):
+    def recv(self, raw_msg, key):
         if not self.all_books_received:
             logging.debug('action: recv_raw | status: not_all_books_received | NACK')
             return 2
-        return super().recv_raw(raw, key)
+        return super().recv(raw_msg, key)
 
-    def work(self, input):
+    def forward_eof(self, eof):
+        self.middleware.produce(eof, OUT_QUEUE_NAME())
+
+    def forward_data(self, data):
+        self.middleware.produce(data, OUT_QUEUE_NAME())
+
+    def work(self, input, client_id):
         review = input
         logging.debug(f'action: new_review | review: {review}')
         if review.title in self.results:
             logging.debug(f'action: new_review | result: update | review: {review}')
             self.results[review.title].update(review)
-
-    def do_after_work(self):
         return
 
-    def send_results(self):
+    def do_after_work(self, client_id):
+        return
+
+    def send_results(self, client_id):
         n = len(self.results)
         self.results = {k: v for k, v in self.results.items() if v.n > 0}
         logging.debug(f'action: filtering_result | result: success | n: {n} >> {len(self.results)}')
-        super().send_results()
+        super().send_results(client_id)

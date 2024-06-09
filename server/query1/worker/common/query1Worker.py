@@ -5,6 +5,7 @@ from utils.serializer.q1InSerializer import Q1InSerializer      # type: ignore
 from utils.serializer.q1OutSerializer import Q1OutSerializer    # type: ignore
 from utils.model.message import Message, MessageType
 
+
 def IN_QUEUE_NAME(peer_id):
     return f'Q1-Books-{peer_id}'
 

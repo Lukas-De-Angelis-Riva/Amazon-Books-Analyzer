@@ -23,6 +23,7 @@ def initialize_config():
     try:
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
         config_params["chunk_size"] = int(os.getenv('CHUNK_SIZE', config["DEFAULT"]["CHUNK_SIZE"]))
+        config_params["n_workers"] = int(os.getenv('N_WORKERS', config["DEFAULT"]["N_WORKERS"]))
         config_params["percentile"] = int(os.getenv('PERCENTILE', config["DEFAULT"]["PERCENTILE"]))
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
@@ -36,6 +37,7 @@ def main():
     config_params = initialize_config()
     logging_level = config_params["logging_level"]
     chunk_size = config_params["chunk_size"]
+    n_workers = config_params["n_workers"]
     percentile = config_params["percentile"]
 
     initialize_log(logging_level)
@@ -45,7 +47,7 @@ def main():
     logging.debug(f"action: config | result: success | logging_level: {logging_level}")
 
     # Initialize server and start server loop
-    worker = Query5Synchronizer(chunk_size, percentile)
+    worker = Query5Synchronizer(n_workers, chunk_size, percentile)
     exitcode = worker.run()
     return exitcode
 
