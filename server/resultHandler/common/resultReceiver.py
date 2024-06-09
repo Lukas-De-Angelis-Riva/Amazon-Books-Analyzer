@@ -24,7 +24,7 @@ class ResultReceiver(Process):
             'Q4': Q3OutSerializer(),
             'Q5': Q5OutSerializer(),
         }
-        self.eofs = {'Q1': False, 'Q2': False, 'Q3': True, 'Q4': True, 'Q5': False}
+        self.eofs = {'Q1': False, 'Q2': False, 'Q3': False, 'Q4': False, 'Q5': False}
 
         self.middleware = Middleware()
         self.middleware.consume(IN_QUEUE, callback=self.save_results)

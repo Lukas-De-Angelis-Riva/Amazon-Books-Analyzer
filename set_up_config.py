@@ -59,6 +59,7 @@ set_up_config('server/query2/synchronizer/config.ini',
 set_up_config('server/query3/worker/config.ini',
               LOGGING_LEVEL='INFO',
               CHUNK_SIZE=850,
+              MIN_AMOUNT_REVIEWS=500,
               MINIMUN_DATE=1990,
               MAXIMUN_DATE=1999)
 
@@ -66,7 +67,6 @@ set_up_config('server/query3/worker/config.ini',
 set_up_config('server/query3/synchronizer/config.ini',
               LOGGING_LEVEL='INFO',
               CHUNK_SIZE=900,
-              MIN_AMOUNT_REVIEWS=500,
               N_TOP=10)
 
 # QUERY 5

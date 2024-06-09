@@ -1,7 +1,7 @@
 import logging
 import io
 
-from utils.worker import Worker
+from utils.worker import Worker, TOTAL
 from utils.middleware.middleware import Middleware
 from dto.q5Partial import Q5Partial
 from utils.serializer.q5ReviewInSerializer import Q5ReviewInSerializer  # type: ignore
@@ -20,9 +20,6 @@ def IN_REVIEWS_QUEUE_NAME(peer_id):
 
 def OUT_QUEUE_NAME():
     return 'Q5-Sync'
-
-
-TOTAL = 'total'
 
 
 class Query5Worker(Worker):
