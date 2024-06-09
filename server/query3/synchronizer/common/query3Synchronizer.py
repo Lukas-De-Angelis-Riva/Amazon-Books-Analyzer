@@ -1,13 +1,17 @@
 import logging
 
-from utils.worker import Worker
+from utils.synchronizer import Synchronizer, TOTAL
 from utils.middleware.middleware import Middleware
 from utils.serializer.q3PartialSerializer import Q3PartialSerializer    # type: ignore
 from utils.serializer.q3OutSerializer import Q3OutSerializer            # type: ignore
-from utils.protocol import make_eof2, get_eof_argument2
+from utils.model.message import Message, MessageType
+
+OUT_TOPIC = "results"
+Q3_TAG = "Q3"
+Q4_TAG = "Q3"
 
 
-class Query3Synchronizer(Worker):
+class Query3Synchronizer(Synchronizer):
     def __init__(self, chunk_size, min_amount_reviews, n_top):
         middleware = Middleware()
         middleware.consume(queue_name='Q3-Sync', callback=self.recv_raw)
@@ -20,7 +24,9 @@ class Query3Synchronizer(Worker):
                          chunk_size=chunk_size,)
         self.min_amount_reviews = min_amount_reviews
         self.n_top = n_top
+        self.results = {} #TODO: replace by persistent implementation
 
+"""
     def forward_eof(self, eof):
         self.middleware.publish(eof, 'results', 'Q3')
 
@@ -71,3 +77,47 @@ class Query3Synchronizer(Worker):
 
         self.results = auxiliary
         logging.debug('action: send_results Q4 | result: success')
+"""
+
+    def process_chunk(self, chunk, client_id):
+        data = self.out_serializer.to_bytes(chunk)
+        res = Message(
+            client_id=client_id,
+            type=MessageType.DATA,
+            data=data,
+        )
+        if not client_id in self.results:
+            self.results[client_id] = []
+
+        self.results[client_id] += chunk
+        self.middleware.publish(res.to_bytes(), OUT_TOPIC, Q3_TAG)
+
+    def terminator(self, client_id):
+        eof = Message(
+            client_id=client_id,
+            type=MessageType.EOF,
+            data=b"",
+            args={
+                TOTAL: sum(self.total_by_worker.values()),
+            },
+        )
+        self.middleware.publish(eof.to_bytes(), OUT_TOPIC, Q3_TAG)
+
+        top_10 = self.get_top_10(client_id)
+        data = self.out_serializer.to_bytes(top_10)
+
+        q4_res = Messsage(
+            client_id=client_id,
+            type=MessageType.DATA,
+            data=data
+        )
+        eof.args[TOTAL] = len(data)
+        self.middleware.publish(eof.to_bytes(), OUT_TOPIC, Q4_TAG)
+
+    def get_top_10(self, client_id):
+        #TODO: implement 
+        pass 
+        
+
+
+
