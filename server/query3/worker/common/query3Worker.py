@@ -104,6 +104,6 @@ class Query3Worker(Worker):
 
     def send_results(self, client_id):
         n = len(self.results)
-        self.results = {k: v for k, v in self.results.items() if v.n > self.min_amount_reviews}
+        self.results = {k: v for k, v in self.results.items() if v.n >= self.min_amount_reviews}
         logging.debug(f'action: filtering_result | result: success | n: {n} >> {len(self.results)}')
         super().send_results(client_id)
