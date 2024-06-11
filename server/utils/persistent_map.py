@@ -1,14 +1,18 @@
-import pickle
+import json
+import os
+
 
 class PersistentMap():
     def __init__(self, path):
         self.path = path
-        self.dirtkeys = set()
         self.map = {}
+
+        if os.path.exists(self.path):
+            with open(self.path, "r") as f:
+                self.map = json.load(f)
 
     def __setitem__(self, k, v):
         self.map.__setitem__(k, v)
-        self.dirkeys.add(k)
 
     def __delitem__(self, k):
         return self.map.__delitem__(k)
