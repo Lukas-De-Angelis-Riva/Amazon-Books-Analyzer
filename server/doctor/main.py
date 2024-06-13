@@ -1,5 +1,6 @@
 from configparser import ConfigParser
 from common.doctor import Doctor
+from common.heartbeat import HeartBeat
 import logging
 import os
 
@@ -35,7 +36,8 @@ def initialize_config():
 
     config_params = {}
     try:
-        config_params["port"] = int(os.getenv('DOCTOR_PORT', config["DEFAULT"]["DOCTOR_PORT"]))
+        config_params["heartbeat_port"] = int(os.getenv('HEARTBEAT_PORT', config["DEFAULT"]["HEARTBEAT_PORT"]))
+        config_params["leader_port"] = int(os.getenv('LEADER_PORT', config["DEFAULT"]["LEADER_PORT"]))
         config_params["peers"] = int(os.getenv('PEERS', config["DEFAULT"]["PEERS"]))
         config_params["peer_id"] = int(os.getenv('PEER_ID', config["DEFAULT"]["PEER_ID"]))
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
@@ -51,13 +53,12 @@ def initialize_config():
 def main():
     config_params = initialize_config()
     logging_level = config_params["logging_level"]
-    port = config_params["port"]
-
+    config_params["port"] = config_params["heartbeat_port"]
     initialize_log(logging_level)
 
     # Log config parameters at the beginning of the program to verify the configuration
     # of the component
-    logging.debug(f"action: config | result: success | port: {port} |"
+    logging.debug(f"action: config | result: success |"
                   f"logging_level: {logging_level}")
 
     # Initialize server and start server loop

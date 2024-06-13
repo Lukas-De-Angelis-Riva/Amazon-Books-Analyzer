@@ -35,9 +35,14 @@ class MessageHandler:
             return len(message)
         
     def receive_message(self):
-        data, addr = self.sock.recvfrom(MAXSIZE)
-        message = self.deserialize(data)
-        return message, addr
+        try:
+            data, addr = self.sock.recvfrom(MAXSIZE)
+            message = self.deserialize(data)
+        except socket.error as e:
+            message = {}
+            addr = None
+        finally:
+            return message, addr
     
     def close(self):
         self.sock.close()
