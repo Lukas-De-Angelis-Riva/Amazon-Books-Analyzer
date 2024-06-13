@@ -13,11 +13,16 @@ class ClientHandler:
         signal.signal(signal.SIGTERM, self.__handle_signal)
 
         # Initialize server socket
-        self.config_params = config_params
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', config_params['port']))
         self._server_socket.listen(1)
         self._server_on = True
+        self.workers_by_query = {
+            QUERY1_ID: config_params['n_workers_q1'],
+            QUERY2_ID: config_params['n_workers_q2'],
+            QUERY3_ID: config_params['n_workers_q3'],
+            QUERY5_ID: config_params['n_workers_q5']
+        }
 
     def run(self):
         logging.info('action: run server | result: success')
@@ -33,7 +38,7 @@ class ClientHandler:
     def __handle_client_connection(self, client_sock):
         client_id = uuid.uuid4()
         try:
-            manager = QueryManager(client_id, workers_by_query={QUERY1_ID: 2, QUERY2_ID: 2, QUERY3_ID: 2, QUERY5_ID: 5})
+            manager = QueryManager(client_id, workers_by_query=self.workers_by_query)
 
             protocolHandler = ProtocolHandler(client_sock)
             keep_reading = True

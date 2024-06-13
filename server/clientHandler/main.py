@@ -37,6 +37,10 @@ def initialize_config():
     try:
         config_params["port"] = int(os.getenv('SERVER_PORT', config["DEFAULT"]["SERVER_PORT"]))
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
+        config_params["n_workers_q1"] = int(os.getenv('N_WORKERS_Q1', config["DEFAULT"]["N_WORKERS_Q1"]))
+        config_params["n_workers_q2"] = int(os.getenv('N_WORKERS_Q2', config["DEFAULT"]["N_WORKERS_Q2"]))
+        config_params["n_workers_q3"] = int(os.getenv('N_WORKERS_Q3', config["DEFAULT"]["N_WORKERS_Q3"]))
+        config_params["n_workers_q5"] = int(os.getenv('N_WORKERS_Q5', config["DEFAULT"]["N_WORKERS_Q5"]))
 
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))

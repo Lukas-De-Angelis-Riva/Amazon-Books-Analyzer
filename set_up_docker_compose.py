@@ -269,6 +269,10 @@ def create_clientHandler():
         'environment': [
             'PYTHONUNBUFFERED=1',
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
+            f'N_WORKERS_Q1={AMOUNT_OF_QUERY1_WORKERS}',
+            f'N_WORKERS_Q2={AMOUNT_OF_QUERY2_WORKERS}',
+            f'N_WORKERS_Q3={AMOUNT_OF_QUERY3_WORKERS}',
+            f'N_WORKERS_Q5={AMOUNT_OF_QUERY5_WORKERS}'
         ],
         'volumes': [
             './server/clientHandler/config.ini:/config.ini',
