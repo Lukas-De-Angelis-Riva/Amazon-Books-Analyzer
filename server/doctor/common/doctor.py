@@ -5,7 +5,7 @@ import time
 from common.leaderManager import LeaderManager
 from common.heartbeat import HeartBeat
 
-from multiprocessing import Semaphore
+from multiprocessing import Semaphore, Event
 
 class Doctor:
     def __init__(self, config_params):
@@ -20,7 +20,7 @@ class Doctor:
 
         self.my_ip = "doctor"+str(self.id)
 
-        self.leader_token = Semaphore()
+        self.leader_token = Event()
 
         
     def run(self):
@@ -44,9 +44,8 @@ class Doctor:
     def doctorloop(self):
         while self.on:
             time.sleep(5)
-            with self.leader_token:
-                print("Soy el doctor activo")
-                time.sleep(1)
+            self.leader_token.wait()
+            print("Soy el doctor activo")
 
                 
     def __handle_signal(self, signum, frame):

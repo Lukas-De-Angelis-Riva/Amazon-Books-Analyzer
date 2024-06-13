@@ -7,7 +7,7 @@ import signal
 import time
 
 class LeaderManager(Process):
-    def __init__(self, ip, port, peers_amount, id, leader_token):
+    def __init__(self, ip, port, peers_amount, id, doctor_token):
         super().__init__(name='LeaderManager', args=())
         self.on = True
         self.peers_amount = peers_amount
@@ -17,8 +17,7 @@ class LeaderManager(Process):
         self.peers = ["doctor"+str(i) for i in range(1,peers_amount+1)][::-1]
         self.messageHandler = MessageHandler(ip, port)
         
-        self.lock = leader_token
-        self.lock.acquire()
+        self.doctor_token = doctor_token
 
         self.leader_id = None
         self.lock_leader_id = threading.Lock()
@@ -72,8 +71,11 @@ class LeaderManager(Process):
         if sender_id < self.id:
             self.start_election()
         else:
-            #if self.am_leader(): self.lock.acquire()
-            
+            if self.id == sender_id: self.doctor_token.set()
+
+            if self.am_leader() and self.id != sender_id:
+                self.doctor_token.clear()
+
             self.leader_id = sender_id
             self.leader_elected.set()
             self.ok_received.set()
@@ -120,7 +122,6 @@ class LeaderManager(Process):
     
 
     def announce_coordinator(self):
-        #self.lock.release()
         for peer_ip in self.peers:
             self.messageHandler.send_message((peer_ip,self.port),
                                                 MessageType.COORDINATOR,
@@ -157,10 +158,10 @@ class LeaderManager(Process):
             self.event.wait(2)
             self.leader_elected.wait()
             if self.am_leader():   
-                logging.info(f"action: heald_check  | leader: {self.leader_id}")
+                #logging.info(f"action: heald_check  | leader: {self.leader_id}")
                 self.heald_check()
             else:
-                logging.info(f"action: leader_check | leader: {self.leader_id}")
+                #logging.info(f"action: leader_check | leader: {self.leader_id}")
                 self.check_leader()
         
         receive_message.join()
