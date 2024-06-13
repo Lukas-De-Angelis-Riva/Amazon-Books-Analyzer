@@ -1,6 +1,7 @@
 import logging
 import io
 
+from utils.middleware.middleware import ACK, NACK
 from utils.listener import Listener
 from utils.model.message import Message, MessageType
 
@@ -51,8 +52,7 @@ class Synchronizer(Listener):
                 msg.client_id
             )
 
-        # TODO: return Middleware.ACK
-        return True
+        return ACK
 
     def _recv_raw(self, data, worker_id, client_id):
         reader = io.BytesIO(data)

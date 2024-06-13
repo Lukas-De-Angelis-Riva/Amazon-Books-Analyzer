@@ -3,6 +3,7 @@ import io
 
 from utils.listener import Listener
 from utils.model.message import Message, MessageType
+from utils.middleware.middleware import ACK, NACK
 
 TOTAL = "total"
 WORKER_ID = "worker_id"
@@ -81,8 +82,7 @@ class Worker(Listener):
         else:
             self.recv_raw(msg.data, msg.client_id)
 
-        # TODO: return Middleware.ACK
-        return True
+        return ACK
 
     def recv_raw(self, data, client_id):
         reader = io.BytesIO(data)

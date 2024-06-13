@@ -8,7 +8,7 @@ from utils.serializer.q2OutSerializer import Q2OutSerializer    # type: ignore
 from utils.serializer.q3OutSerializer import Q3OutSerializer    # type: ignore
 from utils.serializer.q5OutSerializer import Q5OutSerializer    # type: ignore
 
-from utils.middleware.middleware import Middleware
+from utils.middleware.middleware import Middleware, ACK
 from utils.model.message import Message, MessageType
 
 IN_QUEUE = 'RH-Results'
@@ -45,7 +45,7 @@ class ResultReceiver(Process):
         logging.debug(f'action: save_results({results_type}) | result: in_progress | n: {len(results)}')
         if len(results) == 0:
             logging.debug(f'action: save_results({results_type}) | result: success')
-            return True
+            return ACK
 
         with self.stop_lock, self.file_lock, open(self.file_name, 'a', encoding='UTF8') as file:
             writer = csv.writer(file)
@@ -65,7 +65,7 @@ class ResultReceiver(Process):
                 else:
                     continue
         logging.debug(f'action: save_results({results_type}) | result: success')
-        return True
+        return ACK
 
     def write_eof(self):
         with self.stop_lock, self.file_lock, open(self.file_name, 'a', encoding='UTF8') as file:

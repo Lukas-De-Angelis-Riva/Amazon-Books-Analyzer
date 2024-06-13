@@ -2,7 +2,7 @@ import logging
 import io
 
 from utils.worker import Worker, TOTAL
-from utils.middleware.middleware import Middleware
+from utils.middleware.middleware import Middleware, ACK, NACK
 from dto.q3Partial import Q3Partial
 from utils.serializer.q3ReviewInSerializer import Q3ReviewInSerializer  # type: ignore
 from utils.serializer.q3PartialSerializer import Q3PartialSerializer    # type: ignore
@@ -69,13 +69,13 @@ class Query3Worker(Worker):
         if msg.type == MessageType.EOF:
             if msg.args[TOTAL] != self.n_books:
                 logging.debug(f'action: recv_book_eof | remaining {msg.args[TOTAL]-self.n_books} left')
-                return 2
+                return NACK
             else:
                 logging.debug('action: recv_book_eof | success | all_books_received')
                 self.all_books_received = True
-                return True
+                return ACK
         self.recv_raw_book(msg.data)
-        return True
+        return ACK
 
     #################
     # REVIEW WORKER #
@@ -83,7 +83,7 @@ class Query3Worker(Worker):
     def recv(self, raw_msg, key):
         if not self.all_books_received:
             logging.debug('action: recv_raw | status: not_all_books_received | NACK')
-            return 2
+            return NACK
         return super().recv(raw_msg, key)
 
     def forward_eof(self, eof):
