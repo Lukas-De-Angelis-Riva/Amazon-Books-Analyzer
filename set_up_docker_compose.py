@@ -73,6 +73,28 @@ def create_query1Worker(i):
             './server/query1/worker/config.ini:/config.ini',
         ],
         'depends_on': [
+            'query1Synchronizer',
+        ],
+        'networks': [
+            NETWORK_NAME,
+        ],
+    }
+
+
+def create_query1Synchronizer():
+    return {
+        'container_name': 'query1Synchronizer',
+        'image': 'query1_synchronizer:latest',
+        'entrypoint': 'python3 /main.py',
+        'environment': [
+            'PYTHONUNBUFFERED=1',
+            f'LOGGING_LEVEL={LOGGING_LEVEL}',
+            'N_WORKERS='+str(AMOUNT_OF_QUERY1_WORKERS),
+        ],
+        'volumes': [
+            './server/query1/synchronizer/config.ini:/config.ini',
+        ],
+        'depends_on': [
             'resultHandler',
         ],
         'networks': [
@@ -112,6 +134,7 @@ def create_query2Synchronizer():
         'environment': [
             'PYTHONUNBUFFERED=1',
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
+            'N_WORKERS='+str(AMOUNT_OF_QUERY2_WORKERS),
         ],
         'volumes': [
             './server/query2/synchronizer/config.ini:/config.ini',
@@ -156,6 +179,7 @@ def create_query3Synchronizer():
         'environment': [
             'PYTHONUNBUFFERED=1',
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
+            'N_WORKERS='+str(AMOUNT_OF_QUERY3_WORKERS),
         ],
         'volumes': [
             './server/query3/synchronizer/config.ini:/config.ini',
@@ -200,6 +224,7 @@ def create_query5Synchronizer():
         'environment': [
             'PYTHONUNBUFFERED=1',
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
+            'N_WORKERS='+str(AMOUNT_OF_QUERY5_WORKERS),
         ],
         'volumes': [
             './server/query5/synchronizer/config.ini:/config.ini',
@@ -244,6 +269,10 @@ def create_clientHandler():
         'environment': [
             'PYTHONUNBUFFERED=1',
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
+            f'N_WORKERS_Q1={AMOUNT_OF_QUERY1_WORKERS}',
+            f'N_WORKERS_Q2={AMOUNT_OF_QUERY2_WORKERS}',
+            f'N_WORKERS_Q3={AMOUNT_OF_QUERY3_WORKERS}',
+            f'N_WORKERS_Q5={AMOUNT_OF_QUERY5_WORKERS}'
         ],
         'volumes': [
             './server/clientHandler/config.ini:/config.ini',
@@ -278,6 +307,7 @@ def create_server_side():
     # QUERY 1
     for i in range(AMOUNT_OF_QUERY1_WORKERS):
         config['services'][f'query1Worker{i+1}'] = create_query1Worker(i+1)
+    config['services']['query1Synchronizer'] = create_query1Synchronizer()
 
     # QUERY 2
     for i in range(AMOUNT_OF_QUERY2_WORKERS):

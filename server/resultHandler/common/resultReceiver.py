@@ -7,9 +7,11 @@ from utils.serializer.q1OutSerializer import Q1OutSerializer    # type: ignore
 from utils.serializer.q2OutSerializer import Q2OutSerializer    # type: ignore
 from utils.serializer.q3OutSerializer import Q3OutSerializer    # type: ignore
 from utils.serializer.q5OutSerializer import Q5OutSerializer    # type: ignore
-from utils.protocol import is_eof
 
-from utils.middleware.middleware import Middleware
+from utils.middleware.middleware import Middleware, ACK
+from utils.model.message import Message, MessageType
+
+IN_QUEUE = 'RH-Results'
 
 
 class ResultReceiver(Process):
@@ -24,11 +26,8 @@ class ResultReceiver(Process):
         }
         self.eofs = {'Q1': False, 'Q2': False, 'Q3': False, 'Q4': False, 'Q5': False}
 
-        # TODO: BEST IF SUBSCRIBE ALLOWS A LIST OF TAGS
         self.middleware = Middleware()
-        self.middleware.subscribe(topic='results',
-                                  tags=['Q1', 'Q2', 'Q3', 'Q4', 'Q5'],
-                                  callback=self.save_results)
+        self.middleware.consume(IN_QUEUE, callback=self.save_results)
 
         self.file_lock = file_lock
         self.file_name = file_name
@@ -46,7 +45,7 @@ class ResultReceiver(Process):
         logging.debug(f'action: save_results({results_type}) | result: in_progress | n: {len(results)}')
         if len(results) == 0:
             logging.debug(f'action: save_results({results_type}) | result: success')
-            return True
+            return ACK
 
         with self.stop_lock, self.file_lock, open(self.file_name, 'a', encoding='UTF8') as file:
             writer = csv.writer(file)
@@ -66,7 +65,7 @@ class ResultReceiver(Process):
                 else:
                     continue
         logging.debug(f'action: save_results({results_type}) | result: success')
-        return True
+        return ACK
 
     def write_eof(self):
         with self.stop_lock, self.file_lock, open(self.file_name, 'a', encoding='UTF8') as file:
@@ -74,14 +73,15 @@ class ResultReceiver(Process):
             writer.writerow(['EOF'])
 
     def deserialize_result(self, bytes_raw, type):
-        if is_eof(bytes_raw):
+        msg = Message.from_bytes(bytes_raw)
+        if msg.type == MessageType.EOF:
             self.eofs[type] = True
             logging.debug(f'action: recv EOF {type}| result: success')
             if all(self.eofs.values()):
                 self.write_eof()
             return []
 
-        reader = io.BytesIO(bytes_raw)
+        reader = io.BytesIO(msg.data)
         results = self.serializers[type].from_chunk(reader)
         return results
 

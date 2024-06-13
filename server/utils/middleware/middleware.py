@@ -4,6 +4,9 @@ import traceback
 logging.getLogger('pika').setLevel(logging.ERROR)
 
 HOST = 'rabbitmq'
+STOP = 0
+ACK = 1
+NACK = 2
 
 
 class ChannelAlreadyConsuming(Exception):
@@ -33,15 +36,19 @@ class Middleware:
     def __make_callback(self, callback):
         def __wrapper(ch, method, properties, body):
             response = callback(body, method.routing_key)
-            if response == 0:
+            if response == STOP:
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 self.stop()
                 return
-            elif response == 1:
+            elif response == ACK:
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return
-            else:  # response == 2:
+            elif response == NACK:
                 ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+            else:
+                logging.error(f"action: callback | unexpected value: {response}")
+                raise RuntimeError(f"Unexpected value: {response}")
+
         return __wrapper
 
     def consume(self, queue_name: str, callback):

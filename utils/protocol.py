@@ -86,11 +86,20 @@ def get_eof_argument2(bytes):
 # worked: total amount of data worked by your peers
 # sent: total amount of data sent by your peers to next stage
 def make_eof2(total, worked, sent):
-    bytes = code_to_bytes(TlvTypes.EOF)
-    bytes += int.to_bytes(total, SIZE_LENGTH, 'big')
-    bytes += int.to_bytes(worked, SIZE_LENGTH, 'big')
-    bytes += int.to_bytes(sent, SIZE_LENGTH, 'big')
+    bytes = code_to_bytes(tlvtypes.eof)
+    bytes += int.to_bytes(total, size_length, 'big')
+    bytes += int.to_bytes(worked, size_length, 'big')
+    bytes += int.to_bytes(sent, size_length, 'big')
     return bytes
+
+
+def make_token(peer_id, total, worked, sent):
+    bytes = code_to_bytes(tlvtypes.eof)
+    bytes += int.to_bytes(total, size_length, 'big')
+    bytes += int.to_bytes(worked, size_length, 'big')
+    bytes += int.to_bytes(sent, size_length, 'big')
+    return bytes
+
 
 
 def make_eof(i=0):
@@ -152,7 +161,6 @@ def intarr_to_bytes(int_array, code: int):
     bytes += int.to_bytes(len(bytes_arr), SIZE_LENGTH, 'big')
     bytes += bytes_arr
     return bytes
-
 
 def intarr_from_bytes(bytes_arr):
     array = []

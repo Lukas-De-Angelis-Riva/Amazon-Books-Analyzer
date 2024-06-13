@@ -2,7 +2,11 @@ import logging
 import io
 
 from utils.listener import Listener
-from utils.protocol import make_eof2, get_eof_argument2
+from utils.model.message import Message, MessageType
+from utils.middleware.middleware import ACK, NACK
+
+TOTAL = "total"
+WORKER_ID = "worker_id"
 
 
 class Worker(Listener):
@@ -14,11 +18,9 @@ class Worker(Listener):
         self.results = {}
         self.in_serializer = in_serializer
         self.out_serializer = out_serializer
-        self.worked = 0
-        self.remaining = -1
-        self.received_eof = False
+        self.total_expected = -1
+        self.total_worked = 0
         self.total_sent = 0
-        self.is_leader = (self.peer_id == self.peers)
 
     def forward_eof(self, eof):
         raise RuntimeError("Must be redefined")
@@ -26,76 +28,79 @@ class Worker(Listener):
     def forward_data(self, data):
         raise RuntimeError("Must be redefined")
 
-    def send_to_peer(self, data, peer_id):
-        raise RuntimeError("Must be redefined")
-
-    def work(self, input):
+    def work(self, input, client_id):
         return
 
-    def do_after_work(self):
+    def do_after_work(self, client_id):
         return
 
-    def recv_raw(self, raw, key):
-        if not self.is_leader and self.received_eof:
-            logging.debug('action: recv_raw | status: unexpected_raw | NACK')
-            # TODO: return Middleware.NACK
-            return 2
+    def send_chunk(self, chunk, client_id):
+        logging.debug(f'action: send_results | status: in_progress | forwarding_chunk | len(chunk): {len(chunk)}')
+        data = self.out_serializer.to_bytes(chunk)
+        msg = Message(
+            client_id=client_id,
+            type=MessageType.DATA,
+            data=data,
+            args={
+                WORKER_ID: self.peer_id,
+            }
+        )
+        self.forward_data(msg.to_bytes())
+        self.total_sent += len(chunk)
+        return
 
-        reader = io.BytesIO(raw)
-        input_chunk = self.in_serializer.from_chunk(reader)
-        logging.debug(f'action: recv_raw | status: new_chunk | len(chunk): {len(input_chunk)}')
-
-        for input in input_chunk:
-            self.work(input)
-        self.do_after_work()
-        self.worked += len(input_chunk)
-
-        if self.remaining >= 0 and self.remaining == self.worked:
-            self.send_results()
-            logging.debug('action: recv_eof | status: success | forwarding_eof')
-            eof = make_eof2(total=len(self.results)+self.total_sent, worked=0, sent=0)
-            self.forward_eof(eof)
-
-        # TODO: return Middleware.ACK
-        return True
-
-    def send_results(self):
+    def send_results(self, client_id):
         chunk = []
         logging.debug(f'action: send_results | status: in_progress | len(results): {len(self.results)}')
         for result in self.results.values():
             chunk.append(result)
             if len(chunk) >= self.chunk_size:
-                logging.debug(f'action: send_results | status: in_progress | forwarding_chunk | len(chunk): {len(chunk)}')
-                data = self.out_serializer.to_bytes(chunk)
-                self.forward_data(data)
+                self.send_chunk(chunk, client_id)
                 chunk = []
         if chunk:
-            logging.debug(f'action: send_results | status: in_progress | forwarding_chunk | len(chunk): {len(chunk)}')
-            data = self.out_serializer.to_bytes(chunk)
-            self.forward_data(data)
+            self.send_chunk(chunk, client_id)
         logging.debug('action: send_results | status: success')
+        return
 
-    def recv_eof(self, eof, key):
-        logging.debug('action: recv_eof | status: in_progress')
-        total, worked, sent = get_eof_argument2(eof)
-        remaining = total - worked
-        logging.debug(f'action: recv_eof | status: in_progress | worked: {self.worked} | remaining: {remaining-self.worked}')
-        if self.is_leader:
-            if worked + self.worked >= total:
-                self.send_results()
-                logging.debug('action: recv_eof | status: success | forwarding_eof')
-                eof = make_eof2(total=len(self.results)+sent, worked=0, sent=0)
-                self.forward_eof(eof)
-            else:
-                logging.debug(f'action: recv_eof | status: waiting | total_left: {remaining-self.worked}')
-                self.total_sent = sent
-                self.remaining = remaining
+    def send_eof(self, client_id):
+        eof = Message(
+            client_id=client_id,
+            type=MessageType.EOF,
+            data=b'',
+            args={
+                TOTAL: self.total_sent,
+                WORKER_ID: self.peer_id,
+            }
+        )
+        self.forward_eof(eof.to_bytes())
+        return
+
+    def recv(self, raw_msg, key):
+        msg = Message.from_bytes(raw_msg)
+        if msg.type == MessageType.EOF:
+            self.recv_eof(msg.args[TOTAL], msg.client_id)
         else:
-            self.send_results()
-            logging.debug(f'action: recv_eof | status: success | sending_eof_to: {self.peer_id+1}')
-            eof = make_eof2(total=total, worked=worked+self.worked, sent=len(self.results)+sent)
-            self.send_to_peer(data=eof, peer_id=self.peer_id+1)
-        self.received_eof = True
+            self.recv_raw(msg.data, msg.client_id)
 
-        # TODO: return Middleware.ACK
-        return True
+        return ACK
+
+    def recv_raw(self, data, client_id):
+        reader = io.BytesIO(data)
+        input_chunk = self.in_serializer.from_chunk(reader)
+        logging.debug(f'action: recv_raw | status: new_chunk | len(chunk): {len(input_chunk)}')
+        for input in input_chunk:
+            self.work(input, client_id)
+        self.do_after_work(client_id)
+        self.total_worked += len(input_chunk)
+
+        if self.total_expected == self.total_worked:
+            self.send_results(client_id)
+            self.send_eof(client_id)
+        return
+
+    def recv_eof(self, total, client_id):
+        self.total_expected = total
+        if self.total_expected == self.total_worked:
+            self.send_results(client_id)
+            self.send_eof(client_id)
+        return

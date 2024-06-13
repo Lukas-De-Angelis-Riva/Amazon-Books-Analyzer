@@ -6,6 +6,7 @@ docker-image-system:
 	docker build -f ./base-images/server-base.dockerfile -t "server-base:latest" .
 	docker build -f ./server/clientHandler/Dockerfile -t "client_handler:latest" .
 	docker build -f ./server/query1/worker/Dockerfile -t "query1_worker:latest" .
+	docker build -f ./server/query1/synchronizer/Dockerfile -t "query1_synchronizer:latest" .	
 	docker build -f ./server/query2/worker/Dockerfile -t "query2_worker:latest" .
 	docker build -f ./server/query2/synchronizer/Dockerfile -t "query2_synchronizer:latest" .
 	docker build -f ./server/query3/worker/Dockerfile -t "query3_worker:latest" .
@@ -21,8 +22,8 @@ system-run: docker-image-system
 .PHONY: system-run	
 
 client-run: docker-image-client
-	sudo docker compose -f docker-compose-client.yaml build
-	sudo docker compose -f docker-compose-client.yaml run --rm client python main.py
+	docker compose -f docker-compose-client.yaml build
+	docker compose -f docker-compose-client.yaml run --rm client python main.py
 .PHONY: client-run
 
 system-shutdown:
@@ -32,4 +33,10 @@ system-shutdown:
 
 system-logs:
 	docker compose -f docker-compose-server.yaml logs -f
+
+system-config:
+	# python3 set_up_config.py
+	python3 set_up_middleware_queues.py
+	python3 set_up_docker_compose.py
+	
 .PHONY: system-logs

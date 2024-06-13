@@ -38,23 +38,28 @@ set_up_config('server/query1/worker/config.ini',
               PUBLISHED_DATE_MAX=2023,
               CATEGORY='computers',
               TITLE='distributed')
+# ## SYNCH
+set_up_config('server/query1/synchronizer/config.ini',
+              LOGGING_LEVEL='INFO',
+              CHUNK_SIZE=5000)
 
 # QUERY 2
 # ## WORKER
 set_up_config('server/query2/worker/config.ini',
               LOGGING_LEVEL='INFO',
+              MIN_DECADES=10,
               CHUNK_SIZE=2500)
 # ## SYNCH
 set_up_config('server/query2/synchronizer/config.ini',
               LOGGING_LEVEL='INFO',
-              CHUNK_SIZE=5000,
-              MIN_DECADES=10)
+              CHUNK_SIZE=5000)
 
 # QUERY 3
 # ## WORKER
 set_up_config('server/query3/worker/config.ini',
               LOGGING_LEVEL='INFO',
               CHUNK_SIZE=850,
+              MIN_AMOUNT_REVIEWS=500,
               MINIMUN_DATE=1990,
               MAXIMUN_DATE=1999)
 
@@ -62,7 +67,6 @@ set_up_config('server/query3/worker/config.ini',
 set_up_config('server/query3/synchronizer/config.ini',
               LOGGING_LEVEL='INFO',
               CHUNK_SIZE=900,
-              MIN_AMOUNT_REVIEWS=500,
               N_TOP=10)
 
 # QUERY 5
