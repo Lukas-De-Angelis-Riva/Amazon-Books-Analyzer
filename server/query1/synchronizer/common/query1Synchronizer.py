@@ -9,8 +9,11 @@ TAG = 'Q1'
 
 
 class Query1Synchronizer(Synchronizer):
-    def __init__(self, n_workers):
-        middleware = Middleware()
+    def __init__(self, n_workers, test_middleware=None):
+        if test_middleware:
+            middleware = test_middleware
+        else:
+            middleware = Middleware()
         middleware.consume(queue_name=IN_QUEUE_NAME, callback=self.recv)
         super().__init__(
             middleware=middleware,

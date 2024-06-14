@@ -3,6 +3,7 @@ class TestMiddleware:
         self.callback = None
         self.messages = []
         self.sent = []
+        self.callback_counter = 0
 
     def add_message(self, msg):
         self.messages.append(msg)
@@ -10,6 +11,7 @@ class TestMiddleware:
     def start(self):
         for msg in self.messages:
             self.callback(msg, 'test-key')
+            self.callback_counter += 1
 
     def stop(self):
         return

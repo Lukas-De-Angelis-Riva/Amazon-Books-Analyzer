@@ -125,6 +125,7 @@ class TestUtils(unittest.TestCase):
             publishedDate='2017',
             categories=['Computers'],
         )
+
         _chunk1 = in_serializer.to_bytes([book1, book2])
         msg = Message(
             client_id=client_id,
