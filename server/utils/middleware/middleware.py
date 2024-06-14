@@ -88,9 +88,5 @@ class Middleware:
     def produce(self, data, out_queue_name):
         return self.__send_msg(data=data, exchange='', routing_key=out_queue_name)
 
-    def requeue(self, data, in_queue_name):
-        # Same as produce, but better semantic
-        return self.produce(data, in_queue_name)
-
     def publish(self, data, topic, tag):
         return self.__send_msg(data=data, exchange=topic, routing_key=tag)
