@@ -1,3 +1,4 @@
+import uuid
 import struct
 
 from utils.TCPhandler import TCPHandler
@@ -24,6 +25,21 @@ class ProtocolHandler:
         bytes = int.to_bytes(TlvTypes.ACK, TlvTypes.SIZE_CODE_MSG, 'big')
         result = self.TCPHandler.send_all(bytes)
         assert result == len(bytes), 'TCP Error: cannot send ACK'
+
+    def handshake(self, client_uuid):
+        bytes = int.to_bytes(TlvTypes.UUID, TlvTypes.SIZE_CODE_MSG, 'big')
+        bytes += client_uuid.bytes
+        result = self.TCPHandler.send_all(bytes)
+        assert result == len(bytes), 'TCP Error: cannot send UUID'
+        self.wait_confimation()
+
+    def wait_handshake(self):
+        raw = self.TCPHandler.read(TlvTypes.SIZE_CODE_MSG+TlvTypes.SIZE_UUID_MSG)
+        type = struct.unpack('!i', raw[:TlvTypes.SIZE_CODE_MSG])[0]
+        assert type == TlvTypes.UUID, f'Unexpected type: expected: UUID({TlvTypes.UUID}), received {type}'
+        client_uuid = uuid.UUID(bytes=raw[TlvTypes.SIZE_CODE_MSG:])
+        self.ack()
+        return client_uuid
 
     def send_eof(self):
         eof = make_eof(0)

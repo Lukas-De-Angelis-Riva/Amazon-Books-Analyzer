@@ -14,12 +14,14 @@ def next():
 class TlvTypes():
     # sizes
     SIZE_CODE_MSG = 4
+    SIZE_UUID_MSG = 16
 
     # types
     EOF = next()
     WAIT = next()
     POLL = next()
     ACK = next()
+    UUID = next()
 
     BOOK_CHUNK = next()
     BOOK = next()

@@ -6,6 +6,7 @@ from model.review import Review
 import logging
 import socket
 import signal
+import uuid
 import time
 import csv
 import os
@@ -35,12 +36,13 @@ class Client:
         self.socket = None
         self.handler = None
         self.query_sizes = {'Q1': 0, 'Q2': 0, 'Q3': 0, 'Q4': 0, 'Q5': 0}
+        self.id = uuid.uuid4()
 
         signal.signal(signal.SIGTERM, self.__handle_signal)
         self.signal_received = False
 
     def run(self):
-        logging.info('action: running client')
+        logging.info(f'action: running client | CLIENT-ID: {self.id}')
         # Read books.csv and send to the system.
 
         if not os.path.isfile(self.config["book_file_path"]):
@@ -54,6 +56,10 @@ class Client:
             self.connect(self.config["ip"], self.config["port"])
         except Exception as e:
             logging.error(f'action: connect | result: fail | error: {str(e)}')
+            return
+
+        ok = self.handshake()
+        if not ok:
             return
 
         self.send_books()
@@ -89,6 +95,16 @@ class Client:
         self.disconnect()
         self.signal_received = True
         logging.debug('action: stop_client | result: success')
+
+    def handshake(self):
+        try:
+            logging.debug('action: handshake | result: in_progress')
+            self.protocolHandler.handshake(self.id)
+            logging.debug('action: handshake | result: success')
+        except (SocketBroken, OSError) as e:
+            logging.error(f'action: handshake | result: fail | error: {str(e) or repr(e)}')
+            return False
+        return True
 
     def send_books(self):
         self.send_file(self.config["book_file_path"],

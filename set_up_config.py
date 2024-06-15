@@ -27,7 +27,8 @@ set_up_config('client/config.ini',
 
 # CLIENT HANDLER
 set_up_config('server/clientHandler/config.ini',
-              SERVER_PORT=SERVER_PORT)
+              SERVER_PORT=SERVER_PORT,
+              MAX_USERS=3)
 
 # QUERY 1
 # ## WORKER
