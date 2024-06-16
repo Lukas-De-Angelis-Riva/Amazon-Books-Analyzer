@@ -25,22 +25,22 @@ class Query1Synchronizer(Synchronizer):
             chunk_size=1
         )
 
-    def process_chunk(self, chunk, client_id):
+    def process_chunk(self, chunk):
         data = self.out_serializer.to_bytes(chunk)
         msg = Message(
-            client_id=client_id,
+            client_id=self.tracker.client_id,
             type=MessageType.DATA,
             data=data
         )
         self.middleware.publish(msg.to_bytes(), OUT_TOPIC, TAG)
 
-    def terminator(self, client_id):
+    def terminator(self):
         eof = Message(
-            client_id=client_id,
+            client_id=self.tracker.client_id,
             type=MessageType.EOF,
             data=b'',
             args={
-                TOTAL: sum(self.total_by_worker.values())
+                TOTAL: self.tracker.total_worked()
             }
         )
         self.middleware.publish(eof.to_bytes(), OUT_TOPIC, TAG)

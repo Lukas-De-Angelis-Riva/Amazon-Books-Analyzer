@@ -37,18 +37,18 @@ class Query1Worker(Worker):
     def forward_data(self, data):
         self.middleware.produce(data, OUT_QUEUE_NAME())
 
-    def work(self, input, client_id):
+    def work(self, input):
         book = input
         logging.debug(f'action: new_book | book: {book}')
         if self.matches(book):
             logging.debug(f'action: new_book | result: match | book: {book}')
             self.matching_books.append(book)
 
-    def do_after_work(self, client_id):
+    def do_after_work(self):
         if self.matching_books:
             data = self.out_serializer.to_bytes(self.matching_books)
             msg = Message(
-                client_id=client_id,
+                client_id=self.tracker.client_id,
                 type=MessageType.DATA,
                 data=data,
                 args={
@@ -56,5 +56,5 @@ class Query1Worker(Worker):
                 }
             )
             self.forward_data(msg.to_bytes())
-            self.total_sent += len(self.matching_books)
+            self.tracker.total_sent += len(self.matching_books)
         self.matching_books = []

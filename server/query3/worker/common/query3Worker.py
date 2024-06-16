@@ -1,7 +1,7 @@
 import logging
 import io
 
-from utils.worker import Worker, TOTAL
+from utils.worker import Worker, ClientTracker, TOTAL
 from utils.middleware.middleware import Middleware, ACK, NACK
 from dto.q3Partial import Q3Partial
 from utils.serializer.q3ReviewInSerializer import Q3ReviewInSerializer  # type: ignore
@@ -22,6 +22,13 @@ def OUT_QUEUE_NAME():
     return 'Q3-Sync'
 
 
+class BookTracker(ClientTracker):
+    def __init__(self, client_id):
+        super().__init__(client_id)
+        self.n_books = 0
+        self.all_books_received = False
+
+
 class Query3Worker(Worker):
     def __init__(self, min_amount_reviews, minimum_date, maximum_date, peer_id, peers, chunk_size):
         middleware = Middleware()
@@ -39,8 +46,6 @@ class Query3Worker(Worker):
         self.maximum_date = maximum_date
         self.minimum_date = minimum_date
         self.book_serializer = Q3BookInSerializer()
-        self.n_books = 0
-        self.all_books_received = False
 
     ###############
     # BOOK WORKER #
@@ -54,7 +59,7 @@ class Query3Worker(Worker):
         logging.debug(f'action: new_book | book: {book}')
         if self.matches_criteria(book):
             logging.debug(f'action: new_book | result: saving | book: {book}')
-            self.results[book.title] = Q3Partial(book.title, book.authors)
+            self.tracker.results[book.title] = Q3Partial(book.title, book.authors)
 
     def recv_raw_book(self, raw):
         reader = io.BytesIO(raw)
@@ -62,17 +67,21 @@ class Query3Worker(Worker):
         logging.debug(f'action: new_chunk | chunck_len: {len(input_chunk)}')
         for input in input_chunk:
             self.save_book(input)
-        self.n_books += len(input_chunk)
+        self.tracker.n_books += len(input_chunk)
 
     def recv_book(self, raw_msg, key):
         msg = Message.from_bytes(raw_msg)
+        if msg.client_id not in self.clients:
+            self.clients[msg.client_id] = BookTracker(msg.client_id)
+        self.tracker = self.clients[msg.client_id]
+
         if msg.type == MessageType.EOF:
-            if msg.args[TOTAL] != self.n_books:
-                logging.debug(f'action: recv_book_eof | remaining {msg.args[TOTAL]-self.n_books} left')
+            if msg.args[TOTAL] != self.tracker.n_books:
+                logging.debug(f'action: recv_book_eof | remaining {msg.args[TOTAL]-self.tracker.n_books} left')
                 return NACK
             else:
                 logging.debug('action: recv_book_eof | success | all_books_received')
-                self.all_books_received = True
+                self.tracker.all_books_received = True
                 return ACK
         self.recv_raw_book(msg.data)
         return ACK
@@ -81,7 +90,11 @@ class Query3Worker(Worker):
     # REVIEW WORKER #
     #################
     def recv(self, raw_msg, key):
-        if not self.all_books_received:
+        msg = Message.from_bytes(raw_msg)
+        if msg.client_id not in self.clients:
+            self.clients[msg.client_id] = BookTracker(msg.client_id)
+        self.tracker = self.clients[msg.client_id]
+        if not self.tracker.all_books_received:
             logging.debug('action: recv_raw | status: not_all_books_received | NACK')
             return NACK
         return super().recv(raw_msg, key)
@@ -92,18 +105,18 @@ class Query3Worker(Worker):
     def forward_data(self, data):
         self.middleware.produce(data, OUT_QUEUE_NAME())
 
-    def work(self, input, client_id):
+    def work(self, input):
         review = input
         logging.debug(f'action: new_review | review: {review}')
-        if review.title in self.results:
+        if review.title in self.tracker.results:
             logging.debug(f'action: new_review | result: update | review: {review}')
-            self.results[review.title].update(review)
+            self.tracker.results[review.title].update(review)
 
-    def do_after_work(self, client_id):
+    def do_after_work(self):
         return
 
-    def send_results(self, client_id):
-        n = len(self.results)
-        self.results = {k: v for k, v in self.results.items() if v.n >= self.min_amount_reviews}
-        logging.debug(f'action: filtering_result | result: success | n: {n} >> {len(self.results)}')
-        super().send_results(client_id)
+    def send_results(self):
+        n = len(self.tracker.results)
+        self.tracker.results = {k: v for k, v in self.tracker.results.items() if v.n >= self.min_amount_reviews}
+        logging.debug(f'action: filtering_result | result: success | n: {n} >> {len(self.tracker.results)}')
+        super().send_results()

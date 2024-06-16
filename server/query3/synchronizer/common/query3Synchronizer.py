@@ -1,6 +1,6 @@
 import logging
 
-from utils.synchronizer import Synchronizer, TOTAL
+from utils.synchronizer import Synchronizer, ClientTracker, TOTAL
 from utils.middleware.middleware import Middleware
 from utils.serializer.q3PartialSerializer import Q3PartialSerializer    # type: ignore
 from utils.serializer.q3OutSerializer import Q3OutSerializer            # type: ignore
@@ -13,6 +13,12 @@ Q3_TAG = "Q3"
 Q4_TAG = "Q4"
 
 
+class ClientTrackerWithResults(ClientTracker):
+    def __init__(self, client_id, n_workers):
+        super().__init__(client_id, n_workers)
+        self.results = {}
+
+
 class Query3Synchronizer(Synchronizer):
     def __init__(self, n_workers, chunk_size, n_top):
         middleware = Middleware()
@@ -23,12 +29,19 @@ class Query3Synchronizer(Synchronizer):
                          out_serializer=Q3OutSerializer(),
                          chunk_size=chunk_size,)
         self.n_top = n_top
-        self.results = {}   # TODO: replace by persistent implementation
 
-    def process_chunk(self, chunk, client_id):
+    def recv(self, raw_msg, key):
+        msg = Message.from_bytes(raw_msg)
+        if msg.client_id not in self.clients:
+            self.clients[msg.client_id] = ClientTrackerWithResults(msg.client_id, self.n_workers)
+        self.tracker = self.clients[msg.client_id]
+
+        return super().recv(raw_msg, key)
+
+    def process_chunk(self, chunk):
         data = self.out_serializer.to_bytes(chunk)
         msg = Message(
-            client_id=client_id,
+            client_id=self.tracker.client_id,
             type=MessageType.DATA,
             data=data,
         )
@@ -37,31 +50,31 @@ class Query3Synchronizer(Synchronizer):
         for partial in chunk:
             logging.debug(f'action: new_partial | result: merge | partial: {partial}')
             title = partial.title
-            if title in self.results:
-                self.results[title].merge(partial)
+            if title in self.tracker.results:
+                self.tracker.results[title].merge(partial)
             else:
-                self.results[title] = partial
+                self.tracker.results[title] = partial
 
-    def get_top(self, client_id):
-        n = min(self.n_top, len(self.results))
-        _sorted_keys = sorted(self.results, key=lambda k: self.results[k].scoreAvg, reverse=True)[:n]
-        return [v for k, v in self.results.items() if k in _sorted_keys]
+    def get_top(self):
+        n = min(self.n_top, len(self.tracker.results))
+        _sorted_keys = sorted(self.tracker.results, key=lambda k: self.tracker.results[k].scoreAvg, reverse=True)[:n]
+        return [v for k, v in self.tracker.results.items() if k in _sorted_keys]
 
-    def terminator(self, client_id):
+    def terminator(self):
         eof = Message(
-            client_id=client_id,
+            client_id=self.tracker.client_id,
             type=MessageType.EOF,
             data=b'',
             args={
-                TOTAL: sum(self.total_by_worker.values()),
+                TOTAL: self.tracker.total_worked(),
             },
         )
         self.middleware.publish(eof.to_bytes(), OUT_TOPIC, Q3_TAG)
 
-        top = self.get_top(client_id)
+        top = self.get_top()
         data = self.out_serializer.to_bytes(top)
         msg = Message(
-            client_id=client_id,
+            client_id=self.tracker.client_id,
             type=MessageType.DATA,
             data=data
         )

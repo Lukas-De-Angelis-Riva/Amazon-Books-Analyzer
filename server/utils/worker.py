@@ -3,10 +3,32 @@ import io
 
 from utils.listener import Listener
 from utils.model.message import Message, MessageType
-from utils.middleware.middleware import ACK, NACK
+from utils.middleware.middleware import ACK
 
 TOTAL = "total"
 WORKER_ID = "worker_id"
+
+
+class ClientTracker():
+    def __init__(self, client_id):
+        self.client_id = client_id
+        self.results = {}
+        self.total_expected = -1
+        self.total_worked = 0
+        self.total_sent = 0
+
+    def expect(self, expected):
+        self.total_expected = expected
+
+    def is_completed(self):
+        return self.total_expected == self.total_worked
+
+    def __repr__(self) -> str:
+        n = len(self.results)
+        return f'ClientTracker({n}, exp: {self.total_expected}, wrk: {self.total_worked}, snt: {self.total_sent})'
+
+    def __str__(self) -> str:
+        return self.__repr__()
 
 
 class Worker(Listener):
@@ -15,12 +37,10 @@ class Worker(Listener):
         self.peer_id = peer_id
         self.peers = peers
         self.chunk_size = chunk_size
-        self.results = {}
         self.in_serializer = in_serializer
         self.out_serializer = out_serializer
-        self.total_expected = -1
-        self.total_worked = 0
-        self.total_sent = 0
+        self.clients = {}
+        self.tracker = None
 
     def forward_eof(self, eof):
         raise RuntimeError("Must be redefined")
@@ -28,17 +48,17 @@ class Worker(Listener):
     def forward_data(self, data):
         raise RuntimeError("Must be redefined")
 
-    def work(self, input, client_id):
+    def work(self, input):
         return
 
-    def do_after_work(self, client_id):
+    def do_after_work(self):
         return
 
-    def send_chunk(self, chunk, client_id):
+    def send_chunk(self, chunk):
         logging.debug(f'action: send_results | status: in_progress | forwarding_chunk | len(chunk): {len(chunk)}')
         data = self.out_serializer.to_bytes(chunk)
         msg = Message(
-            client_id=client_id,
+            client_id=self.tracker.client_id,
             type=MessageType.DATA,
             data=data,
             args={
@@ -46,29 +66,29 @@ class Worker(Listener):
             }
         )
         self.forward_data(msg.to_bytes())
-        self.total_sent += len(chunk)
+        self.tracker.total_sent += len(chunk)
         return
 
-    def send_results(self, client_id):
+    def send_results(self):
         chunk = []
-        logging.debug(f'action: send_results | status: in_progress | len(results): {len(self.results)}')
-        for result in self.results.values():
+        logging.debug(f'action: send_results | status: in_progress | len(results): {len(self.tracker.results)}')
+        for result in self.tracker.results.values():
             chunk.append(result)
             if len(chunk) >= self.chunk_size:
-                self.send_chunk(chunk, client_id)
+                self.send_chunk(chunk)
                 chunk = []
         if chunk:
-            self.send_chunk(chunk, client_id)
+            self.send_chunk(chunk)
         logging.debug('action: send_results | status: success')
         return
 
-    def send_eof(self, client_id):
+    def send_eof(self):
         eof = Message(
-            client_id=client_id,
+            client_id=self.tracker.client_id,
             type=MessageType.EOF,
             data=b'',
             args={
-                TOTAL: self.total_sent,
+                TOTAL: self.tracker.total_sent,
                 WORKER_ID: self.peer_id,
             }
         )
@@ -77,30 +97,34 @@ class Worker(Listener):
 
     def recv(self, raw_msg, key):
         msg = Message.from_bytes(raw_msg)
+        if msg.client_id not in self.clients:
+            self.clients[msg.client_id] = ClientTracker(msg.client_id)
+        self.tracker = self.clients[msg.client_id]
+
         if msg.type == MessageType.EOF:
-            self.recv_eof(msg.args[TOTAL], msg.client_id)
+            self.recv_eof(msg.args[TOTAL])
         else:
-            self.recv_raw(msg.data, msg.client_id)
+            self.recv_raw(msg.data)
 
         return ACK
 
-    def recv_raw(self, data, client_id):
+    def recv_raw(self, data):
         reader = io.BytesIO(data)
         input_chunk = self.in_serializer.from_chunk(reader)
         logging.debug(f'action: recv_raw | status: new_chunk | len(chunk): {len(input_chunk)}')
         for input in input_chunk:
-            self.work(input, client_id)
-        self.do_after_work(client_id)
-        self.total_worked += len(input_chunk)
+            self.work(input)
+        self.do_after_work()
+        self.tracker.total_worked += len(input_chunk)
 
-        if self.total_expected == self.total_worked:
-            self.send_results(client_id)
-            self.send_eof(client_id)
+        if self.tracker.is_completed():
+            self.send_results()
+            self.send_eof()
         return
 
-    def recv_eof(self, total, client_id):
-        self.total_expected = total
-        if self.total_expected == self.total_worked:
-            self.send_results(client_id)
-            self.send_eof(client_id)
+    def recv_eof(self, total):
+        self.tracker.expect(total)
+        if self.tracker.is_completed():
+            self.send_results()
+            self.send_eof()
         return
