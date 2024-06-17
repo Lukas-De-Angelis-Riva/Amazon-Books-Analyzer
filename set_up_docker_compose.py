@@ -58,6 +58,8 @@ def create_middleware():
 # SERVER SIDE #
 ###############
 
+def list_of_nodes():
+    return [f'doctor{i+1}' for i in range(AMOUNT_OF_DOCTOR)]
 
 def create_doctor(i):
     return {
@@ -69,6 +71,7 @@ def create_doctor(i):
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
             'PEERS='+str(AMOUNT_OF_DOCTOR),
             'PEER_ID='+str(i),
+            f'NODES={list_of_nodes()}',
         ],
         'volumes': [
             './server/doctor/config.ini:/config.ini',

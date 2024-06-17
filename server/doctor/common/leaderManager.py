@@ -40,8 +40,10 @@ class LeaderManager(Process):
     def receive_message(self):
         while self.on:
             message, addr = self.messageHandler.receive_message()
-            if addr != None:
+            if addr:
                 self.handle_message(message, addr)
+
+        self.messageHandler.close()
 
     def handle_message(self, message, addr):
         mType = message["type"]
@@ -83,6 +85,9 @@ class LeaderManager(Process):
 
     def handle_heartbeat_message(self,message, addr):
         self.last_heartbeat = time.time()
+        sender_id = message["id"]
+        if sender_id < self.id:
+            self.start_election()
 
     def start_election(self):
         logging.info(f"action: election | result: in_progress")
@@ -154,9 +159,12 @@ class LeaderManager(Process):
         self.start_election()
         self.last_heartbeat = time.time()
 
-        while self.on :
+        while True:
             self.event.wait(2)
             self.leader_elected.wait()
+
+            if not self.on: break
+
             if self.am_leader():   
                 #logging.info(f"action: heald_check  | leader: {self.leader_id}")
                 self.heald_check()
@@ -164,11 +172,16 @@ class LeaderManager(Process):
                 #logging.info(f"action: leader_check | leader: {self.leader_id}")
                 self.check_leader()
         
+        self.doctor_token.set()
         receive_message.join()
 
+        logging.info('action: leader_manager | result: finish')
+
     def __handle_signal(self, signum, frame):
-        logging.debug('action: stop_heartbeat | result: in_progress')
+        logging.info('action: stop_leader_manager | result: in_progress')
         self.on = False
+        self.leader_elected.set()
+        logging.info('action: stop_socket')
         self.messageHandler.close()
-        logging.debug('action: stop_heartbeat | result: success')
+        logging.info('action: stop_leader_manager | result: success')
 

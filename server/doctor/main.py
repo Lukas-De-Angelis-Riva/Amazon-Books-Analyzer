@@ -2,6 +2,7 @@ from configparser import ConfigParser
 from common.doctor import Doctor
 from common.heartbeat import HeartBeat
 import logging
+import ast
 import os
 
 
@@ -41,6 +42,7 @@ def initialize_config():
         config_params["peers"] = int(os.getenv('PEERS', config["DEFAULT"]["PEERS"]))
         config_params["peer_id"] = int(os.getenv('PEER_ID', config["DEFAULT"]["PEER_ID"]))
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
+        config_params["nodes"] = ast.literal_eval(os.getenv('NODES', config["DEFAULT"]["NODES"]))
 
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))

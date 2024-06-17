@@ -5,9 +5,9 @@ from multiprocessing import Process
 from common.messageHandler import MessageHandler
 
 class HeartBeat(Process):
-    def __init__(self, ip, port):
+    def __init__(self, UDPHandler):
         super().__init__(name='HeartBeat', args=())
-        self.UDPHandler = MessageHandler(ip, port)
+        self.UDPHandler = UDPHandler
         self.on = True
 
     def run(self):
@@ -18,9 +18,10 @@ class HeartBeat(Process):
                 self.UDPHandler.send_message(message)
 
         self.UDPHandler.close()
+        logging.info('action: heartbeat | result: finish')
 
     def __handle_signal(self, signum, frame):
-        logging.debug('action: stop_heartbeat | result: in_progress')
+        logging.info('action: stop_heartbeat | result: in_progress')
         self.on = False
         self.UDPHandler.close()
-        logging.debug('action: stop_heartbeat | result: success')
+        logging.info('action: stop_heartbeat | result: success')

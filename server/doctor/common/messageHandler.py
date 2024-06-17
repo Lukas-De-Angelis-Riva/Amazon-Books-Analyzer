@@ -1,13 +1,16 @@
 import pickle
 import socket
+import logging
 
 MAXSIZE = 1024
+TIMEOUT = 5
 
 class MessageType():
     ELECTION = 0
     OK = 1
     COORDINATOR = 2
-    HEARTBEAT = 3
+    HEALTHCHECK = 3
+    HEARTBEAT = 4
 
 class MessageHandler:
     def __init__(self, ip, port):
@@ -15,6 +18,7 @@ class MessageHandler:
         self.port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((ip , port))
+        self.sock.settimeout(TIMEOUT)
 
     def serialize(self, type, id=None):
         message = {"type":type}
@@ -35,13 +39,16 @@ class MessageHandler:
             return len(message)
         
     def receive_message(self):
+        message = {}
+        data = None
         try:
             data, addr = self.sock.recvfrom(MAXSIZE)
-            message = self.deserialize(data)
         except socket.error as e:
             message = {}
             addr = None
         finally:
+            if data:
+                message = self.deserialize(data)
             return message, addr
     
     def close(self):
