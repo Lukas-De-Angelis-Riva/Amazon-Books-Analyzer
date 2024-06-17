@@ -18,24 +18,45 @@ QUERY3_ID = 'Q3'
 QUERY4_ID = 'Q4'
 QUERY5_ID = 'Q5'
 
+TOTAL = "total"
+
 
 class ClientTracker():
     def __init__(self, client_id):
         self.client_id = client_id
+        self.queries = [QUERY1_ID, QUERY2_ID, QUERY3_ID, QUERY4_ID, QUERY5_ID]
         self.eofs = {
-            QUERY1_ID: False,
-            QUERY2_ID: False,
-            QUERY3_ID: False,
-            QUERY4_ID: False,
-            QUERY5_ID: False
+            q: False for q in self.queries
+        }
+        self.total_results_received = {
+            q: 0 for q in self.queries
         }
 
-    def eof(self, type):
-        self.eofs[type] = True
+        self.total_results_expected = {
+            q: -1 for q in self.queries
+        }
+
+    def eof(self, query_id):
+        assert query_id in self.queries
+        self.eofs[query_id] = True
+
+    def expect(self, query_id, total):
+        assert query_id in self.queries
+        self.total_results_expected[query_id] = total
+
+    def add(self, query_id, amount):
+        assert query_id in self.queries
+        self.total_results_received[query_id] += amount
 
     def all_eofs_received(self):
         return all(
             self.eofs.values()
+        )
+
+    def all_chunks_received(self):
+        return all(
+            self.total_results_received[q] == self.total_results_expected[q]
+            for q in self.queries
         )
 
 
@@ -100,6 +121,12 @@ class ResultReceiver(Process):
                     writer.writerow(['Q5', result])
                 else:
                     continue
+
+            self.tracker.add(results_type, len(results))
+
+            if self.tracker.all_eofs_received() and self.tracker.all_chunks_received():
+                self.write_eof()
+
         logging.debug(f'action: save_results({results_type}) | result: success')
         return ACK
 
@@ -112,9 +139,13 @@ class ResultReceiver(Process):
     def deserialize_result(self, msg, type):
         if msg.type == MessageType.EOF:
             self.tracker.eof(type)
-            logging.debug(f'action: recv EOF {type}| result: success')
-            if self.tracker.all_eofs_received():
+            self.tracker.expect(type, msg.args[TOTAL])
+            logging.debug(f'action: recv EOF {type} | client: {self.tracker.client_id}')
+            if self.tracker.all_eofs_received() and self.tracker.all_chunks_received():
                 self.write_eof()
+                logging.debug(f'action: write EOF | client: {self.tracker.client_id}')
+            else:
+                logging.debug(f'action: write EOF | client: {self.tracker.client_id} | postponed')
             return []
 
         reader = io.BytesIO(msg.data)
