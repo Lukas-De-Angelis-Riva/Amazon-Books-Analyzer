@@ -65,6 +65,7 @@ def create_doctor(i):
     return {
         'container_name': f'doctor{i}',
         'image': 'doctor:latest',
+        'privileged': 'true',
         'entrypoint': 'python3 /main.py',
         'environment': [
             'PYTHONUNBUFFERED=1',
@@ -75,6 +76,7 @@ def create_doctor(i):
         ],
         'volumes': [
             './server/doctor/config.ini:/config.ini',
+            '/var/run/docker.sock:/var/run/docker.sock',
         ],
         'networks': [
             NETWORK_NAME,
