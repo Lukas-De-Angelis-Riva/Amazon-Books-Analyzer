@@ -12,6 +12,9 @@ class Q2Partial:
     def __str__(self):
         return f'Q2Partial(Author:{self.author} | len(decades): {len(self.decades)})'
 
+    def encode(self):
+        return list(self.decades)
+
     def update(self, book: Book):
         decade = 10 * (int(book.publishedDate)//10)
         self.decades.add(decade)

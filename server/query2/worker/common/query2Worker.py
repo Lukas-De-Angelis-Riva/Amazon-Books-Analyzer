@@ -36,12 +36,15 @@ class Query2Worker(Worker):
 
     def work(self, input):
         book = input
+        author = book.authors[0]
         logging.debug(f'action: new_book | book: {book}')
-        for author in book.authors:
-            if author not in self.tracker.results:
-                self.tracker.results[author] = Q2Partial(author, [])
-            self.tracker.results[author].update(book)
-            logging.debug(f'action: new_book | result: update | author: {author} | date: {book.publishedDate}')
+        if author not in self.tracker.results:
+            self.tracker.results[author] = Q2Partial(author, [])
+        old = self.tracker.results[author].decades.copy()
+        self.tracker.results[author].update(book)
+        new = self.tracker.results[author].decades.copy()
+        self.tracker.log_manager.hold_change(author, old, new)
+        logging.debug(f'action: new_book | result: update | author: {author} | date: {book.publishedDate}')
 
     def do_after_work(self):
         return
