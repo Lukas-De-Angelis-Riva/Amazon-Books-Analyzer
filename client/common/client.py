@@ -28,6 +28,8 @@ MAX_TIME_SLEEP = 8      # seconds
 MIN_TIME_SLEEP = 1      # seconds
 TIME_SLEEP_SCALE = 2    # 2 * t
 
+N_RETRIES = 10
+
 
 class Client:
     def __init__(self, config_params):
@@ -69,14 +71,16 @@ class Client:
             return
         self.disconnect()
 
-        # Poll results for all querys
-        self.connect(self.config["results_ip"], self.config["results_port"])
-        logging.info('action: poll_results | result: in_progress')
-        self.poll_results()
-        if self.signal_received:
+        ok = self.get_results()
+        if not ok or self.signal_received:
             return
+
         logging.info('action: poll_results | result: success | nQ1: {} | nQ2: {} | nQ3: {} | nQ4: {} | nQ5: {}'.format(
-            self.query_sizes['Q1'], self.query_sizes['Q2'], self.query_sizes['Q3'], self.query_sizes['Q4'], self.query_sizes['Q5']
+            self.query_sizes['Q1'],
+            self.query_sizes['Q2'],
+            self.query_sizes['Q3'],
+            self.query_sizes['Q4'],
+            self.query_sizes['Q5']
         ))
         self.disconnect()
 
@@ -162,6 +166,27 @@ class Client:
                 self.query_sizes[result[:2]] += 1
                 logging.info(f'result: {result}')
 
+    def get_results(self):
+        retries = 0
+        t_sleep = MIN_TIME_SLEEP
+        while retries <= N_RETRIES:
+            try:
+                self.connect(self.config["results_ip"], self.config["results_port"])
+                self.protocolHandler.handshake(self.id)
+            except Exception as e:
+                logging.debug(f'action: connect | result: fail | error: {str(e) or repr(e)}')
+                time.sleep(t_sleep)
+                t_sleep = min(TIME_SLEEP_SCALE*t_sleep, MAX_TIME_SLEEP)
+                retries += 1
+                continue
+            break
+        if retries == N_RETRIES:
+            logging.error(f'action: poll_results | result: fail | reason: connection refused {retries} times')
+            return False
+
+        logging.info('action: poll_results | result: in_progress')
+        return self.poll_results()
+
     def poll_results(self):
         try:
             keep_running = True
@@ -184,9 +209,11 @@ class Client:
                     logging.error(f'action: polling | result: fail | unknown_type: {t}')
         except (Exception, KeyboardInterrupt) as e:
             if not self.signal_received:
-                logging.error(f'action: polling | result: fail | error: {e}')
+                logging.error(f'action: polling | result: fail | error: {str(e) or repr(e)}')
+            return False
         else:
             logging.debug('action: polling | result: success')
+            return True
 
     def read_book_line(self, line):
         r = csv.reader([line], )

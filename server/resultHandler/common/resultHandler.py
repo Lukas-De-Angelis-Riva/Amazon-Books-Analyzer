@@ -12,10 +12,11 @@ class ResultHandler():
         self.results_directory = config_params['results_directory']
         self.ip = config_params['ip']
         self.port = config_params['port']
+        self.max_users = config_params['max_users']
 
     def run(self):
         self.psnd = ResultReceiver(self.results_directory, self.lock)
-        self.prcv = ResultSender(self.ip, self.port, self.results_directory, self.lock)
+        self.prcv = ResultSender(self.ip, self.port, self.max_users, self.results_directory, self.lock)
 
         self.psnd.start()
         self.prcv.start()

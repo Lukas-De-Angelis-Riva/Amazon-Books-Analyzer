@@ -88,4 +88,5 @@ set_up_config('server/resultHandler/config.ini',
               LOGGING_LEVEL='INFO',
               SERVER_PORT=RESULT_PORT,
               SERVER_IP=RESULT_IP,
-              FILE_NAME='results.csv')
+              FILE_NAME='results.csv',
+              MAX_USERS=3)

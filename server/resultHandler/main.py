@@ -25,6 +25,7 @@ def initialize_config():
         config_params["port"] = int(os.getenv('SERVER_PORT', config["DEFAULT"]["SERVER_PORT"]))
         config_params["ip"] = os.getenv('SERVER_IP', config["DEFAULT"]["SERVER_IP"])
         config_params["results_directory"] = os.getenv('RESULTS_DIRECTORY', config["DEFAULT"]["RESULTS_DIRECTORY"])
+        config_params['max_users'] = int(os.getenv('MAX_USERS', config["DEFAULT"]["MAX_USERS"]))
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
     except ValueError as e:
