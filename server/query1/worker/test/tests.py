@@ -12,6 +12,25 @@ from utils.model.message import Message, MessageType
 
 
 class TestUtils(unittest.TestCase):
+    def append_eof(self, client_id, test_middleware, sent):
+        eof = Message(
+            client_id=client_id,
+            type=MessageType.EOF,
+            data=b'',
+            args={
+                TOTAL: sent,
+            }
+        )
+        test_middleware.add_message(eof.to_bytes())
+
+    def append_chunk(self, client_id, test_middleware, chunk):
+        serializer = Q1InSerializer()
+        msg = Message(
+            client_id=client_id,
+            type=MessageType.DATA,
+            data=serializer.to_bytes(chunk),
+        )
+        test_middleware.add_message(msg.to_bytes())
 
     def test_in_serializer(self):
         serializer = Q1InSerializer()
@@ -255,6 +274,204 @@ class TestUtils(unittest.TestCase):
         assert book1.title in filtered
         assert book2.title in filtered
         assert book3.title in filtered
+
+    def make_books_asoiaf(self):
+        agot = Book(
+            title='A Game of Thrones',
+            authors=['George R. R. Martin'],
+            publisher='Voyager Books',
+            publishedDate='1996',
+            categories=['Political Novel', 'Epic Fantasy'],
+        )
+
+        acok = Book(
+            title='A Clash of Kings',
+            authors=['George R. R. Martin'],
+            publisher='Voyager Books',
+            publishedDate='1999',
+            categories=['Political Novel', 'Epic Fantasy'],
+        )
+
+        asos = Book(
+            title='A Storm of Swords',
+            authors=['George R. R. Martin'],
+            publisher='Voyager Books',
+            publishedDate='2000',
+            categories=['Political Novel', 'Epic Fantasy'],
+        )
+        affc = Book(
+            title='A Feast for Crows',
+            authors=['George R. R. Martin'],
+            publisher='Voyager Books',
+            publishedDate='2005',
+            categories=['Political Novel', 'Epic Fantasy'],
+        )
+
+        adwd = Book(
+            title='A Dance with Dragons',
+            authors=['George R. R. Martin'],
+            publisher='Voyager Books',
+            publishedDate='2011',
+            categories=['Political Novel', 'Epic Fantasy'],
+        )
+
+        return agot, acok, asos, affc, adwd
+
+    def make_books_tlotr(self):
+
+        the_hobbit = Book(
+            title='The Hobbit',
+            authors=['J. R. R. Tolkien'],
+            publisher='George Allen & Unwin',
+            publishedDate='1937',
+            categories=['Juvenile fantasy', 'High fantasy', 'Epic Fantasy'],
+        )
+        the_lotr = Book(
+            title='The Lord of the Rings',
+            authors=['J. R. R. Tolkien'],
+            publisher='George Allen & Unwin',
+            publishedDate='1954',
+            categories=['High fantasy', 'Epic Fantasy'],
+        )
+        the_aotb = Book(
+            title='The Adventures of Tom Bombadil',
+            authors=['J. R. R. Tolkien'],
+            publisher='George Allen & Unwin',
+            publishedDate='1962',
+            categories=['Poetry', 'Epic Fantasy'],
+        )
+        the_simlmarillion = Book(
+            title='The Silmarillion',
+            authors=['J. R. R. Tolkien'],
+            publisher='George Allen & Unwin',
+            publishedDate='1994',
+            categories=['Mythopoeia', 'Fantasy', 'Epic Fantasy'],
+        )
+        return the_hobbit, the_lotr, the_aotb, the_simlmarillion
+
+    def test_sequential_multiclient(self):
+        client_1 = uuid.uuid4()
+        client_2 = uuid.uuid4()
+        test_middleware = TestMiddleware()
+        out_serializer = Q1OutSerializer()
+
+        b1, b2, b3, b4, b5 = self.make_books_asoiaf()
+        self.append_chunk(client_1, test_middleware, [b1, b2])
+        self.append_chunk(client_1, test_middleware, [b3])
+        self.append_chunk(client_1, test_middleware, [b4, b5])
+        self.append_eof(client_1, test_middleware, 5)
+
+        c1, c2, c3, c4 = self.make_books_tlotr()
+        self.append_chunk(client_2, test_middleware, [c1])
+        self.append_chunk(client_2, test_middleware, [c2, c3])
+        self.append_chunk(client_2, test_middleware, [c4])
+        self.append_eof(client_2, test_middleware, 4)
+
+        def matches_function(b: Book):
+            return int(b.publishedDate) < 1990 or int(b.publishedDate) > 2000
+
+        worker = Query1Worker(peer_id=1, peers=10, chunk_size=2, matches=matches_function, test_middleware=test_middleware)
+        worker.run()
+        sent = [Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent]
+
+        # client 1
+        sent_c1 = [msg for msg in sent if msg.client_id == client_1]
+        eofs_c1 = [msg for msg in sent_c1 if msg.type == MessageType.EOF]
+        _filtered_chunks_c1 = [msg.data for msg in sent_c1 if msg.type == MessageType.DATA]
+        filtered_chunks_c1 = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks_c1]
+        filtered_c1 = [
+            b.title
+            for chunk in filtered_chunks_c1
+            for b in chunk
+        ]
+        assert len(eofs_c1) == 1
+        assert eofs_c1[0].args[TOTAL] == 2
+        assert len(filtered_c1) == 2
+        assert b1.title not in filtered_c1
+        assert b2.title not in filtered_c1
+        assert b3.title not in filtered_c1
+        assert b4.title in filtered_c1
+        assert b5.title in filtered_c1
+
+        # client 2
+        sent_c2 = [msg for msg in sent if msg.client_id == client_2]
+        eofs_c2 = [msg for msg in sent_c2 if msg.type == MessageType.EOF]
+        _filtered_chunks_c2 = [msg.data for msg in sent_c2 if msg.type == MessageType.DATA]
+        filtered_chunks_c2 = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks_c2]
+        filtered_c2 = [
+            b.title
+            for chunk in filtered_chunks_c2
+            for b in chunk
+        ]
+        assert len(eofs_c2) == 1
+        assert eofs_c2[0].args[TOTAL] == 3
+        assert len(filtered_c2) == 3
+        assert c1.title in filtered_c2
+        assert c2.title in filtered_c2
+        assert c3.title in filtered_c2
+        assert c4.title not in filtered_c2
+
+    def test_parallel_multiclient(self):
+        client_1 = uuid.uuid4()
+        client_2 = uuid.uuid4()
+        test_middleware = TestMiddleware()
+        out_serializer = Q1OutSerializer()
+
+        b1, b2, b3, b4, b5 = self.make_books_asoiaf()
+        c1, c2, c3, c4 = self.make_books_tlotr()
+
+        self.append_chunk(client_1, test_middleware, [b1, b2])
+        self.append_chunk(client_2, test_middleware, [c1])
+        self.append_chunk(client_1, test_middleware, [b3])
+        self.append_chunk(client_2, test_middleware, [c2, c3])
+        self.append_eof(client_1, test_middleware, 5)
+        self.append_eof(client_2, test_middleware, 4)
+        self.append_chunk(client_1, test_middleware, [b4, b5])
+        self.append_chunk(client_2, test_middleware, [c4])
+
+        def matches_function(b: Book):
+            return int(b.publishedDate) < 1990 or int(b.publishedDate) > 2000
+
+        worker = Query1Worker(peer_id=1, peers=10, chunk_size=2, matches=matches_function, test_middleware=test_middleware)
+        worker.run()
+        sent = [Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent]
+
+        # client 1
+        sent_c1 = [msg for msg in sent if msg.client_id == client_1]
+        eofs_c1 = [msg for msg in sent_c1 if msg.type == MessageType.EOF]
+        _filtered_chunks_c1 = [msg.data for msg in sent_c1 if msg.type == MessageType.DATA]
+        filtered_chunks_c1 = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks_c1]
+        filtered_c1 = [
+            b.title
+            for chunk in filtered_chunks_c1
+            for b in chunk
+        ]
+        assert len(eofs_c1) == 1
+        assert eofs_c1[0].args[TOTAL] == 2
+        assert len(filtered_c1) == 2
+        assert b1.title not in filtered_c1
+        assert b2.title not in filtered_c1
+        assert b3.title not in filtered_c1
+        assert b4.title in filtered_c1
+        assert b5.title in filtered_c1
+
+        # client 2
+        sent_c2 = [msg for msg in sent if msg.client_id == client_2]
+        eofs_c2 = [msg for msg in sent_c2 if msg.type == MessageType.EOF]
+        _filtered_chunks_c2 = [msg.data for msg in sent_c2 if msg.type == MessageType.DATA]
+        filtered_chunks_c2 = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks_c2]
+        filtered_c2 = [
+            b.title
+            for chunk in filtered_chunks_c2
+            for b in chunk
+        ]
+        assert len(eofs_c2) == 1
+        assert eofs_c2[0].args[TOTAL] == 3
+        assert len(filtered_c2) == 3
+        assert c1.title in filtered_c2
+        assert c2.title in filtered_c2
+        assert c3.title in filtered_c2
+        assert c4.title not in filtered_c2
 
 
 if __name__ == '__main__':
