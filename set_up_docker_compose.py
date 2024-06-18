@@ -116,6 +116,7 @@ def create_query2Worker(i):
         ],
         'volumes': [
             './server/query2/worker/config.ini:/config.ini',
+            './server/query2/worker/test/tests.py:/test/tests.py',
         ],
         'depends_on': [
             'query2Synchronizer',
@@ -138,6 +139,7 @@ def create_query2Synchronizer():
         ],
         'volumes': [
             './server/query2/synchronizer/config.ini:/config.ini',
+            './server/query2/synchronizer/test/tests.py:/test/tests.py',
         ],
         'depends_on': [
             'resultHandler',
