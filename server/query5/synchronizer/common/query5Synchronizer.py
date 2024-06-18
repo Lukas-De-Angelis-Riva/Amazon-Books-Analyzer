@@ -38,16 +38,9 @@ class Query5Synchronizer(Synchronizer):
         return super().recv(raw_msg, key)
 
     def process_chunk(self, chunk):
-        for partial in chunk:
-            logging.debug(f'action: new_partial | result: merge | partial: {partial}')
-            title = partial.title
-            if title in self.tracker.results:
-                self.tracker.results[title].merge(partial)
-            else:
-                self.tracker.results[title] = partial
-
-    def passes_filter(self, partial, percentile):
-        return partial.sentimentAvg >= percentile
+        for result in chunk:
+            logging.debug(f'action: new_result | result: {result}')
+            self.tracker.results[result.title] = result
 
     def get_percentile(self):
         values = [v.sentimentAvg for v in self.tracker.results.values()]

@@ -45,6 +45,7 @@ class Synchronizer(Listener):
         self.out_serializer = out_serializer
         self.n_workers = n_workers
         self.clients = {}
+        self.tracker = None
 
     def process_chunk(self, chunk):
         raise RuntimeError("Must be redefined")

@@ -47,13 +47,9 @@ class Query3Synchronizer(Synchronizer):
         )
         self.middleware.publish(msg.to_bytes(), OUT_TOPIC, Q3_TAG)
 
-        for partial in chunk:
-            logging.debug(f'action: new_partial | result: merge | partial: {partial}')
-            title = partial.title
-            if title in self.tracker.results:
-                self.tracker.results[title].merge(partial)
-            else:
-                self.tracker.results[title] = partial
+        for result in chunk:
+            logging.debug(f'action: new_result | result: {result}')
+            self.tracker.results[result.title] = result
 
     def get_top(self):
         n = min(self.n_top, len(self.tracker.results))

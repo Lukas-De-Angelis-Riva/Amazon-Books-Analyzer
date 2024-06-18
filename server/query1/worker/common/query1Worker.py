@@ -16,10 +16,7 @@ def OUT_QUEUE_NAME():
 
 class Query1Worker(Worker):
     def __init__(self, peer_id, peers, chunk_size, matches, test_middleware=None):
-        if test_middleware:
-            middleware = test_middleware
-        else:
-            middleware = Middleware()
+        middleware = test_middleware if test_middleware else Middleware()
         middleware.consume(queue_name=IN_QUEUE_NAME(peer_id), callback=self.recv)
 
         super().__init__(middleware=middleware,
