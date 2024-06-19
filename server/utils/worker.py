@@ -3,83 +3,97 @@ import logging
 import io
 import os
 import csv
+import uuid
 
 from utils.listener import Listener
 from utils.model.message import Message, MessageType
+from utils.model.log import LogFactory, LogLineType
+from utils.model.log import WriteLine, WriteMetadataLine, BeginLine, CommitLine
 from utils.middleware.middleware import ACK
 
 TOTAL = "total"
 WORKER_ID = "worker_id"
 
 
-BEGIN = "BEGIN"
-WRITE = "WRITE"
-COMMIT = "COMMIT"
 EXPECTED = "EXPECT"
 WORKED = "WORKED"
 SENT = "SENT"
 
 
 class LogManager():
+    BASE_DIRECTORY = '/clients'
+
     def __init__(self, client_id):
         self.client_id = client_id
-        os.mkdir(str(client_id))
-        # OJO PORQUE BORRA TODO AL CREARSE, VERIFICAR SI EXISTE Y SI EXISTE NO CREARLO.
-        open(str(client_id) + '/log', 'w').close()
-        open(str(client_id) + '/data', 'w').close()
-        open(str(client_id) + '/tracker', 'w').close()
-        open(str(client_id) + '/chunks', 'w').close()
+
+        if not os.path.exists(LogManager.BASE_DIRECTORY):
+            os.mkdir(LogManager.BASE_DIRECTORY)
+
+        if not os.path.exists(LogManager.BASE_DIRECTORY + '/' + str(client_id)):
+            os.mkdir(LogManager.BASE_DIRECTORY + '/' + str(client_id))
+
+        self.log_file = LogManager.BASE_DIRECTORY + '/' + str(client_id) + '/log'
+        if not os.path.exists(self.log_file):
+            open(self.log_file, 'w').close()
+
+        self.data_file = LogManager.BASE_DIRECTORY + '/' + str(client_id) + '/data'
+        if not os.path.exists(self.data_file):
+            open(self.data_file, 'w').close()
+
+        self.tracker_file = LogManager.BASE_DIRECTORY + '/' + str(client_id) + '/tracker'
+        if not os.path.exists(self.tracker_file):
+            open(self.tracker_file, 'w').close()
+
+        self.chunks_file = LogManager.BASE_DIRECTORY + '/' + str(client_id) + '/chunks'
+        if not os.path.exists(self.chunks_file):
+            open(self.chunks_file, 'w').close()
 
         self.changes = {}
 
     def begin(self, chunk_id):
-        file_name = str(self.client_id) + '/log'
-        with open(file_name, "w", encoding='UTF-8') as log_file:
-            log = csv.writer(log_file, delimiter=";")
-            log.writerow([BEGIN, str(chunk_id)])
+        with open(self.log_file, "w", encoding='UTF-8') as log_file:
+            begin_line = BeginLine(chunk_id)
+            log_file.write(begin_line.to_line())
 
     def hold_change(self, k, v_old, v_new):
-        if v_old == v_new:
-            return
         if k not in self.changes:
             self.changes[k] = [v_old, v_new]
         else:
             self.changes[k][1] = v_new
 
     def flush_changes(self):
-        file_name = str(self.client_id) + '/log'
-        with open(file_name, "a+") as log_file:
-            log = csv.writer(log_file, delimiter=";")
+        with open(self.log_file, "a+") as log_file:
             for k in self.changes:
-                old = self.changes[k][0]
-                log.writerow([WRITE, k, old])
+                old = self.changes[k][0].encode()
+                write_line = WriteLine(k, old)
+                log_file.write(write_line.to_line())
 
         self.changes = {}
 
-    def log_change(self, key, v_old):
-        file_name = str(self.client_id) + '/log'
-        with open(file_name, "a+") as log_file:
-            log = csv.writer(log_file, delimiter=";")
-            log.writerow([WRITE, key, v_old])
+    def log_metadata(self, key, v_old):
+        with open(self.log_file, "a+") as log_file:
+            write_line = WriteMetadataLine(key, v_old)
+            log_file.write(write_line.to_line())
 
     def flush_data(self, data_json):
-        file_name = str(self.client_id) + '/data'
-        with open(file_name, "w") as data_file:
+        with open(self.data_file, "w") as data_file:
             json.dump(data_json, data_file, indent=4)
 
     def flush_tracker(self, data_json):
-        file_name = str(self.client_id) + '/tracker'
-        with open(file_name, "w") as data_file:
+        with open(self.tracker_file, "w") as data_file:
             json.dump(data_json, data_file, indent=4)
 
     def commit(self, chunk_id):
-        file_name = str(self.client_id) + '/log'
-        with open(file_name, "a+") as log_file:
-            log = csv.writer(log_file, delimiter=";")
-            log.writerow([COMMIT, str(chunk_id)])
+        with open(self.log_file, "a+") as log_file:
+            commit_line = CommitLine(chunk_id)
+            log_file.write(commit_line.to_line())
 
-        file_name = str(self.client_id) + '/chunks'
-        with open(file_name, "a+") as bucket_file:
+        with open(self.chunks_file, "a+") as bucket_file:
+            bucket = csv.writer(bucket_file, delimiter=";")
+            bucket.writerow([str(chunk_id)])
+
+    def append_chunk_id(self, chunk_id):
+        with open(self.chunks_file, "a+") as bucket_file:
             bucket = csv.writer(bucket_file, delimiter=";")
             bucket.writerow([str(chunk_id)])
 
@@ -93,6 +107,63 @@ class ClientTracker():
         self.total_expected = -1
         self.total_worked = 0
         self.total_sent = 0
+        # DUMMY PARSER
+        self.parser = lambda k, v: v
+
+    def undo(self):
+        with open(self.log_manager.log_file, 'r') as f:
+            aux = f.readlines()
+        log_lines = LogFactory.from_lines(aux)
+        if not log_lines:
+            return
+        if log_lines[-1].type == LogLineType.COMMIT:
+            chunk_id = log_lines[-1].chunk_id
+            if chunk_id not in self.worked_chunks:
+                self.worked_chunks.append(chunk_id)
+                self.log_manager.append_chunk_id(chunk_id)
+            return
+
+        log_lines.reverse()
+        for log_line in log_lines:
+
+            if log_line.type == LogLineType.WRITE:
+                self.results[log_line.key] = self.parser(log_line.key, log_line.old_value)
+
+            elif log_line.type == LogLineType.WRITE_METADATA:
+                if log_line.key == EXPECTED:
+                    self.total_expected = log_line.old_value
+                elif log_line.key == WORKED:
+                    self.total_worked = log_line.old_value
+                elif log_line.key == SENT:
+                    self.total_sent = log_line.old_value
+
+            elif log_line.type == LogLineType.BEGIN:
+                break
+        self.flush_data()
+
+    def recovery(self):
+        if os.path.getsize(self.log_manager.tracker_file) > 0:
+            with open(self.log_manager.tracker_file, 'r') as f:
+                aux = json.load(f)
+            self.total_expected = aux[EXPECTED]
+            self.total_worked = aux[WORKED]
+            self.total_sent = aux[SENT]
+
+        if os.path.getsize(self.log_manager.chunks_file) > 0:
+            with open(self.log_manager.chunks_file, 'r') as f:
+                aux = f.readlines()
+            self.worked_chunks = [uuid.UUID(u.strip()) for u in aux]
+
+        if os.path.getsize(self.log_manager.data_file) > 0:
+            with open(self.log_manager.data_file, 'r') as f:
+                aux = json.load(f)
+            self.results = {
+                k: self.parser(k, v)
+                for k, v in aux.items()
+            }
+
+        if os.path.getsize(self.log_manager.log_file) > 0:
+            self.undo()
 
     def expect(self, expected):
         self.total_expected = expected
@@ -134,16 +205,6 @@ class Worker(Listener):
 
         self.recovery()
 
-    def recovery(self):
-        for directory in os.listdir('/clients'):
-            client_id = directory
-            self.context_switch(client_id)
-            self.tracker.results = json.load(f'/clients/{client_id}/data')
-            self.tracker.total = json.load(f'/clients/{client_id}/tracker')
-            self.tracker.worked_chunks = [csv.read(f'/clients/{client_id}/chunks')]
-            self.tracker.undo(f'/clients/{client_id}/log')
-            self.tracker.flush_all()
-
     def forward_eof(self, eof):
         raise RuntimeError("Must be redefined")
 
@@ -155,6 +216,23 @@ class Worker(Listener):
 
     def do_after_work(self):
         return
+
+    def adapt_tracker(self):
+        return
+
+    def context_switch(self, client_id):
+        if client_id not in self.clients:
+            self.clients[client_id] = ClientTracker(client_id)
+        self.tracker = self.clients[client_id]
+        self.adapt_tracker()
+
+    def recovery(self):
+        if not os.path.exists(LogManager.BASE_DIRECTORY):
+            return
+        for directory in os.listdir(LogManager.BASE_DIRECTORY):
+            client_id = uuid.UUID(directory)
+            self.context_switch(client_id)
+            self.tracker.recovery()
 
     def send_chunk(self, chunk):
         logging.debug(f'action: send_results | status: in_progress | forwarding_chunk | len(chunk): {len(chunk)}')
@@ -197,11 +275,6 @@ class Worker(Listener):
         self.forward_eof(eof.to_bytes())
         return
 
-    def context_switch(self, client_id):
-        if client_id not in self.clients:
-            self.clients[client_id] = ClientTracker(client_id)
-        self.tracker = self.clients[client_id]
-
     def recv(self, raw_msg, key):
         msg = Message.from_bytes(raw_msg)
         self.context_switch(msg.client_id)
@@ -223,7 +296,7 @@ class Worker(Listener):
         for input in input_chunk:
             self.work(input)
         self.do_after_work()
-        self.tracker.log_manager.log_change(WORKED, self.tracker.total_worked)
+        self.tracker.log_manager.log_metadata(WORKED, self.tracker.total_worked)
         self.tracker.log_manager.flush_changes()
         self.tracker.total_worked += len(input_chunk)
         self.tracker.worked_chunks.append(chunk_id)

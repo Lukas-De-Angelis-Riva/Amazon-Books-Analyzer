@@ -28,6 +28,9 @@ class Query2Worker(Worker):
                          chunk_size=chunk_size,)
         self.min_decades = min_decades
 
+    def adapt_tracker(self):
+        self.tracker.parser = Q2Partial.decode
+
     def forward_eof(self, eof):
         self.middleware.produce(eof, out_queue_name())
 
@@ -40,9 +43,12 @@ class Query2Worker(Worker):
         logging.debug(f'action: new_book | book: {book}')
         if author not in self.tracker.results:
             self.tracker.results[author] = Q2Partial(author, [])
-        old = self.tracker.results[author].decades.copy()
+
+        old = self.tracker.results[author].copy()
         self.tracker.results[author].update(book)
-        new = self.tracker.results[author].decades.copy()
+        new = self.tracker.results[author].copy()
+
+        # CHECK IF RESULT HAS CHANGED OR NOT...
         self.tracker.log_manager.hold_change(author, old, new)
         logging.debug(f'action: new_book | result: update | author: {author} | date: {book.publishedDate}')
 
