@@ -6,6 +6,11 @@ import logging
 import signal
 import time
 
+WAIT_OK = 10
+WAIT_COORDINATOR = 10
+DEAD_THRESHOLD = 15
+WAIT_TIME = 5
+
 class LeaderManager(Process):
     def __init__(self, ip, port, peers_amount, id, doctor_token):
         super().__init__(name='LeaderManager', args=())
@@ -59,35 +64,36 @@ class LeaderManager(Process):
 
     def handle_election_message(self, message, addr):
         sender_id = message["id"]
-        if sender_id < self.id:
-            self.messageHandler.send_message(addr, MessageType.OK, self.id)
-            self.start_election()
+        logging.info(f"action: recv_election | id={sender_id}")
+        self.messageHandler.send_message(addr, MessageType.OK, self.id)
+        #self.start_election()
+        self.leader_elected.clear()
             
     def handler_ok_message(self, message):
         self.ok_received.set()
         sender_id = message["id"]
-        logging.info(f"action: recv_ok | id={sender_id} | result: success")
+        logging.info(f"action: recv_ok | id={sender_id}")
 
     def handler_coordinator_message(self, message):
         sender_id = message["id"]
         if sender_id < self.id:
-            self.start_election()
+            #self.start_election()
+            self.leader_elected.clear()
         else:
             if self.id == sender_id: self.doctor_token.set()
-
-            if self.am_leader() and self.id != sender_id:
-                self.doctor_token.clear()
+            else: self.doctor_token.clear()
 
             self.leader_id = sender_id
             self.leader_elected.set()
             self.ok_received.set()
-            logging.info(f"action: recv_coordinator | result: success")
+            logging.info(f"action: recv_coordinator | leader={sender_id}")
 
     def handle_heartbeat_message(self,message, addr):
         self.last_heartbeat = time.time()
         sender_id = message["id"]
         if sender_id < self.id:
-            self.start_election()
+            #self.start_election()
+            self.leader_elected.clear()
 
     def start_election(self):
         logging.info(f"action: election | result: in_progress")
@@ -109,15 +115,15 @@ class LeaderManager(Process):
                                                 self.id)
                 
         # Wait a bit for responses
-        self.ok_received.wait(timeout=5)
+        self.ok_received.wait(timeout=WAIT_OK)
 
         if not self.ok_received.is_set() and not self.leader_elected.is_set():
-            logging.info(f"action: election | result announce_coordinator")            
+            logging.info(f"action: election | result: announce_coordinator")            
             return self.announce_coordinator()
             
 
         # Wait a bit for responses
-        self.leader_elected.wait(timeout=5)
+        self.leader_elected.wait(timeout=WAIT_COORDINATOR)
 
         if self.ok_received.is_set() and not self.leader_elected.is_set():
             logging.info(f"action: election | result: restart") 
@@ -133,7 +139,7 @@ class LeaderManager(Process):
                                                 self.id)
 
     def is_leader_alive(self):
-        return 15 > (time.time() - self.last_heartbeat)  
+        return DEAD_THRESHOLD > (time.time() - self.last_heartbeat)  
     
     def check_leader(self):
         if not self.is_leader_alive() and self.leader_id:
@@ -154,13 +160,17 @@ class LeaderManager(Process):
 
         receive_message.start()
 
-        time.sleep(5)
+        self.event.wait(WAIT_TIME)
 
         self.start_election()
         self.last_heartbeat = time.time()
 
         while True:
-            self.event.wait(2)
+            self.event.wait(WAIT_TIME)
+
+            if not self.leader_elected.is_set():
+                self.start_election()
+
             self.leader_elected.wait()
 
             if not self.on: break
