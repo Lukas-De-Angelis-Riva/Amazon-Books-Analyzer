@@ -53,5 +53,5 @@ class Query1Worker(Worker):
                 }
             )
             self.forward_data(msg.to_bytes())
-            self.tracker.total_sent += len(self.matching_books)
+            self.tracker.add_sent(len(self.matching_books))
         self.matching_books = []
