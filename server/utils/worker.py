@@ -48,6 +48,8 @@ class LogManager():
         if not os.path.exists(self.chunks_file):
             open(self.chunks_file, 'w').close()
 
+        self.tmp_file = LogManager.BASE_DIRECTORY + '/' + str(client_id) + '/tmp'
+
         self.changes = {}
 
     def begin(self, chunk_id):
@@ -61,7 +63,7 @@ class LogManager():
         else:
             self.changes[k][1] = v_new
 
-    def flush_changes(self):
+    def log_changes(self):
         with open(self.log_file, "a+") as log_file:
             for k in self.changes:
                 old = self.changes[k][0].encode()
@@ -76,12 +78,18 @@ class LogManager():
             log_file.write(write_line.to_line())
 
     def flush_data(self, data_json):
-        with open(self.data_file, "w") as data_file:
-            json.dump(data_json, data_file, indent=4)
+        with open(self.tmp_file, "w") as tmp_fp:
+            json.dump(data_json, tmp_fp, indent=4)
+
+        # It's assumed that the rename operation is atomic.
+        os.rename(self.tmp_file, self.data_file)
 
     def flush_tracker(self, data_json):
-        with open(self.tracker_file, "w") as data_file:
-            json.dump(data_json, data_file, indent=4)
+        with open(self.tmp_file, "w") as fp:
+            json.dump(data_json, fp, indent=4)
+
+        # It's assumed that the rename operation is atomic.
+        os.rename(self.tmp_file, self.tracker_file)
 
     def commit(self, chunk_id):
         with open(self.log_file, "a+") as log_file:
@@ -297,7 +305,7 @@ class Worker(Listener):
             self.work(input)
         self.do_after_work()
         self.tracker.log_manager.log_metadata(WORKED, self.tracker.total_worked)
-        self.tracker.log_manager.flush_changes()
+        self.tracker.log_manager.log_changes()
         self.tracker.total_worked += len(input_chunk)
         self.tracker.worked_chunks.append(chunk_id)
         self.tracker.flush_data()
