@@ -111,6 +111,7 @@ class ClientTracker():
         self.client_id = client_id
         self.log_manager = LogManager(client_id)
         self.results = {}
+        self.data = {}
         self.worked_chunks = []
         self.total_expected = -1
         self.total_worked = 0
@@ -135,7 +136,7 @@ class ClientTracker():
         for log_line in log_lines:
 
             if log_line.type == LogLineType.WRITE:
-                self.results[log_line.key] = self.parser(log_line.key, log_line.old_value)
+                self.data[log_line.key] = self.parser(log_line.key, log_line.old_value)
 
             elif log_line.type == LogLineType.WRITE_METADATA:
                 if log_line.key == EXPECTED:
@@ -165,7 +166,7 @@ class ClientTracker():
         if os.path.getsize(self.log_manager.data_file) > 0:
             with open(self.log_manager.data_file, 'r') as f:
                 aux = json.load(f)
-            self.results = {
+            self.data = {
                 k: self.parser(k, v)
                 for k, v in aux.items()
             }
@@ -182,7 +183,7 @@ class ClientTracker():
     def flush_data(self):
         self.log_manager.flush_data({
             k: v.encode()
-            for k, v in self.results.items()
+            for k, v in self.data.items()
         })
         self.log_manager.flush_tracker(
             {

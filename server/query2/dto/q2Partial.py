@@ -1,3 +1,4 @@
+import ast
 from model.book import Book
 
 
@@ -22,7 +23,8 @@ class Q2Partial:
     def decode(cls, k: str, v: str):
         p = cls(
             author=k,
-            decades=[date.strip() for date in v.strip('[]').split(',') if date.strip()]
+            # It's safe... it only allows parsing of Python literals
+            decades=ast.literal_eval(v)
         )
         return p
 

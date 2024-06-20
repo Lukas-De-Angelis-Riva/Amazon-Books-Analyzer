@@ -1,6 +1,8 @@
 import io
 import unittest
 import uuid
+import shutil
+import os
 
 from dto.q2Partial import Q2Partial
 from model.book import Book
@@ -9,12 +11,18 @@ from utils.middleware.testMiddleware import TestMiddleware
 from utils.serializer.q2PartialSerializer import Q2PartialSerializer    # type: ignore
 from utils.serializer.q2InSerializer import Q2InSerializer              # type: ignore
 from utils.serializer.q2OutSerializer import Q2OutSerializer            # type: ignore
-from utils.worker import TOTAL
+from utils.worker import TOTAL, LogManager
 from utils.model.message import Message, MessageType
 from common.query2Worker import Query2Worker
 
 
 class TestUtils(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        if os.path.exists(LogManager.BASE_DIRECTORY):
+            shutil.rmtree(LogManager.BASE_DIRECTORY)
+
     def append_eof(self, client_id, test_middleware, sent):
         eof = Message(
             client_id=client_id,
@@ -218,7 +226,7 @@ class TestUtils(unittest.TestCase):
         return tfe, twoa, thoa
 
     def test_worker_filter(self):
-        client_id = uuid.uuid4()
+        client_id = uuid.UUID('00000000-0000-0000-0000-000000000000')
         test_middleware = TestMiddleware()
         out_serializer = Q2OutSerializer()
         b1, b2, b3, b4, b5 = self.make_books_asoiaf()
@@ -250,7 +258,7 @@ class TestUtils(unittest.TestCase):
         assert d1.authors[0] not in filtered
 
     def test_worker_premature_eof(self):
-        client_id = uuid.uuid4()
+        client_id = uuid.UUID('10000000-0000-0000-0000-000000000000')
         test_middleware = TestMiddleware()
         out_serializer = Q2OutSerializer()
         b1, b2, b3, b4, b5 = self.make_books_asoiaf()
@@ -282,8 +290,8 @@ class TestUtils(unittest.TestCase):
         assert d1.authors[0] not in filtered
 
     def test_sequential_multiclient(self):
-        client_1 = uuid.uuid4()
-        client_2 = uuid.uuid4()
+        client_1 = uuid.UUID('20000000-0000-0000-0000-000000000000')
+        client_2 = uuid.UUID('21000000-0000-0000-0000-000000000000')
         test_middleware = TestMiddleware()
         out_serializer = Q2OutSerializer()
         b1, b2, b3, b4, b5 = self.make_books_asoiaf()
@@ -335,8 +343,8 @@ class TestUtils(unittest.TestCase):
         assert d1.authors[0] not in filtered
 
     def test_parallel_multiclient(self):
-        client_1 = uuid.uuid4()
-        client_2 = uuid.uuid4()
+        client_1 = uuid.UUID('30000000-0000-0000-0000-000000000000')
+        client_2 = uuid.UUID('31000000-0000-0000-0000-000000000000')
         test_middleware = TestMiddleware()
         out_serializer = Q2OutSerializer()
         b1, b2, b3, b4, b5 = self.make_books_asoiaf()

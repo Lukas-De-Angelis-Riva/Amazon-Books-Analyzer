@@ -52,7 +52,7 @@ class Query5Worker(Worker):
         logging.debug(f'action: new_book | book: {book}')
         if self.category in [c.lower() for c in book.categories]:
             logging.debug(f'action: new_book | result: saving | book: {book}')
-            self.tracker.results[book.title] = Q5Partial(book.title)
+            self.tracker.data[book.title] = Q5Partial(book.title)
 
     def recv_raw_book(self, raw):
         reader = io.BytesIO(raw)
@@ -102,16 +102,16 @@ class Query5Worker(Worker):
     def work(self, input):
         review = input
         logging.debug(f'action: new_review | review: {review}')
-        if review.title in self.tracker.results:
+        if review.title in self.tracker.data:
             logging.debug(f'action: new_review | result: update | review: {review}')
-            self.tracker.results[review.title].update(review)
+            self.tracker.data[review.title].update(review)
         return
 
     def do_after_work(self):
         return
 
     def send_results(self):
-        n = len(self.tracker.results)
-        self.tracker.results = {k: v for k, v in self.tracker.results.items() if v.n > 0}
+        n = len(self.tracker.data)
+        self.tracker.results = {k: v for k, v in self.tracker.data.items() if v.n > 0}
         logging.debug(f'action: filtering_result | result: success | n: {n} >> {len(self.tracker.results)}')
         super().send_results()

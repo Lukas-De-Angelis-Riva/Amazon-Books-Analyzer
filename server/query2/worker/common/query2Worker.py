@@ -41,12 +41,12 @@ class Query2Worker(Worker):
         book = input
         author = book.authors[0]
         logging.debug(f'action: new_book | book: {book}')
-        if author not in self.tracker.results:
-            self.tracker.results[author] = Q2Partial(author, [])
+        if author not in self.tracker.data:
+            self.tracker.data[author] = Q2Partial(author, [])
 
-        old = self.tracker.results[author].copy()
-        self.tracker.results[author].update(book)
-        new = self.tracker.results[author].copy()
+        old = self.tracker.data[author].copy()
+        self.tracker.data[author].update(book)
+        new = self.tracker.data[author].copy()
 
         # CHECK IF RESULT HAS CHANGED OR NOT...
         self.tracker.log_manager.hold_change(author, old, new)
@@ -56,10 +56,10 @@ class Query2Worker(Worker):
         return
 
     def filter_results(self):
-        return {k: v.author for k, v in self.tracker.results.items() if len(v.decades) >= self.min_decades}
+        return {k: v.author for k, v in self.tracker.data.items() if len(v.decades) >= self.min_decades}
 
     def send_results(self):
-        n = len(self.tracker.results)
+        n = len(self.tracker.data)
         self.tracker.results = self.filter_results()
         logging.debug(f'action: filtering_result | result: success | n: {n} >> {len(self.tracker.results)}')
         return super().send_results()
