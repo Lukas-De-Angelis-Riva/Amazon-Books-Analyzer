@@ -1,7 +1,7 @@
-import os
-import csv
-import json
 from utils.model.log import WriteLine, WriteMetadataLine, BeginLine, CommitLine
+
+import csv
+import os
 
 class LogManager():
     BASE_DIRECTORY = '/clients'
@@ -12,10 +12,6 @@ class LogManager():
         self.log_file = LogManager.BASE_DIRECTORY + '/' + str(client_id) + '/log'
         if not os.path.exists(self.log_file):
             open(self.log_file, 'w').close()
-
-        self.chunks_file = LogManager.BASE_DIRECTORY + '/' + str(client_id) + '/chunks'
-        if not os.path.exists(self.chunks_file):
-            open(self.chunks_file, 'w').close()
 
         self.changes = {}
 
@@ -48,12 +44,3 @@ class LogManager():
         with open(self.log_file, "a+") as log_file:
             commit_line = CommitLine(chunk_id)
             log_file.write(commit_line.to_line())
-
-        with open(self.chunks_file, "a+") as bucket_file:
-            bucket = csv.writer(bucket_file, delimiter=";")
-            bucket.writerow([str(chunk_id)])
-
-    def append_chunk_id(self, chunk_id):
-        with open(self.chunks_file, "a+") as bucket_file:
-            bucket = csv.writer(bucket_file, delimiter=";")
-            bucket.writerow([str(chunk_id)])

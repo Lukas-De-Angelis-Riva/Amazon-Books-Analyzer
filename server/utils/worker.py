@@ -58,7 +58,7 @@ class Worker(Listener):
             self.context_switch(client_id)
             self.tracker.recovery()
 
-    def send_chunk(self, chunk):
+    def send_chunk(self, chunk, id):
         logging.debug(f'action: send_results | status: in_progress | forwarding_chunk | len(chunk): {len(chunk)}')
         data = self.out_serializer.to_bytes(chunk)
         msg = Message(
@@ -67,7 +67,8 @@ class Worker(Listener):
             data=data,
             args={
                 WORKER_ID: self.peer_id,
-            }
+            },
+            id=id 
         )
         self.forward_data(msg.to_bytes())
         self.tracker.add_sent(len(chunk))
@@ -75,14 +76,15 @@ class Worker(Listener):
 
     def send_results(self):
         chunk = []
+        id_iterator = iter(self.tracker.worked_chunks)
         logging.debug(f'action: send_results | status: in_progress | len(results): {len(self.tracker.results)}')
         for result in self.tracker.results.values():
             chunk.append(result)
             if len(chunk) >= self.chunk_size:
-                self.send_chunk(chunk)
+                self.send_chunk(chunk, next(id_iterator))
                 chunk = []
         if chunk:
-            self.send_chunk(chunk)
+            self.send_chunk(chunk,next(id_iterator))
         logging.debug('action: send_results | status: success')
         return
 

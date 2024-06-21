@@ -1,16 +1,16 @@
 from utils.model.log import LogFactory, LogLineType
+from utils.persistentList import PersistentList
 from utils.persistentMap import PersistentMap
 from utils.logManager import LogManager
 
-import uuid
-import json
 import os
+
+BASE_DIRECTORY = '/clients'
 
 EXPECTED = "EXPECT"
 WORKED = "WORKED"
 SENT = "SENT"
 
-BASE_DIRECTORY = '/clients'
 
 class ClientTracker():
     def __init__(self, client_id):
@@ -24,14 +24,16 @@ class ClientTracker():
         self.client_id = client_id
         self.log_manager = LogManager(client_id)
   
-        self.data = PersistentMap(BASE_DIRECTORY + '/' + str(client_id) + '/data')
+        self.worked_chunks = PersistentList(BASE_DIRECTORY + '/' + str(client_id) + '/chunks')
         self.meta_data = PersistentMap(BASE_DIRECTORY + '/' + str(client_id) + '/meta')
+        self.data = PersistentMap(BASE_DIRECTORY + '/' + str(client_id) + '/data')
+        
         self.meta_data[EXPECTED] = -1
         self.meta_data[WORKED] = 0
         self.meta_data[SENT] = 0
 
         self.results = {}
-        self.worked_chunks = []
+        
 
         # DUMMY PARSER
         self.parser = lambda k, v: v
@@ -46,7 +48,8 @@ class ClientTracker():
             chunk_id = log_lines[-1].chunk_id
             if chunk_id not in self.worked_chunks:
                 self.worked_chunks.append(chunk_id)
-                self.log_manager.append_chunk_id(chunk_id)
+                #self.worked_chunks.append(chunk_id)
+                #self.log_manager.append_chunk_id(chunk_id)
             return
 
         log_lines.reverse()
@@ -64,12 +67,7 @@ class ClientTracker():
 
     def recovery(self):
         self.meta_data.load(lambda k, v: v)
-
-        if os.path.getsize(self.log_manager.chunks_file) > 0:
-            with open(self.log_manager.chunks_file, 'r') as f:
-                aux = f.readlines()
-            self.worked_chunks = [uuid.UUID(u.strip()) for u in aux]
-
+        self.worked_chunks.load()
         self.data.load(self.parser)
 
         if os.path.getsize(self.log_manager.log_file) > 0:
@@ -101,8 +99,8 @@ class ClientTracker():
         self.log_manager.log_metadata(SENT, self.meta_data[SENT])
         self.log_manager.log_changes()
         self.add_worked(size)
-        self.worked_chunks.append(chunk_id)
         self.flush_data()
+        self.worked_chunks.append(chunk_id) # append & flush chunk_id
         self.log_manager.commit(chunk_id)
 
     def __repr__(self) -> str:
