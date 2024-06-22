@@ -1,11 +1,12 @@
 import json
 import os
 
+
 class PersistentMap():
     def __init__(self, path):
         self.path = path
         self.map = {}
-        self.tmp_file =  path + '_tmp'
+        self.tmp_file = path + '_tmp'
 
         if not os.path.exists(self.path):
             open(self.path, 'w').close()

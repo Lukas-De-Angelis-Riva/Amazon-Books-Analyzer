@@ -72,7 +72,7 @@ class BeginLine():
 
     def to_line(self):
         if self.worker_id:
-            return f'{BeginLine.REPR};{str(self.chunk_id)};{str(self.worker_id)}\n'
+            return f'{BeginLine.REPR};{str(self.chunk_id)};{self.worker_id}\n'
         else:
             return f'{BeginLine.REPR};{str(self.chunk_id)}\n'
 
@@ -84,7 +84,7 @@ class BeginLine():
 
         chunk_id = UUID(splitted[1])
         if len(splitted) > 2:
-            worker_id = int(splitted[2])
+            worker_id = splitted[2]
             return cls(chunk_id, worker_id)
         else:
             return cls(chunk_id)
@@ -101,7 +101,7 @@ class CommitLine():
 
     def to_line(self):
         if self.worker_id:
-            return f'{CommitLine.REPR};{str(self.chunk_id)};{str(self.worker_id)}\n'
+            return f'{CommitLine.REPR};{str(self.chunk_id)};{self.worker_id}\n'
         else:
             return f'{CommitLine.REPR};{str(self.chunk_id)}\n'
 
@@ -113,7 +113,7 @@ class CommitLine():
 
         chunk_id = UUID(splitted[1])
         if len(splitted) > 2:
-            worker_id = int(splitted[2])
+            worker_id = splitted[2]
             return cls(chunk_id, worker_id)
         else:
             return cls(chunk_id)

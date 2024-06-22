@@ -16,6 +16,7 @@ EXPECTED = "EXPECT"
 WORKED = "WORKED"
 SENT = "SENT"
 
+
 class Worker(Listener):
     def __init__(self, middleware, in_serializer, out_serializer, peer_id, peers, chunk_size):
         super().__init__(middleware)
@@ -68,28 +69,24 @@ class Worker(Listener):
             args={
                 WORKER_ID: self.peer_id,
             },
-            id=id 
+            id=id
         )
         self.forward_data(msg.to_bytes())
         self.tracker.add_sent(len(chunk))
         return
 
-
-    def make_id(slef,id):
-        pass
-
     def send_results(self):
         chunk = []
         id_iterator = iter(self.tracker.worked_chunks)
         logging.debug(f'action: send_results | status: in_progress | len(results): {len(self.tracker.results)}')
-        for key, result in sorted(self.tracker.results.items(), key = lambda item: item[0]):
+        for key, result in sorted(self.tracker.results.items(), key=lambda item: item[0]):
 
             chunk.append(result)
             if len(chunk) >= self.chunk_size:
                 self.send_chunk(chunk, next(id_iterator))
                 chunk = []
         if chunk:
-            self.send_chunk(chunk,next(id_iterator))
+            self.send_chunk(chunk, next(id_iterator))
         logging.debug('action: send_results | status: success')
         return
 

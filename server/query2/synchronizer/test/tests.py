@@ -1,8 +1,11 @@
-import io
 import unittest
+import shutil
 import uuid
+import os
+import io
 
 from common.query2Synchronizer import Query2Synchronizer
+from utils.clientTrackerSynchronizer import BASE_DIRECTORY
 from utils.worker import TOTAL, WORKER_ID
 from utils.middleware.testMiddleware import TestMiddleware
 from utils.serializer.q2OutSerializer import Q2OutSerializer    # type: ignore
@@ -10,6 +13,11 @@ from utils.model.message import Message, MessageType
 
 
 class TestUtils(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if os.path.exists(BASE_DIRECTORY):
+            shutil.rmtree(BASE_DIRECTORY)
+
     def append_eof(self, client_id, test_middleware, peer_id, sent):
         eof = Message(
             client_id=client_id,
@@ -65,7 +73,8 @@ class TestUtils(unittest.TestCase):
         return a1, a2, a3, a4, a5, a6, a7, a8
 
     def test_sync(self):
-        client_id = uuid.uuid4()
+        client_id = uuid.UUID('00000000-0000-0000-0000-000000000000')
+
         test_middleware = TestMiddleware()
         serializer = Q2OutSerializer()
 
@@ -113,7 +122,8 @@ class TestUtils(unittest.TestCase):
         assert a8 in sent_authors
 
     def test_sync_premature_eof(self):
-        client_id = uuid.uuid4()
+        client_id = uuid.UUID('10000000-0000-0000-0000-000000000000')
+
         test_middleware = TestMiddleware()
         serializer = Q2OutSerializer()
 
@@ -161,9 +171,9 @@ class TestUtils(unittest.TestCase):
         assert a8 in sent_authors
 
     def test_sync_sequential_multiclient(self):
-        client_1 = uuid.uuid4()
-        client_2 = uuid.uuid4()
-        client_3 = uuid.uuid4()
+        client_1 = uuid.UUID('20000000-0000-0000-0000-000000000000')
+        client_2 = uuid.UUID('21000000-0000-0000-0000-000000000000')
+        client_3 = uuid.UUID('22000000-0000-0000-0000-000000000000')
         test_middleware = TestMiddleware()
         serializer = Q2OutSerializer()
 
@@ -237,9 +247,9 @@ class TestUtils(unittest.TestCase):
         check(client_3, [a6, a7, a8], sent)
 
     def test_sync_parallel_multiclient(self):
-        client_1 = uuid.uuid4()
-        client_2 = uuid.uuid4()
-        client_3 = uuid.uuid4()
+        client_1 = uuid.UUID('30000000-0000-0000-0000-000000000000')
+        client_2 = uuid.UUID('31000000-0000-0000-0000-000000000000')
+        client_3 = uuid.UUID('32000000-0000-0000-0000-000000000000')
         test_middleware = TestMiddleware()
         serializer = Q2OutSerializer()
 

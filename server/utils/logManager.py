@@ -1,7 +1,7 @@
+import os
+
 from utils.model.log import WriteLine, WriteMetadataLine, BeginLine, CommitLine
 
-import csv
-import os
 
 class LogManager():
     BASE_DIRECTORY = '/clients'
@@ -15,9 +15,9 @@ class LogManager():
 
         self.changes = {}
 
-    def begin(self, chunk_id):
+    def begin(self, chunk_id, worker_id=None):
         with open(self.log_file, "w", encoding='UTF-8') as log_file:
-            begin_line = BeginLine(chunk_id)
+            begin_line = BeginLine(chunk_id, worker_id)
             log_file.write(begin_line.to_line())
 
     def hold_change(self, k, v_old, v_new):
@@ -40,7 +40,7 @@ class LogManager():
             write_line = WriteMetadataLine(key, v_old)
             log_file.write(write_line.to_line())
 
-    def commit(self, chunk_id):
+    def commit(self, chunk_id, worker_id=None):
         with open(self.log_file, "a+") as log_file:
-            commit_line = CommitLine(chunk_id)
+            commit_line = CommitLine(chunk_id, worker_id)
             log_file.write(commit_line.to_line())

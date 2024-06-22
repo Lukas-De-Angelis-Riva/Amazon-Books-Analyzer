@@ -23,17 +23,16 @@ class ClientTracker():
 
         self.client_id = client_id
         self.log_manager = LogManager(client_id)
-  
+
         self.worked_chunks = PersistentList(BASE_DIRECTORY + '/' + str(client_id) + '/chunks')
         self.meta_data = PersistentMap(BASE_DIRECTORY + '/' + str(client_id) + '/meta')
         self.data = PersistentMap(BASE_DIRECTORY + '/' + str(client_id) + '/data')
-        
+
         self.meta_data[EXPECTED] = -1
         self.meta_data[WORKED] = 0
         self.meta_data[SENT] = 0
 
         self.results = {}
-        
 
         # DUMMY PARSER
         self.parser = lambda k, v: v

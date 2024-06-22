@@ -1,13 +1,16 @@
-from utils.clientTrackerSynchronizer import ClientTrackerSynchronizer
+import logging
+import uuid
+import io
+import os
+
+from utils.clientTrackerSynchronizer import ClientTrackerSynchronizer, BASE_DIRECTORY
 from utils.model.message import Message, MessageType
 from utils.middleware.middleware import ACK
 from utils.listener import Listener
 
-import logging
-import io
-
 TOTAL = "total"
 WORKER_ID = "worker_id"
+
 
 class Synchronizer(Listener):
     def __init__(self, middleware, n_workers, in_serializer, out_serializer, chunk_size):
@@ -19,16 +22,30 @@ class Synchronizer(Listener):
         self.clients = {}
         self.tracker = None
 
+        self.recovery()
+
     def process_chunk(self, chunk):
         raise RuntimeError("Must be redefined")
 
     def terminator(self):
         raise RuntimeError("Hasta la vista, baby.")
-    
+
+    def adapt_tracker(self):
+        return
+
     def context_switch(self, client_id):
         if client_id not in self.clients:
             self.clients[client_id] = ClientTrackerSynchronizer(client_id, self.n_workers)
         self.tracker = self.clients[client_id]
+        self.adapt_tracker()
+
+    def recovery(self):
+        if not os.path.exists(BASE_DIRECTORY):
+            return
+        for directory in os.listdir(BASE_DIRECTORY):
+            client_id = uuid.UUID(directory)
+            self.context_switch(client_id)
+            self.tracker.recovery()
 
     def recv(self, raw_msg, key):
         msg = Message.from_bytes(raw_msg)
@@ -36,25 +53,27 @@ class Synchronizer(Listener):
 
         if msg.ID in self.tracker.worked_chunks:
             return ACK
-        
+
         if msg.type == MessageType.EOF:
             self._recv_eof(
-                msg.args[WORKER_ID],
+                str(msg.args[WORKER_ID]),
                 msg.args[TOTAL]
             )
         elif msg.type == MessageType.DATA:
             self._recv_raw(
                 msg.data,
-                msg.args[WORKER_ID]
+                msg.ID,
+                str(msg.args[WORKER_ID])
             )
 
         return ACK
 
-    def _recv_raw(self, data, worker_id):
+    def _recv_raw(self, data, chunk_id, worker_id):
         reader = io.BytesIO(data)
         input_chunk = self.in_serializer.from_chunk(reader)
         self.process_chunk(input_chunk)
-        self.tracker.add_worked(len(input_chunk), worker_id)
+
+        self.tracker.persist(chunk_id, worker_id, len(input_chunk))
 
         if self.tracker.all_chunks_received():
             self.terminator()
@@ -62,7 +81,7 @@ class Synchronizer(Listener):
 
     def _recv_eof(self, worker_id, total):
         logging.debug(f'action: recv_eof | client: {self.tracker.client_id} | worker_id: {worker_id} | status: success')
-        self.tracker.set_total(total,worker_id)
+        self.tracker.set_total(total, worker_id)
 
         if self.tracker.all_chunks_received():
             self.terminator()

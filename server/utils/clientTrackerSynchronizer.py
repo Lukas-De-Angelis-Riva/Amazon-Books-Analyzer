@@ -10,6 +10,7 @@ BASE_DIRECTORY = "/clients"
 WORKED_BY_WORKER = "WORKED"
 TOTAL_BY_WORKER = "TOTAL"
 
+
 class ClientTrackerSynchronizer():
     def __init__(self, client_id, n_workers):
 
@@ -19,17 +20,19 @@ class ClientTrackerSynchronizer():
         if not os.path.exists(BASE_DIRECTORY + '/' + str(client_id)):
             os.mkdir(BASE_DIRECTORY + '/' + str(client_id))
 
-
         self.client_id = client_id
         self.n_workers = n_workers
-        
         self.log_manager = LogManager(client_id)
 
-        self.worked_chunks = PersistentList(BASE_DIRECTORY + '/' + str(client_id) + '/chunks')
-        self.data = PersistentMap(BASE_DIRECTORY + '/' + str(client_id) + '/' + "data")
+        self.worked_chunks = PersistentList(BASE_DIRECTORY + '/' + str(client_id) + '/' + 'chunks')
         self.meta_data = PersistentMap(BASE_DIRECTORY + '/' + str(client_id) + '/' + "meta")
-        self.meta_data[WORKED_BY_WORKER] = {i: 0 for i in range(1, n_workers+1)}
-        self.meta_data[TOTAL_BY_WORKER] = {i: -1 for i in range(1, n_workers+1)}
+        self.data = PersistentMap(BASE_DIRECTORY + '/' + str(client_id) + '/' + "data")
+
+        self.meta_data[WORKED_BY_WORKER] = {str(i): 0 for i in range(1, n_workers+1)}
+        self.meta_data[TOTAL_BY_WORKER] = {str(i): -1 for i in range(1, n_workers+1)}
+
+        # DUMMY PARSER
+        self.parser = lambda k, v: v
 
     def undo(self):
         with open(self.log_manager.log_file, 'r') as f:
@@ -43,7 +46,7 @@ class ClientTrackerSynchronizer():
                 self.worked_chunks.append(chunk_id)
             return
 
-        worker_id  = log_lines[0].worker_id
+        worker_id = log_lines[0].worker_id
         log_lines.reverse()
         for log_line in log_lines:
 
@@ -67,12 +70,13 @@ class ClientTrackerSynchronizer():
 
     def all_chunks_received(self):
         return all(
-            (self.meta_data[TOTAL_BY_WORKER][i] == self.meta_data[WORKED_BY_WORKER][i]) for i in range(1, self.n_workers+1)
+            (self.meta_data[TOTAL_BY_WORKER][str(i)] == self.meta_data[WORKED_BY_WORKER][str(i)])
+            for i in range(1, self.n_workers+1)
         )
 
     def total_worked(self):
         return sum(self.meta_data[TOTAL_BY_WORKER].values())
-    
+
     def add_worked(self, amount, worker_id):
         self.meta_data[WORKED_BY_WORKER][worker_id] += amount
 
@@ -88,10 +92,11 @@ class ClientTrackerSynchronizer():
         self.log_manager.log_metadata(WORKED_BY_WORKER, self.meta_data[WORKED_BY_WORKER][worker_id])
         self.log_manager.log_metadata(TOTAL_BY_WORKER, self.meta_data[TOTAL_BY_WORKER][worker_id])
         self.log_manager.log_changes()
-        self.add_worked(size)
+        self.add_worked(size, worker_id)
         self.flush_data()
         self.log_manager.commit(chunk_id, worker_id)
-        self.worked_chunks.append(chunk_id) # append & flush chunk_id
+        # append & flush chunk_id
+        self.worked_chunks.append(chunk_id)
 
     def __repr__(self) -> str:
         return f'ClientTracker({self.client_id})'
