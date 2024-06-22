@@ -65,12 +65,16 @@ class BeginLine():
 
     REPR = 'BEGIN'
 
-    def __init__(self, chunk_id: UUID):
+    def __init__(self, chunk_id: UUID, worker_id=None):
         self.type = LogLineType.BEGIN
         self.chunk_id = chunk_id
+        self.worker_id = worker_id
 
     def to_line(self):
-        return f'{BeginLine.REPR};{str(self.chunk_id)}\n'
+        if self.worker_id:
+            return f'{BeginLine.REPR};{str(self.chunk_id)};{str(self.worker_id)}\n'
+        else:
+            return f'{BeginLine.REPR};{str(self.chunk_id)}\n'
 
     @classmethod
     def from_line(cls, line: str):
@@ -79,21 +83,27 @@ class BeginLine():
             raise TypeError(f"Line '{line}' is not of type {BeginLine.REPR}.")
 
         chunk_id = UUID(splitted[1])
-        return cls(
-            chunk_id
-        )
+        if len(splitted) > 2:
+            worker_id = int(splitted[2])
+            return cls(chunk_id, worker_id)
+        else:
+            return cls(chunk_id)
 
 
 class CommitLine():
 
     REPR = 'COMMIT'
 
-    def __init__(self, chunk_id: UUID):
+    def __init__(self, chunk_id: UUID, worker_id=None):
         self.type = LogLineType.COMMIT
         self.chunk_id = chunk_id
+        self.worker_id = worker_id
 
     def to_line(self):
-        return f'{CommitLine.REPR};{str(self.chunk_id)}\n'
+        if self.worker_id:
+            return f'{CommitLine.REPR};{str(self.chunk_id)};{str(self.worker_id)}\n'
+        else:
+            return f'{CommitLine.REPR};{str(self.chunk_id)}\n'
 
     @classmethod
     def from_line(cls, line: str):
@@ -102,9 +112,11 @@ class CommitLine():
             raise TypeError(f"Line '{line}' is not of type {CommitLine.REPR}.")
 
         chunk_id = UUID(splitted[1])
-        return cls(
-            chunk_id
-        )
+        if len(splitted) > 2:
+            worker_id = int(splitted[2])
+            return cls(chunk_id, worker_id)
+        else:
+            return cls(chunk_id)
 
 
 class LogFactory():

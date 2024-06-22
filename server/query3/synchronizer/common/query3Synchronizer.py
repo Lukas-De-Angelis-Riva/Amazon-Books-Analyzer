@@ -1,6 +1,7 @@
 import logging
 
-from utils.synchronizer import Synchronizer, ClientTracker, TOTAL
+from utils.clientTrackerSynchronizer import ClientTrackerSynchronizer
+from utils.synchronizer import Synchronizer, TOTAL
 from utils.middleware.middleware import Middleware
 from utils.serializer.q3PartialSerializer import Q3PartialSerializer    # type: ignore
 from utils.serializer.q3OutSerializer import Q3OutSerializer            # type: ignore
@@ -13,7 +14,7 @@ Q3_TAG = "Q3"
 Q4_TAG = "Q4"
 
 
-class ClientTrackerWithResults(ClientTracker):
+class ClientTrackerWithResults(ClientTrackerSynchronizer):
     def __init__(self, client_id, n_workers):
         super().__init__(client_id, n_workers)
         self.results = {}

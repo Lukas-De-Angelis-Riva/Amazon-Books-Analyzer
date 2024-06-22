@@ -74,11 +74,16 @@ class Worker(Listener):
         self.tracker.add_sent(len(chunk))
         return
 
+
+    def make_id(slef,id):
+        pass
+
     def send_results(self):
         chunk = []
         id_iterator = iter(self.tracker.worked_chunks)
         logging.debug(f'action: send_results | status: in_progress | len(results): {len(self.tracker.results)}')
-        for result in self.tracker.results.values():
+        for key, result in sorted(self.tracker.results.items(), key = lambda item: item[0]):
+
             chunk.append(result)
             if len(chunk) >= self.chunk_size:
                 self.send_chunk(chunk, next(id_iterator))
