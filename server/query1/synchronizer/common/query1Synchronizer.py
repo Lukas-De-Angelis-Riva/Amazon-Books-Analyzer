@@ -21,6 +21,7 @@ class Query1Synchronizer(Synchronizer):
             # Also, it is not used in 'Synchronizer' abstraction. So might be deleted
             chunk_size=1
         )
+        self.recovery()
 
     def process_chunk(self, chunk, chunk_id):
         data = self.out_serializer.to_bytes(chunk)

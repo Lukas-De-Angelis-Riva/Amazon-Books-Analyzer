@@ -30,6 +30,7 @@ class Query3Synchronizer(Synchronizer):
                          out_serializer=Q3OutSerializer(),
                          chunk_size=chunk_size,)
         self.n_top = n_top
+        self.recovery()
 
     def recv(self, raw_msg, key):
         msg = Message.from_bytes(raw_msg)

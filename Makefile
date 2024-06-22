@@ -31,6 +31,16 @@ system-shutdown:
 	docker compose -f docker-compose-server.yaml down
 .PHONY: system-shutdown
 
+test: docker-image-system
+	docker compose -f docker-compose-test.yaml up -d --build
+	docker compose -f docker-compose-test.yaml logs -f
+.PHONY: test	
+
+rm-test:
+	docker compose -f docker-compose-test.yaml stop -t 1
+	docker compose -f docker-compose-test.yaml down
+.PHONY: rm-test
+
 system-logs:
 	docker compose -f docker-compose-server.yaml logs -f
 

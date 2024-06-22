@@ -59,17 +59,12 @@ class ClientTrackerSynchronizer():
         worker_id = log_lines[0].worker_id
         log_lines.reverse()
         for log_line in log_lines:
-
-            if log_line.type == LogLineType.WRITE:
-                self.data[log_line.key] = self.parser(log_line.key, log_line.old_value)
-
-            elif log_line.type == LogLineType.WRITE_METADATA:
+            if log_line.type == LogLineType.WRITE_METADATA:
                 self.meta_data[log_line.key][worker_id] = log_line.old_value
-
             elif log_line.type == LogLineType.BEGIN:
                 break
         virus.infect()
-        self.flush_data()
+        self.meta_data.flush()
         virus.infect()
 
     def recovery(self):
@@ -98,15 +93,10 @@ class ClientTrackerSynchronizer():
         return uuid.UUID(self.meta_data[EOF_ID])
 
     def clear(self):
-        # TODO: INFECT
+        virus.infect()
         os.rename(f'{BASE_DIRECTORY}/{str(self.client_id)}', NULL_DIRECTORY)
+        virus.infect()
         shutil.rmtree(NULL_DIRECTORY)
-
-    def flush_data(self):
-        virus.infect()
-        self.data.flush()
-        virus.infect()
-        self.meta_data.flush()
         virus.infect()
 
     def persist(self, chunk_id, worker_id, worked=None, total=None):
@@ -117,14 +107,13 @@ class ClientTrackerSynchronizer():
             self.log_manager.log_metadata(WORKED_BY_WORKER, self.meta_data[WORKED_BY_WORKER][worker_id])
         if total is not None:
             self.log_manager.log_metadata(TOTAL_BY_WORKER, self.meta_data[TOTAL_BY_WORKER][worker_id])
-        virus.infect()
-        self.log_manager.log_changes()
-        virus.infect()
-        if worked is not None:
-            self.meta_data[WORKED_BY_WORKER][worker_id] += worked
         if total is not None:
             self.meta_data[TOTAL_BY_WORKER][worker_id] = total
-        self.flush_data()
+        if worked is not None:
+            self.meta_data[WORKED_BY_WORKER][worker_id] += worked
+            self.data.flush()
+        virus.infect()
+        self.meta_data.flush()
         virus.infect()
         self.log_manager.commit(chunk_id, worker_id)
         virus.infect()

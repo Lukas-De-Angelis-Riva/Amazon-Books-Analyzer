@@ -27,8 +27,6 @@ class Synchronizer(Listener):
         self.clients = {}
         self.tracker = None
 
-        self.recovery()
-
     def process_chunk(self, chunk, chunk_id):
         raise RuntimeError("Must be redefined")
 
@@ -48,7 +46,7 @@ class Synchronizer(Listener):
         if not os.path.exists(BASE_DIRECTORY):
             return
         for directory in os.listdir(BASE_DIRECTORY):
-            if BASE_DIRECTORY + directory == NULL_DIRECTORY:
+            if BASE_DIRECTORY + '/' + directory == NULL_DIRECTORY:
                 shutil.rmtree(NULL_DIRECTORY)
                 continue
             client_id = uuid.UUID(directory)
@@ -95,8 +93,7 @@ class Synchronizer(Listener):
 
         virus.infect()
         self.tracker.persist(chunk_id, worker_id, worked=len(input_chunk))
-        virus.infect() ; virus.infect() ; virus.infect() ; virus.infect()
-        virus.infect() ; virus.infect() ; virus.infect() ; virus.infect()
+        virus.infect()
 
         if self.tracker.all_chunks_received():
             virus.infect()
