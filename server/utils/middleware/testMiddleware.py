@@ -9,8 +9,10 @@ class TestMiddleware:
         self.messages.append(msg)
 
     def start(self):
-        for msg in self.messages:
+        _messages = self.messages.copy()
+        for msg in _messages:
             self.callback(msg, 'test-key')
+            self.messages.remove(msg)
             self.callback_counter += 1
 
     def stop(self):

@@ -1,14 +1,21 @@
+import shutil
+import uuid
+import os
+
 from utils.model.log import LogFactory, LogLineType
 from utils.persistentList import PersistentList
 from utils.persistentMap import PersistentMap
 from utils.logManager import LogManager
 
-import os
+# TEST PURPOSES
+from utils.model.virus import virus
 
 
 BASE_DIRECTORY = "/clients"
+NULL_DIRECTORY = BASE_DIRECTORY + '/null'
 WORKED_BY_WORKER = "WORKED"
 TOTAL_BY_WORKER = "TOTAL"
+EOF_ID = "EOF_ID"
 
 
 class ClientTrackerSynchronizer():
@@ -30,6 +37,7 @@ class ClientTrackerSynchronizer():
 
         self.meta_data[WORKED_BY_WORKER] = {str(i): 0 for i in range(1, n_workers+1)}
         self.meta_data[TOTAL_BY_WORKER] = {str(i): -1 for i in range(1, n_workers+1)}
+        self.meta_data[EOF_ID] = str(uuid.uuid4())
 
         # DUMMY PARSER
         self.parser = lambda k, v: v
@@ -43,7 +51,9 @@ class ClientTrackerSynchronizer():
         if log_lines[-1].type == LogLineType.COMMIT:
             chunk_id = log_lines[-1].chunk_id
             if chunk_id not in self.worked_chunks:
+                virus.infect()
                 self.worked_chunks.append(chunk_id)
+                virus.infect()
             return
 
         worker_id = log_lines[0].worker_id
@@ -54,19 +64,26 @@ class ClientTrackerSynchronizer():
                 self.data[log_line.key] = self.parser(log_line.key, log_line.old_value)
 
             elif log_line.type == LogLineType.WRITE_METADATA:
-                self.meta_data[WORKED_BY_WORKER][worker_id] = log_line.old_value
+                self.meta_data[log_line.key][worker_id] = log_line.old_value
 
             elif log_line.type == LogLineType.BEGIN:
                 break
+        virus.infect()
         self.flush_data()
+        virus.infect()
 
     def recovery(self):
+        virus.infect()
         self.meta_data.load(lambda k, v: v)
+        virus.infect()
         self.worked_chunks.load()
+        virus.infect()
         self.data.load(self.parser)
+        virus.infect()
 
         if os.path.getsize(self.log_manager.log_file) > 0:
             self.undo()
+            virus.infect()
 
     def all_chunks_received(self):
         return all(
@@ -77,26 +94,43 @@ class ClientTrackerSynchronizer():
     def total_worked(self):
         return sum(self.meta_data[TOTAL_BY_WORKER].values())
 
-    def add_worked(self, amount, worker_id):
-        self.meta_data[WORKED_BY_WORKER][worker_id] += amount
+    def eof_id(self):
+        return uuid.UUID(self.meta_data[EOF_ID])
 
-    def set_total(self, total, worker_id):
-        self.meta_data[TOTAL_BY_WORKER][worker_id] = total
+    def clear(self):
+        # TODO: INFECT
+        os.rename(f'{BASE_DIRECTORY}/{str(self.client_id)}', NULL_DIRECTORY)
+        shutil.rmtree(NULL_DIRECTORY)
 
     def flush_data(self):
+        virus.infect()
         self.data.flush()
+        virus.infect()
         self.meta_data.flush()
+        virus.infect()
 
-    def persist(self, chunk_id, worker_id, size):
+    def persist(self, chunk_id, worker_id, worked=None, total=None):
+        virus.infect()
         self.log_manager.begin(chunk_id, worker_id)
-        self.log_manager.log_metadata(WORKED_BY_WORKER, self.meta_data[WORKED_BY_WORKER][worker_id])
-        self.log_manager.log_metadata(TOTAL_BY_WORKER, self.meta_data[TOTAL_BY_WORKER][worker_id])
+        virus.infect()
+        if worked is not None:
+            self.log_manager.log_metadata(WORKED_BY_WORKER, self.meta_data[WORKED_BY_WORKER][worker_id])
+        if total is not None:
+            self.log_manager.log_metadata(TOTAL_BY_WORKER, self.meta_data[TOTAL_BY_WORKER][worker_id])
+        virus.infect()
         self.log_manager.log_changes()
-        self.add_worked(size, worker_id)
+        virus.infect()
+        if worked is not None:
+            self.meta_data[WORKED_BY_WORKER][worker_id] += worked
+        if total is not None:
+            self.meta_data[TOTAL_BY_WORKER][worker_id] = total
         self.flush_data()
+        virus.infect()
         self.log_manager.commit(chunk_id, worker_id)
+        virus.infect()
         # append & flush chunk_id
         self.worked_chunks.append(chunk_id)
+        virus.infect()
 
     def __repr__(self) -> str:
         return f'ClientTracker({self.client_id})'

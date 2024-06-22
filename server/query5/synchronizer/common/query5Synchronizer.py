@@ -37,7 +37,7 @@ class Query5Synchronizer(Synchronizer):
 
         return super().recv(raw_msg, key)
 
-    def process_chunk(self, chunk):
+    def process_chunk(self, chunk, chunk_id):
         for result in chunk:
             logging.debug(f'action: new_result | result: {result}')
             self.tracker.results[result.title] = result
@@ -85,6 +85,7 @@ class Query5Synchronizer(Synchronizer):
                 TOTAL: len(self.tracker.results)
             }
         )
+        eof.ID = self.tracker.eof_id()
         self.middleware.publish(eof.to_bytes(), topic=OUT_TOPIC, tag=TAG)
         return
 

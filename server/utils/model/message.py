@@ -83,3 +83,15 @@ class Message():
         )
         m.ID = ID
         return m
+
+    def __eq__(self, other) -> bool:
+        return self.ID == other.ID
+
+    def __hash__(self) -> int:
+        return hash(str(self))
+
+    def __str__(self) -> str:
+        return f'Message({str(self.ID)})'
+
+    def __repr__(self) -> str:
+        return f'Message({str(self.ID)})'
