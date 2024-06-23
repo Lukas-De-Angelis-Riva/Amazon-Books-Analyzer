@@ -2,8 +2,8 @@ import uuid
 import struct
 
 from utils.TCPhandler import TCPHandler
-from utils.protocol import TlvTypes, UnexpectedType, SIZE_LENGTH, make_eof
-from utils.protocol import MSG_ID_SIZE, msg_id_from_bytes, make_msg_id
+from utils.protocol import TlvTypes, UnexpectedType, SIZE_LENGTH, make_eof, code_to_bytes
+from utils.protocol import UUID_LEN, MSG_ID_LEN, msg_id_from_bytes, make_msg_id
 from utils.serializer.bookSerializer import BookSerializer
 from utils.serializer.reviewSerializer import ReviewSerializer
 from utils.serializer.lineSerializer import LineSerializer
@@ -28,22 +28,23 @@ class ProtocolHandler:
         assert result == len(bytes), 'TCP Error: cannot send ACK'
 
     def handshake(self, client_uuid):
-        bytes = int.to_bytes(TlvTypes.UUID, TlvTypes.SIZE_CODE_MSG, 'big')
+        bytes = self.make_header(TlvTypes.UUID, UUID_LEN)
         bytes += client_uuid.bytes
         result = self.TCPHandler.send_all(bytes)
         assert result == len(bytes), 'TCP Error: cannot send UUID'
         self.wait_confimation()
 
     def wait_handshake(self):
-        raw = self.TCPHandler.read(TlvTypes.SIZE_CODE_MSG+TlvTypes.SIZE_UUID_MSG)
-        type = struct.unpack('!i', raw[:TlvTypes.SIZE_CODE_MSG])[0]
+        type, msg_id, payload_len = self.read_header()
+        raw_uuid = self.TCPHandler.read(payload_len)
         assert type == TlvTypes.UUID, f'Unexpected type: expected: UUID({TlvTypes.UUID}), received {type}'
-        client_uuid = uuid.UUID(bytes=raw[TlvTypes.SIZE_CODE_MSG:])
+        client_uuid = uuid.UUID(bytes=raw_uuid)
         self.ack()
         return client_uuid
 
     def send_eof(self):
-        eof = make_eof(0)
+        #eof = make_eof(0)
+        eof = self.make_header(TlvTypes.EOF, 0)
         result = self.TCPHandler.send_all(eof)
         assert result == len(eof), 'TCP Error: cannot send EOF'
 
@@ -56,24 +57,27 @@ class ProtocolHandler:
         self.wait_confimation()
 
     def send_books(self, books):
-        bytes = code_to_bytes(TlvTypes.BOOK_CHUNK)
-        bytes += make_msg_id() 
-        bytes += int.to_bytes(len(books), SIZE_LENGTH, "big") 
+        bytes = self.make_header(TlvTypes.BOOK_CHUNK, len(books))
         bytes += self.book_serializer.to_bytes(books)
         result = self.TCPHandler.send_all(bytes)
         assert result == len(bytes), f'Cannot send all bytes {result} != {len(bytes)}'
         self.wait_confimation()
 
     def send_reviews(self, reviews):
-        bytes = code_to_bytes(TlvTypes.REVIEW_CHUNK)
-        bytes += make_msg_id() 
-        bytes += int.to_bytes(len(reviews), SIZE_LENGTH, "big") 
+        bytes = self.make_header(TlvTypes.REVIEW_CHUNK, len(reviews))
         bytes += self.review_serializer.to_bytes(reviews)
         result = self.TCPHandler.send_all(bytes)
         assert result == len(bytes), f'Cannot send all bytes {result} != {len(bytes)}'
         self.wait_confimation()
 
-    def read_til(self):
+    # TODO: maybe move to protocol.py
+    def make_header(self, tlv_type, payload_len):
+        raw_header = code_to_bytes(tlv_type)
+        raw_header += make_msg_id()
+        raw_header += int.to_bytes((payload_len), SIZE_LENGTH, "big") 
+        return raw_header 
+
+    def read_header(self):
         """
         Reads the Type, Message ID, and Length of TLV from self.TCPHandler and returns both.
         It reads a fixed amount of bytes (SIZE_CODE_MSG+SIZE_LENGTH)
@@ -81,8 +85,8 @@ class ProtocolHandler:
         _type_raw = self.TCPHandler.read(TlvTypes.SIZE_CODE_MSG)
         _type = struct.unpack('!i', _type_raw)[0]
 
-        _mid_raw = self.TCPHandler.read(MSG_ID_SIZE)
-        _mid = msg_id_from_bytes()
+        _mid_raw = self.TCPHandler.read(MSG_ID_LEN)
+        _mid = msg_id_from_bytes(_mid_raw)
 
         _len_raw = self.TCPHandler.read(SIZE_LENGTH)
         _len = struct.unpack('!i', _len_raw)[0]
@@ -90,19 +94,19 @@ class ProtocolHandler:
         return _type, _mid, _len
 
     def read(self):
-        tlv_type, msg_id, tlv_len = self.read_tl()
+        tlv_type, msg_id, tlv_len = self.read_header()
 
         if tlv_type in [TlvTypes.EOF, TlvTypes.ACK, TlvTypes.WAIT, TlvTypes.POLL]:
             return tlv_type, None
 
         elif tlv_type == TlvTypes.BOOK_CHUNK:
-            return TlvTypes.BOOK_CHUNK, msg_id, self.book_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
+            return TlvTypes.BOOK_CHUNK, self.book_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
 
         elif tlv_type == TlvTypes.REVIEW_CHUNK:
-            return TlvTypes.REVIEW_CHUNK, msg_id, self.review_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
+            return TlvTypes.REVIEW_CHUNK, self.review_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
 
         elif tlv_type == TlvTypes.LINE_CHUNK:
-            return TlvTypes.LINE_CHUNK, msg_id, self.line_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
+            return TlvTypes.LINE_CHUNK, self.line_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
 
         else:
             raise UnexpectedType()

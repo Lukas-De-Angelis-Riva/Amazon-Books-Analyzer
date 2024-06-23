@@ -2,6 +2,8 @@ import struct
 import uuid
 
 SIZE_LENGTH = 4
+MSG_ID_LEN = 16
+UUID_LEN = 16
 
 i = -1
 
@@ -102,7 +104,6 @@ def make_token(peer_id, total, worked, sent):
     bytes += int.to_bytes(worked, size_length, 'big')
     bytes += int.to_bytes(sent, size_length, 'big')
     return bytes
-
 
 
 def make_eof(i=0):
