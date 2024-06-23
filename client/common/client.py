@@ -179,15 +179,16 @@ class Client:
                                 send_message(batch)
                                 batch = []
                             break
-                        # if send has timeouted
-                        # TODO: make ProtocolHandler exception class 
-                        except socket.timeout:
-                            time.sleep(sleep)
-                            sleep *= 2
                         except SocketBroken:
                             # retry connection
                             if not self.connect(self.config["ip"], self.config["port"], timeout=SOCK_TIMEOUT, tries=1 + N_RETRIES):
                                 return False
+                        # if send has timeouted (includes if ack not received)
+                        # TODO: make ProtocolHandler exception class 
+                        except socket.timeout, Exception:
+                            time.sleep(sleep)
+                            sleep *= 2
+                            
                 bar(1.0)
                 send_eof()
 
