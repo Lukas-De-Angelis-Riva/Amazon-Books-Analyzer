@@ -24,8 +24,8 @@ class LineSerializer(Serializer):
             raw_chunk += int.to_bytes(len(raw_result), SIZE_LENGTH, 'big')
             raw_chunk += raw_result
 
-        result = code_to_bytes(TlvTypes.LINE_CHUNK)
-        result += int.to_bytes(len(chunk), SIZE_LENGTH, 'big')
-        result += raw_chunk
+        #result = code_to_bytes(TlvTypes.LINE_CHUNK)
+        #result += int.to_bytes(len(chunk), SIZE_LENGTH, 'big')
+        result = raw_chunk
 
         return result

@@ -1,4 +1,5 @@
 import struct
+import uuid
 
 SIZE_LENGTH = 4
 
@@ -172,6 +173,12 @@ def intarr_from_bytes(bytes_arr):
         array.append(int.from_bytes(bytes_i, 'big'))
     return array
 
+
+def make_msg_id():
+    return uuid.uuid4().bytes
+
+def msg_id_from_bytes(raw):
+    return uuid.UUID(bytes=raw)
 
 class UnexpectedType(Exception):
     pass

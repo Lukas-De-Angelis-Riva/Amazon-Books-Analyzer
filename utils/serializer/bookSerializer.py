@@ -52,8 +52,8 @@ class BookSerializer(Serializer):
             raw_chunk += int.to_bytes(len(raw_book), SIZE_LENGTH, 'big')
             raw_chunk += raw_book
 
-        result = code_to_bytes(TlvTypes.BOOK_CHUNK)
-        result += int.to_bytes(len(chunk), SIZE_LENGTH, 'big')
-        result += raw_chunk
+        #result = code_to_bytes(TlvTypes.BOOK_CHUNK)
+        #result += int.to_bytes(len(chunk), SIZE_LENGTH, 'big')
+        result = raw_chunk
 
         return result

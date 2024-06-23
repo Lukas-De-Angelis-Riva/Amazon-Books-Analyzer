@@ -3,6 +3,7 @@ import struct
 
 from utils.TCPhandler import TCPHandler
 from utils.protocol import TlvTypes, UnexpectedType, SIZE_LENGTH, make_eof
+from utils.protocol import MSG_ID_SIZE, msg_id_from_bytes, make_msg_id
 from utils.serializer.bookSerializer import BookSerializer
 from utils.serializer.reviewSerializer import ReviewSerializer
 from utils.serializer.lineSerializer import LineSerializer
@@ -55,44 +56,53 @@ class ProtocolHandler:
         self.wait_confimation()
 
     def send_books(self, books):
-        bytes = self.book_serializer.to_bytes(books)
+        bytes = code_to_bytes(TlvTypes.BOOK_CHUNK)
+        bytes += make_msg_id() 
+        bytes += int.to_bytes(len(books), SIZE_LENGTH, "big") 
+        bytes += self.book_serializer.to_bytes(books)
         result = self.TCPHandler.send_all(bytes)
         assert result == len(bytes), f'Cannot send all bytes {result} != {len(bytes)}'
         self.wait_confimation()
 
     def send_reviews(self, reviews):
-        bytes = self.review_serializer.to_bytes(reviews)
+        bytes = code_to_bytes(TlvTypes.REVIEW_CHUNK)
+        bytes += make_msg_id() 
+        bytes += int.to_bytes(len(reviews), SIZE_LENGTH, "big") 
+        bytes += self.review_serializer.to_bytes(reviews)
         result = self.TCPHandler.send_all(bytes)
         assert result == len(bytes), f'Cannot send all bytes {result} != {len(bytes)}'
         self.wait_confimation()
 
-    def read_tl(self):
+    def read_til(self):
         """
-        Reads the Type and Length of TLV from self.TCPHandler and returns both.
+        Reads the Type, Message ID, and Length of TLV from self.TCPHandler and returns both.
         It reads a fixed amount of bytes (SIZE_CODE_MSG+SIZE_LENGTH)
         """
         _type_raw = self.TCPHandler.read(TlvTypes.SIZE_CODE_MSG)
         _type = struct.unpack('!i', _type_raw)[0]
 
+        _mid_raw = self.TCPHandler.read(MSG_ID_SIZE)
+        _mid = msg_id_from_bytes()
+
         _len_raw = self.TCPHandler.read(SIZE_LENGTH)
         _len = struct.unpack('!i', _len_raw)[0]
 
-        return _type, _len
+        return _type, _mid, _len
 
     def read(self):
-        tlv_type, tlv_len = self.read_tl()
+        tlv_type, msg_id, tlv_len = self.read_tl()
 
         if tlv_type in [TlvTypes.EOF, TlvTypes.ACK, TlvTypes.WAIT, TlvTypes.POLL]:
             return tlv_type, None
 
         elif tlv_type == TlvTypes.BOOK_CHUNK:
-            return TlvTypes.BOOK_CHUNK, self.book_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
+            return TlvTypes.BOOK_CHUNK, msg_id, self.book_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
 
         elif tlv_type == TlvTypes.REVIEW_CHUNK:
-            return TlvTypes.REVIEW_CHUNK, self.review_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
+            return TlvTypes.REVIEW_CHUNK, msg_id, self.review_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
 
         elif tlv_type == TlvTypes.LINE_CHUNK:
-            return TlvTypes.LINE_CHUNK, self.line_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
+            return TlvTypes.LINE_CHUNK, msg_id, self.line_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
 
         else:
             raise UnexpectedType()
