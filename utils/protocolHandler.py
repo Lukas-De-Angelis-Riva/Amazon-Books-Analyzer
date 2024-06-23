@@ -20,7 +20,8 @@ class ProtocolHandler:
     def wait_confimation(self):
         type_encode_raw = self.TCPHandler.read(TlvTypes.SIZE_CODE_MSG)
         type_encode = struct.unpack('!i', type_encode_raw)[0]
-        assert type_encode == TlvTypes.ACK, f'Unexpected type: expected: ACK({TlvTypes.ACK}), received {type_encode}'
+        err_msg = f'Unexpected type: expected: ACK({TlvTypes.ACK}), received {type_encode}' 
+        assert type_encode == TlvTypes.ACK, err_msg
 
     def ack(self):
         bytes = int.to_bytes(TlvTypes.ACK, TlvTypes.SIZE_CODE_MSG, 'big')
@@ -42,6 +43,20 @@ class ProtocolHandler:
         self.ack()
         return client_uuid
 
+    def send_wait(self):
+        wait = self.make_header(TlvTypes.WAIT, 0)
+        result = self.TCPHandler.send_all(wait)
+        assert result == len(wait), 'TCP Error: cannot send WAIT'
+        self.wait_confimation()
+
+    def poll_results(self):
+        poll = self.make_header(TlvTypes.POLL, 0)
+        result = self.TCPHandler.send_all(poll)
+        assert result == len(poll), 'TCP Error: cannot send POLL'
+        r = self.read()
+        self.ack()
+        return r
+
     def send_eof(self):
         #eof = make_eof(0)
         eof = self.make_header(TlvTypes.EOF, 0)
@@ -53,6 +68,11 @@ class ProtocolHandler:
         self.wait_confimation()
 
     def send_review_eof(self):
+        self.send_eof()
+        self.wait_confimation()
+
+    # TODO: maybe only one send_eof?
+    def send_line_eof(self):
         self.send_eof()
         self.wait_confimation()
 
@@ -70,11 +90,18 @@ class ProtocolHandler:
         assert result == len(bytes), f'Cannot send all bytes {result} != {len(bytes)}'
         self.wait_confimation()
 
+    def send_lines(self, lines):
+        bytes = self.make_header(TlvTypes.LINE_CHUNK, len(lines))
+        bytes += self.line_serializer.to_bytes(lines)
+        result = self.TCPHandler.send_all(bytes)
+        assert result == len(bytes), f'Cannot send all bytes {result} != {len(bytes)}'
+        self.wait_confimation()
+
     # TODO: maybe move to protocol.py
     def make_header(self, tlv_type, payload_len):
         raw_header = code_to_bytes(tlv_type)
         raw_header += make_msg_id()
-        raw_header += int.to_bytes((payload_len), SIZE_LENGTH, "big") 
+        raw_header += int.to_bytes(payload_len, SIZE_LENGTH, "big") 
         return raw_header 
 
     def read_header(self):
@@ -111,12 +138,6 @@ class ProtocolHandler:
         else:
             raise UnexpectedType()
 
-    def poll_results(self):
-        bytes = int.to_bytes(TlvTypes.POLL, TlvTypes.SIZE_CODE_MSG, 'big')
-        result = self.TCPHandler.send_all(bytes)
-        assert result == len(bytes), 'TCP Error: cannot send POLL'
-        return self.read()
-
     def is_result_eof(self, t):
         return t == TlvTypes.EOF
 
@@ -151,5 +172,6 @@ class ProtocolHandler:
         return tlv_type == TlvTypes.REVIEW_CHUNK
 
     def close(self):
+        self.TCPHandler.close()
         # cerrar la conexion
         return
