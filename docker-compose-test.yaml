@@ -8,6 +8,14 @@ services:
     image: query1_worker:latest
     volumes:
     - ./server/query1/worker/test/tests.py:/test/tests.py
+  query2Worker:
+    container_name: query2Worker
+    entrypoint: ./test.sh
+    environment:
+    - PYTHONUNBUFFERED=1
+    image: query2_worker:latest
+    volumes:
+    - ./server/query2/worker/test/tests.py:/test/tests.py
   query1Synchronizer:
     container_name: query1Synchronizer
     entrypoint: python -m unittest test/tests.py

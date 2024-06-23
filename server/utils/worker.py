@@ -44,13 +44,6 @@ class Worker(Listener):
         return
 
     def terminator(self):
-        # QUERY 1
-        # self.send_eof(self.tracker.total_sent())
-        # QUERY 2, 3, 5
-        # results = self.filter_results()
-        # if results:
-        #    self.send_results(results)
-        # self.send_eof(len(results))
         raise RuntimeError("Must be redefined")
 
     def adapt_tracker(self):
@@ -107,7 +100,7 @@ class Worker(Listener):
         virus.infect()
         chunk = []
         id_iterator = iter(self.tracker.worked_chunks)
-        logging.debug(f'action: send_results | status: in_progress | len(results): {len(self.tracker.results)}')
+        logging.debug(f'action: send_results | status: in_progress | len(results): {len(results)}')
         for result in results:
             virus.infect()
             chunk.append(result)
@@ -138,6 +131,7 @@ class Worker(Listener):
     def recv(self, raw_msg, key):
         msg = Message.from_bytes(raw_msg)
         self.context_switch(msg.client_id)
+
         if msg.ID in self.tracker.worked_chunks:
             return ACK
 
