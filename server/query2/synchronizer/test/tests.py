@@ -277,6 +277,7 @@ class TestUtils(unittest.TestCase):
                 sync.run()
                 break
             except Disease:
+                test_middleware.requeue()
                 continue
         virus.mutate(0)
 
@@ -320,6 +321,7 @@ class TestUtils(unittest.TestCase):
                 sync.run()
                 break
             except Disease:
+                test_middleware.requeue()
                 continue
         virus.mutate(0)
 

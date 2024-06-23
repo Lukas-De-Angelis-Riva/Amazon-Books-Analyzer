@@ -252,6 +252,7 @@ class TestUtils(unittest.TestCase):
                 worker.run()
                 break
             except Disease:
+                test_middleware.requeue()
                 continue
         virus.mutate(0)
 
@@ -296,6 +297,7 @@ class TestUtils(unittest.TestCase):
                 worker.run()
                 break
             except Disease:
+                test_middleware.requeue()
                 continue
         virus.mutate(0)
 

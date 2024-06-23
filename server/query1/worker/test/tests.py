@@ -380,7 +380,7 @@ class TestUtils(unittest.TestCase):
         def matches_function(b: Book):
             return int(b.publishedDate) < 1990 or int(b.publishedDate) > 2000
 
-        virus.mutate(0.15)
+        virus.mutate(0.10)
         while True:
             try:
                 worker = Query1Worker(1, 10, 2, matches_function, test_middleware=test_middleware)
