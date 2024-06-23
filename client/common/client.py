@@ -185,7 +185,7 @@ class Client:
                                 return False
                         # if send has timeouted (includes if ack not received)
                         # TODO: make ProtocolHandler exception class 
-                        except socket.timeout, Exception:
+                        except (socket.timeout, Exception):
                             time.sleep(sleep)
                             sleep *= 2
                             
