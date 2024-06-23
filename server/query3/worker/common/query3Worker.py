@@ -112,7 +112,7 @@ class Query3Worker(Worker):
             logging.debug(f'action: new_review | result: update | review: {review}')
             self.tracker.data[review.title].update(review)
 
-    def do_after_work(self):
+    def do_after_work(self, chunk_id):
         return
 
     def send_results(self):

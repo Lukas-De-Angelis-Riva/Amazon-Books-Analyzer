@@ -107,7 +107,7 @@ class Query5Worker(Worker):
             self.tracker.data[review.title].update(review)
         return
 
-    def do_after_work(self):
+    def do_after_work(self, chunk_id):
         return
 
     def send_results(self):

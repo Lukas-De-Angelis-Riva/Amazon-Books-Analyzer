@@ -1,13 +1,16 @@
 import logging
+import shutil
+import uuid
 import io
 import os
-import uuid
 
 from utils.listener import Listener
-from utils.logManager import LogManager
-from utils.clientTracker import ClientTracker
+from utils.clientTracker import ClientTracker, BASE_DIRECTORY, NULL_DIRECTORY
 from utils.model.message import Message, MessageType
 from utils.middleware.middleware import ACK
+
+# TEST PURPOSES
+from utils.model.virus import virus
 
 TOTAL = "total"
 WORKER_ID = "worker_id"
@@ -28,8 +31,6 @@ class Worker(Listener):
         self.clients = {}
         self.tracker = None
 
-        self.recovery()
-
     def forward_eof(self, eof):
         raise RuntimeError("Must be redefined")
 
@@ -39,8 +40,18 @@ class Worker(Listener):
     def work(self, input):
         return
 
-    def do_after_work(self):
+    def do_after_work(self, chunk_id):
         return
+
+    def terminator(self):
+        # QUERY 1
+        # self.send_eof(self.tracker.total_sent())
+        # QUERY 2, 3, 5
+        # results = self.filter_results()
+        # if results:
+        #    self.send_results(results)
+        # self.send_eof(len(results))
+        raise RuntimeError("Must be redefined")
 
     def adapt_tracker(self):
         return
@@ -52,14 +63,32 @@ class Worker(Listener):
         self.adapt_tracker()
 
     def recovery(self):
-        if not os.path.exists(LogManager.BASE_DIRECTORY):
+        virus.infect()
+        if not os.path.exists(BASE_DIRECTORY):
             return
-        for directory in os.listdir(LogManager.BASE_DIRECTORY):
+        for directory in os.listdir(BASE_DIRECTORY):
+            virus.infect()
+            if BASE_DIRECTORY + '/' + directory == NULL_DIRECTORY:
+                virus.infect()
+                shutil.rmtree(NULL_DIRECTORY)
+                virus.infect()
+                continue
             client_id = uuid.UUID(directory)
             self.context_switch(client_id)
+            virus.infect()
             self.tracker.recovery()
+            virus.infect()
 
-    def send_chunk(self, chunk, id):
+            if self.tracker.is_completed():
+                virus.infect()
+                self.terminator()
+                virus.infect()
+                self.tracker.clear()
+                virus.infect()
+                del self.clients[self.tracker.client_id]
+                self.tracker = None
+
+    def send_chunk(self, chunk, chunk_id):
         logging.debug(f'action: send_results | status: in_progress | forwarding_chunk | len(chunk): {len(chunk)}')
         data = self.out_serializer.to_bytes(chunk)
         msg = Message(
@@ -69,36 +98,39 @@ class Worker(Listener):
             args={
                 WORKER_ID: self.peer_id,
             },
-            id=id
+            id=chunk_id
         )
         self.forward_data(msg.to_bytes())
-        self.tracker.add_sent(len(chunk))
         return
 
-    def send_results(self):
+    def send_results(self, results):
+        virus.infect()
         chunk = []
         id_iterator = iter(self.tracker.worked_chunks)
         logging.debug(f'action: send_results | status: in_progress | len(results): {len(self.tracker.results)}')
-        for key, result in sorted(self.tracker.results.items(), key=lambda item: item[0]):
-
+        for result in results:
+            virus.infect()
             chunk.append(result)
             if len(chunk) >= self.chunk_size:
                 self.send_chunk(chunk, next(id_iterator))
                 chunk = []
         if chunk:
+            virus.infect()
             self.send_chunk(chunk, next(id_iterator))
         logging.debug('action: send_results | status: success')
         return
 
-    def send_eof(self):
+    def send_eof(self, sent):
+        virus.infect()
         eof = Message(
             client_id=self.tracker.client_id,
             type=MessageType.EOF,
             data=b'',
             args={
-                TOTAL: self.tracker.total_sent(),
+                TOTAL: sent,
                 WORKER_ID: self.peer_id,
-            }
+            },
+            id=self.tracker.eof_id()
         )
         self.forward_eof(eof.to_bytes())
         return
@@ -108,8 +140,9 @@ class Worker(Listener):
         self.context_switch(msg.client_id)
         if msg.ID in self.tracker.worked_chunks:
             return ACK
-        elif msg.type == MessageType.EOF:
-            self.recv_eof(msg.args[TOTAL])
+
+        if msg.type == MessageType.EOF:
+            self.recv_eof(msg.args[TOTAL], msg.ID)
         else:
             self.recv_raw(msg.data, msg.ID)
 
@@ -121,18 +154,34 @@ class Worker(Listener):
         logging.debug(f'action: recv_raw | status: new_chunk | len(chunk): {len(input_chunk)}')
         for input in input_chunk:
             self.work(input)
-        self.do_after_work()
+        virus.infect()
+        sent = self.do_after_work(chunk_id)
+        virus.infect()
 
-        self.tracker.persist(chunk_id, len(input_chunk))
+        self.tracker.persist(chunk_id, worked=len(input_chunk), sent=sent)
+        virus.infect()
 
         if self.tracker.is_completed():
-            self.send_results()
-            self.send_eof()
+            virus.infect()
+            self.terminator()
+            virus.infect()
+            self.tracker.clear()
+            virus.infect()
+            del self.clients[self.tracker.client_id]
+            self.tracker = None
         return
 
-    def recv_eof(self, total):
-        self.tracker.expect(total)
+    def recv_eof(self, total, eof_id):
+        virus.infect()
+        self.tracker.persist(eof_id, expected=total)
+        virus.infect()
+
         if self.tracker.is_completed():
-            self.send_results()
-            self.send_eof()
+            virus.infect()
+            self.terminator()
+            virus.infect()
+            self.tracker.clear()
+            virus.infect()
+            del self.clients[self.tracker.client_id]
+            self.tracker = None
         return

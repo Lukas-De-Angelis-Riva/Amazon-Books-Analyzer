@@ -1,5 +1,13 @@
 name: tp2-server-test
 services:
+  query1Worker:
+    container_name: query1Worker
+    entrypoint: ./test.sh
+    environment:
+    - PYTHONUNBUFFERED=1
+    image: query1_worker:latest
+    volumes:
+    - ./server/query1/worker/test/tests.py:/test/tests.py
   query1Synchronizer:
     container_name: query1Synchronizer
     entrypoint: python -m unittest test/tests.py

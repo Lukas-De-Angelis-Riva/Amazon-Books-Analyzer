@@ -52,7 +52,7 @@ class Query2Worker(Worker):
         self.tracker.log_manager.hold_change(author, old, new)
         logging.debug(f'action: new_book | result: update | author: {author} | date: {book.publishedDate}')
 
-    def do_after_work(self):
+    def do_after_work(self, chunk_id):
         return
 
     def filter_results(self):

@@ -9,10 +9,11 @@ from common.query1Worker import Query1Worker
 from utils.worker import TOTAL
 from utils.middleware.testMiddleware import TestMiddleware
 from utils.model.message import Message, MessageType
+from utils.model.virus import Disease, virus
 
 
 class TestUtils(unittest.TestCase):
-    def append_eof(self, client_id, test_middleware, sent):
+    def append_eof(self, client_id, test_middleware, sent, eof_id=None):
         eof = Message(
             client_id=client_id,
             type=MessageType.EOF,
@@ -21,16 +22,42 @@ class TestUtils(unittest.TestCase):
                 TOTAL: sent,
             }
         )
+        if eof_id:
+            eof.ID = eof_id
+
         test_middleware.add_message(eof.to_bytes())
 
-    def append_chunk(self, client_id, test_middleware, chunk):
+    def append_chunk(self, client_id, test_middleware, chunk, chunk_id=None):
         serializer = Q1InSerializer()
         msg = Message(
             client_id=client_id,
             type=MessageType.DATA,
             data=serializer.to_bytes(chunk),
         )
+        if chunk_id:
+            msg.ID = chunk_id
         test_middleware.add_message(msg.to_bytes())
+
+    def check(self, client_id, books, sent):
+        serializer = Q1OutSerializer()
+        sent = [msg for msg in sent if msg.client_id == client_id]
+        eofs = [msg for msg in sent if msg.type == MessageType.EOF]
+        _filtered_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
+        filtered_chunks = [serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks]
+        filtered = [
+            b.title
+            for chunk in filtered_chunks
+            for b in chunk
+        ]
+        assert len(eofs) == 1, f'unexpected amount of EOFs, sent: {eofs}'
+        assert eofs[0].args[TOTAL] == len(books), \
+            f'wrong EOF[TOTAL] | exp: {len(books)}, real: {eofs[0].args[TOTAL]}'
+
+        assert len(filtered) == len(books), \
+            f'wrong len(sent) | exp: {len(books)}, real: {len(filtered)}'
+
+        for b in books:
+            assert b.title in filtered, f'{b.title} not in {filtered}'
 
     def test_in_serializer(self):
         serializer = Q1InSerializer()
@@ -105,14 +132,7 @@ class TestUtils(unittest.TestCase):
         assert book2.authors == _book2.authors
         assert book2.publisher == _book2.publisher
 
-    def test_worker_filter(self):
-        def matches_function(b: Book):
-            return 'distributed' in b.title.lower()
-        in_serializer = Q1InSerializer()
-        out_serializer = Q1OutSerializer()
-        client_id = uuid.uuid4()
-        test_middleware = TestMiddleware()
-
+    def make_books_distributed(self):
         book1 = Book(
             title='Distributed Systems: Concepts and Design, 5th Edition',
             authors=['G. Coulouris', 'J. Dollimore', 't. Kindberg', 'G. Blair'],
@@ -144,136 +164,7 @@ class TestUtils(unittest.TestCase):
             publishedDate='2017',
             categories=['Computers'],
         )
-
-        _chunk1 = in_serializer.to_bytes([book1, book2])
-        msg = Message(
-            client_id=client_id,
-            type=MessageType.DATA,
-            data=_chunk1
-        )
-        test_middleware.add_message(msg.to_bytes())
-
-        _chunk2 = in_serializer.to_bytes([book3, book4])
-        msg = Message(
-            client_id=client_id,
-            type=MessageType.DATA,
-            data=_chunk2
-        )
-        test_middleware.add_message(msg.to_bytes())
-
-        eof = Message(
-            client_id=client_id,
-            type=MessageType.EOF,
-            data=b'',
-            args={
-                TOTAL: 4,
-            }
-        )
-        test_middleware.add_message(eof.to_bytes())
-
-        worker = Query1Worker(peer_id=1, peers=10, chunk_size=2, matches=matches_function, test_middleware=test_middleware)
-        worker.run()
-        sent = [Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent]
-        eofs = [msg for msg in sent if msg.type == MessageType.EOF]
-        _filtered_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
-        filtered_chunks = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks]
-        filtered = [
-            b.title
-            for chunk in filtered_chunks
-            for b in chunk
-        ]
-
-        assert len(eofs) == 1
-        assert eofs[0].args[TOTAL] == 3
-        assert len(filtered) == 3
-        assert book1.title in filtered
-        assert book2.title in filtered
-        assert book3.title in filtered
-
-    def test_worker_premature_eof(self):
-        def matches_function(b: Book):
-            return 'distributed' in b.title.lower()
-        in_serializer = Q1InSerializer()
-        out_serializer = Q1OutSerializer()
-        client_id = uuid.uuid4()
-        test_middleware = TestMiddleware()
-
-        book1 = Book(
-            title='Distributed Systems: Concepts and Design, 5th Edition',
-            authors=['G. Coulouris', 'J. Dollimore', 't. Kindberg', 'G. Blair'],
-            publisher='Addison Wesley',
-            publishedDate='2012',
-            categories=['Computers'],
-        )
-
-        book2 = Book(
-            title='Distributed Systems, 3rd Edition',
-            authors=['M. Van Steen', 'A. Tanenbaum'],
-            publisher='Pearson Education',
-            publishedDate='2017',
-            categories=['Computers'],
-        )
-
-        book3 = Book(
-            title='Distributed Systems for Systems Architects',
-            authors=['P. Verissimo', 'L. Rodriguez'],
-            publisher='Kluwer Academic Publishers',
-            publishedDate='2001',
-            categories=['Computers'],
-        )
-
-        book4 = Book(
-            title='Designing Data-Intensive Applications',
-            authors=['Martin Kleppmann'],
-            publisher='O Reilly Media',
-            publishedDate='2017',
-            categories=['Computers'],
-        )
-
-        eof = Message(
-            client_id=client_id,
-            type=MessageType.EOF,
-            data=b'',
-            args={
-                TOTAL: 4,
-            }
-        )
-        test_middleware.add_message(eof.to_bytes())
-
-        _chunk1 = in_serializer.to_bytes([book1, book2])
-        msg = Message(
-            client_id=client_id,
-            type=MessageType.DATA,
-            data=_chunk1
-        )
-        test_middleware.add_message(msg.to_bytes())
-
-        _chunk2 = in_serializer.to_bytes([book3, book4])
-        msg = Message(
-            client_id=client_id,
-            type=MessageType.DATA,
-            data=_chunk2
-        )
-        test_middleware.add_message(msg.to_bytes())
-
-        worker = Query1Worker(peer_id=1, peers=10, chunk_size=2, matches=matches_function, test_middleware=test_middleware)
-        worker.run()
-        sent = [Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent]
-        eofs = [msg for msg in sent if msg.type == MessageType.EOF]
-        _filtered_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
-        filtered_chunks = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks]
-        filtered = [
-            b.title
-            for chunk in filtered_chunks
-            for b in chunk
-        ]
-
-        assert len(eofs) == 1
-        assert eofs[0].args[TOTAL] == 3
-        assert len(filtered) == 3
-        assert book1.title in filtered
-        assert book2.title in filtered
-        assert book3.title in filtered
+        return book1, book2, book3, book4
 
     def make_books_asoiaf(self):
         agot = Book(
@@ -349,11 +240,48 @@ class TestUtils(unittest.TestCase):
         )
         return the_hobbit, the_lotr, the_aotb, the_simlmarillion
 
-    def test_sequential_multiclient(self):
-        client_1 = uuid.uuid4()
-        client_2 = uuid.uuid4()
+    def test_worker_filter(self):
+        def matches_function(b: Book):
+            return 'distributed' in b.title.lower()
+        client_id = uuid.UUID('00000000-0000-0000-0000-000000000000')
         test_middleware = TestMiddleware()
-        out_serializer = Q1OutSerializer()
+
+        b1, b2, b3, b4 = self.make_books_distributed()
+
+        self.append_chunk(client_id, test_middleware, [b1, b4])
+        self.append_chunk(client_id, test_middleware, [b3])
+        self.append_chunk(client_id, test_middleware, [b2])
+        self.append_eof(client_id, test_middleware, 4)
+
+        worker = Query1Worker(1, 10, 2, matches_function, test_middleware=test_middleware)
+        worker.run()
+
+        sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
+        self.check(client_id, [b1, b2, b3], sent)
+
+    def test_worker_premature_eof(self):
+        def matches_function(b: Book):
+            return 'distributed' in b.title.lower()
+        client_id = uuid.UUID('10000000-0000-0000-0000-000000000000')
+        test_middleware = TestMiddleware()
+
+        b1, b2, b3, b4 = self.make_books_distributed()
+
+        self.append_eof(client_id, test_middleware, 4)
+        self.append_chunk(client_id, test_middleware, [b1, b4])
+        self.append_chunk(client_id, test_middleware, [b3])
+        self.append_chunk(client_id, test_middleware, [b2])
+
+        worker = Query1Worker(1, 10, 2, matches_function, test_middleware=test_middleware)
+        worker.run()
+
+        sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
+        self.check(client_id, [b1, b2, b3], sent)
+
+    def test_sequential_multiclient(self):
+        client_1 = uuid.UUID('20000000-0000-0000-0000-000000000000')
+        client_2 = uuid.UUID('21000000-0000-0000-0000-000000000000')
+        test_middleware = TestMiddleware()
 
         b1, b2, b3, b4, b5 = self.make_books_asoiaf()
         self.append_chunk(client_1, test_middleware, [b1, b2])
@@ -370,108 +298,102 @@ class TestUtils(unittest.TestCase):
         def matches_function(b: Book):
             return int(b.publishedDate) < 1990 or int(b.publishedDate) > 2000
 
-        worker = Query1Worker(peer_id=1, peers=10, chunk_size=2, matches=matches_function, test_middleware=test_middleware)
+        worker = Query1Worker(1, 10, 2, matches_function, test_middleware=test_middleware)
         worker.run()
-        sent = [Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent]
-
-        # client 1
-        sent_c1 = [msg for msg in sent if msg.client_id == client_1]
-        eofs_c1 = [msg for msg in sent_c1 if msg.type == MessageType.EOF]
-        _filtered_chunks_c1 = [msg.data for msg in sent_c1 if msg.type == MessageType.DATA]
-        filtered_chunks_c1 = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks_c1]
-        filtered_c1 = [
-            b.title
-            for chunk in filtered_chunks_c1
-            for b in chunk
-        ]
-        assert len(eofs_c1) == 1
-        assert eofs_c1[0].args[TOTAL] == 2
-        assert len(filtered_c1) == 2
-        assert b1.title not in filtered_c1
-        assert b2.title not in filtered_c1
-        assert b3.title not in filtered_c1
-        assert b4.title in filtered_c1
-        assert b5.title in filtered_c1
-
-        # client 2
-        sent_c2 = [msg for msg in sent if msg.client_id == client_2]
-        eofs_c2 = [msg for msg in sent_c2 if msg.type == MessageType.EOF]
-        _filtered_chunks_c2 = [msg.data for msg in sent_c2 if msg.type == MessageType.DATA]
-        filtered_chunks_c2 = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks_c2]
-        filtered_c2 = [
-            b.title
-            for chunk in filtered_chunks_c2
-            for b in chunk
-        ]
-        assert len(eofs_c2) == 1
-        assert eofs_c2[0].args[TOTAL] == 3
-        assert len(filtered_c2) == 3
-        assert c1.title in filtered_c2
-        assert c2.title in filtered_c2
-        assert c3.title in filtered_c2
-        assert c4.title not in filtered_c2
+        sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
+        self.check(client_1, [b4, b5], sent)
+        self.check(client_2, [c1, c2, c3], sent)
 
     def test_parallel_multiclient(self):
-        client_1 = uuid.uuid4()
-        client_2 = uuid.uuid4()
+        client_1 = uuid.UUID('30000000-0000-0000-0000-000000000000')
+        client_2 = uuid.UUID('31000000-0000-0000-0000-000000000000')
         test_middleware = TestMiddleware()
-        out_serializer = Q1OutSerializer()
 
         b1, b2, b3, b4, b5 = self.make_books_asoiaf()
         c1, c2, c3, c4 = self.make_books_tlotr()
 
-        self.append_chunk(client_1, test_middleware, [b1, b2])
+        # -- -- -- -- --  CHAOS -- -- -- -- --
         self.append_chunk(client_2, test_middleware, [c1])
-        self.append_chunk(client_1, test_middleware, [b3])
-        self.append_chunk(client_2, test_middleware, [c2, c3])
         self.append_eof(client_1, test_middleware, 5)
         self.append_eof(client_2, test_middleware, 4)
         self.append_chunk(client_1, test_middleware, [b4, b5])
+        self.append_chunk(client_2, test_middleware, [c2, c3])
+        self.append_chunk(client_1, test_middleware, [b3])
         self.append_chunk(client_2, test_middleware, [c4])
+        self.append_chunk(client_1, test_middleware, [b1, b2])
 
         def matches_function(b: Book):
             return int(b.publishedDate) < 1990 or int(b.publishedDate) > 2000
 
-        worker = Query1Worker(peer_id=1, peers=10, chunk_size=2, matches=matches_function, test_middleware=test_middleware)
+        worker = Query1Worker(1, 10, 2, matches_function, test_middleware=test_middleware)
         worker.run()
-        sent = [Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent]
 
-        # client 1
-        sent_c1 = [msg for msg in sent if msg.client_id == client_1]
-        eofs_c1 = [msg for msg in sent_c1 if msg.type == MessageType.EOF]
-        _filtered_chunks_c1 = [msg.data for msg in sent_c1 if msg.type == MessageType.DATA]
-        filtered_chunks_c1 = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks_c1]
-        filtered_c1 = [
-            b.title
-            for chunk in filtered_chunks_c1
-            for b in chunk
-        ]
-        assert len(eofs_c1) == 1
-        assert eofs_c1[0].args[TOTAL] == 2
-        assert len(filtered_c1) == 2
-        assert b1.title not in filtered_c1
-        assert b2.title not in filtered_c1
-        assert b3.title not in filtered_c1
-        assert b4.title in filtered_c1
-        assert b5.title in filtered_c1
+        sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
+        self.check(client_1, [b4, b5], sent)
+        self.check(client_2, [c1, c2, c3], sent)
 
-        # client 2
-        sent_c2 = [msg for msg in sent if msg.client_id == client_2]
-        eofs_c2 = [msg for msg in sent_c2 if msg.type == MessageType.EOF]
-        _filtered_chunks_c2 = [msg.data for msg in sent_c2 if msg.type == MessageType.DATA]
-        filtered_chunks_c2 = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks_c2]
-        filtered_c2 = [
-            b.title
-            for chunk in filtered_chunks_c2
-            for b in chunk
-        ]
-        assert len(eofs_c2) == 1
-        assert eofs_c2[0].args[TOTAL] == 3
-        assert len(filtered_c2) == 3
-        assert c1.title in filtered_c2
-        assert c2.title in filtered_c2
-        assert c3.title in filtered_c2
-        assert c4.title not in filtered_c2
+    def test_infected_worker(self):
+        def matches_function(b: Book):
+            return 'distributed' in b.title.lower()
+        client_id = uuid.UUID('40000000-0000-0000-0000-000000000000')
+        test_middleware = TestMiddleware()
+
+        b1, b2, b3, b4 = self.make_books_distributed()
+
+        self.append_chunk(client_id, test_middleware, [b1, b4])
+        self.append_chunk(client_id, test_middleware, [b3])
+        self.append_chunk(client_id, test_middleware, [b2])
+        self.append_eof(client_id, test_middleware, 4)
+
+        virus.mutate(0.20)
+        while True:
+            try:
+                worker = Query1Worker(1, 10, 2, matches_function, test_middleware=test_middleware)
+                worker.run()
+                break
+            except Disease:
+                test_middleware.requeue()
+                continue
+        virus.mutate(0)
+
+        sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
+        self.check(client_id, [b1, b2, b3], sent)
+
+    def test_infected_worker_parallel_multiclient(self):
+        client_1 = uuid.UUID('50000000-0000-0000-0000-000000000000')
+        client_2 = uuid.UUID('51000000-0000-0000-0000-000000000000')
+        test_middleware = TestMiddleware()
+
+        b1, b2, b3, b4, b5 = self.make_books_asoiaf()
+        c1, c2, c3, c4 = self.make_books_tlotr()
+
+        # -- -- -- -- --  CHAOS -- -- -- -- --
+        self.append_chunk(client_2, test_middleware, [c1])
+        self.append_eof(client_1, test_middleware, 5)
+        self.append_eof(client_2, test_middleware, 4)
+        self.append_chunk(client_1, test_middleware, [b4, b5])
+        self.append_chunk(client_2, test_middleware, [c2, c3])
+        self.append_chunk(client_1, test_middleware, [b3])
+        self.append_chunk(client_2, test_middleware, [c4])
+        self.append_chunk(client_1, test_middleware, [b1, b2])
+
+        def matches_function(b: Book):
+            return int(b.publishedDate) < 1990 or int(b.publishedDate) > 2000
+
+        virus.mutate(0.15)
+        while True:
+            try:
+                worker = Query1Worker(1, 10, 2, matches_function, test_middleware=test_middleware)
+                worker.run()
+                break
+            except Disease:
+                test_middleware.requeue()
+                continue
+        virus.mutate(0)
+
+        sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
+        self.check(client_1, [b4, b5], sent)
+        self.check(client_2, [c1, c2, c3], sent)
 
 
 if __name__ == '__main__':

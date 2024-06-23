@@ -19,6 +19,10 @@ class TestMiddleware:
     def stop(self):
         return
 
+    def requeue(self):
+        if self.messages:
+            self.messages.append(self.messages.pop(0))
+
     def consume(self, queue_name: str, callback):
         self.callback = callback
 
