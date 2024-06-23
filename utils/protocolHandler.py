@@ -124,16 +124,16 @@ class ProtocolHandler:
         tlv_type, msg_id, tlv_len = self.read_header()
 
         if tlv_type in [TlvTypes.EOF, TlvTypes.ACK, TlvTypes.WAIT, TlvTypes.POLL]:
-            return tlv_type, None
+            return tlv_type, msg_id, None
 
         elif tlv_type == TlvTypes.BOOK_CHUNK:
-            return TlvTypes.BOOK_CHUNK, self.book_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
+            return TlvTypes.BOOK_CHUNK, msg_id, self.book_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
 
         elif tlv_type == TlvTypes.REVIEW_CHUNK:
-            return TlvTypes.REVIEW_CHUNK, self.review_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
+            return TlvTypes.REVIEW_CHUNK, msg_id, self.review_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
 
         elif tlv_type == TlvTypes.LINE_CHUNK:
-            return TlvTypes.LINE_CHUNK, self.line_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
+            return TlvTypes.LINE_CHUNK, msg_id, self.line_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
 
         else:
             raise UnexpectedType()

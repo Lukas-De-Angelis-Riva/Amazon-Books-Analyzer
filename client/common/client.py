@@ -193,7 +193,7 @@ class Client:
             t_sleep = MIN_TIME_SLEEP
             while keep_running:
                 logging.debug('action: polling | result: in_progress')
-                t, value = self.protocolHandler.poll_results()
+                t, msg_id, value = self.protocolHandler.poll_results()
                 if self.protocolHandler.is_result_wait(t):
                     logging.debug('action: polling | result: wait')
                     time.sleep(t_sleep)
