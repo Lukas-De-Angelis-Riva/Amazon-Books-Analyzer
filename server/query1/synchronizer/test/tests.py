@@ -9,7 +9,7 @@ from common.query1Synchronizer import Query1Synchronizer
 from utils.clientTrackerSynchronizer import BASE_DIRECTORY
 from utils.worker import TOTAL, WORKER_ID
 from utils.middleware.testMiddleware import TestMiddleware
-from utils.serializer.q1OutSerializer import Q1OutSerializer        # type: ignore
+from utils.serializer.q1OutSerializer import Q1OutSerializer    # type: ignore
 from utils.model.message import Message, MessageType
 from utils.model.virus import Disease, virus
 
@@ -20,7 +20,7 @@ class TestUtils(unittest.TestCase):
         if os.path.exists(BASE_DIRECTORY):
             shutil.rmtree(BASE_DIRECTORY)
 
-    def append_eof(self, client_id, test_middleware, peer_id, sent):
+    def append_eof(self, client_id, test_middleware, peer_id, sent, eof_id=None):
         eof = Message(
             client_id=client_id,
             type=MessageType.EOF,
@@ -30,9 +30,11 @@ class TestUtils(unittest.TestCase):
                 WORKER_ID: peer_id,
             }
         )
+        if eof_id:
+            eof.ID = eof_id
         test_middleware.add_message(eof.to_bytes())
 
-    def append_chunk(self, client_id, test_middleware, peer_id, chunk):
+    def append_chunk(self, client_id, test_middleware, peer_id, chunk, chunk_id=None):
         serializer = Q1OutSerializer()
         msg = Message(
             client_id=client_id,
@@ -42,6 +44,8 @@ class TestUtils(unittest.TestCase):
                 WORKER_ID: peer_id,
             }
         )
+        if chunk_id:
+            msg.ID = chunk_id
         test_middleware.add_message(msg.to_bytes())
 
     def make_4_books(self):
@@ -75,10 +79,30 @@ class TestUtils(unittest.TestCase):
         )
         return book1, book2, book3, book4
 
+    def check(self, client_id, books, sent):
+        serializer = Q1OutSerializer()
+        sent = [msg for msg in sent if msg.client_id == client_id]
+        eofs = [msg for msg in sent if msg.type == MessageType.EOF]
+        _filtered_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
+        filtered_chunks = [serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks]
+        filtered = [
+            b.title
+            for chunk in filtered_chunks
+            for b in chunk
+        ]
+        assert len(eofs) == 1, f'unexpected amount of EOFs, sent: {eofs}'
+        assert eofs[0].args[TOTAL] == len(books), \
+            f'wrong EOF[TOTAL] | exp: {len(books)}, real: {eofs[0].args[TOTAL]}'
+
+        assert len(filtered) == len(books), \
+            f'wrong len(sent) | exp: {len(books)}, real: {len(filtered)}'
+
+        for b in books:
+            assert b.title in filtered, f'{b.title} not in {filtered}'
+
     def test_sync(self):
         client_id = uuid.UUID('00000000-0000-0000-0000-000000000000')
         test_middleware = TestMiddleware()
-        serializer = Q1OutSerializer()
 
         b1, b2, b3, b4 = self.make_4_books()
         self.append_chunk(client_id, test_middleware, 1, [b1, b2])
@@ -95,26 +119,11 @@ class TestUtils(unittest.TestCase):
         worker.run()
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
-        eofs = [msg for msg in sent if msg.type == MessageType.EOF]
-        _filtered_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
-        filtered_chunks = [serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks]
-        filtered = [
-            b.title
-            for chunk in filtered_chunks
-            for b in chunk
-        ]
-        assert len(eofs) == 1
-        assert eofs[0].args[TOTAL] == 4
-        assert len(filtered) == 4
-        assert b1.title in filtered
-        assert b2.title in filtered
-        assert b3.title in filtered
-        assert b4.title in filtered
+        self.check(client_id, [b1, b2, b3, b4], sent)
 
     def test_synchronizer_premature_eof(self):
         client_id = uuid.UUID('10000000-0000-0000-0000-000000000000')
         test_middleware = TestMiddleware()
-        serializer = Q1OutSerializer()
 
         b1, b2, b3, b4 = self.make_4_books()
 
@@ -131,29 +140,13 @@ class TestUtils(unittest.TestCase):
         worker.run()
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
-        eofs = [msg for msg in sent if msg.type == MessageType.EOF]
-        _filtered_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
-        filtered_chunks = [serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks]
-        filtered = [
-            b.title
-            for chunk in filtered_chunks
-            for b in chunk
-        ]
-        assert len(eofs) == 1, f'unexpected amount of EOF, sent: {eofs}'
-        assert eofs[0].args[TOTAL] == 4, f'wrong EOF[TOTAL] | exp: {4}, real: {eofs[0].args[TOTAL]}'
-        assert len(filtered) == 4, f'wrong len(filtered) | exp: {4}, real: {len(filtered)}'
-        assert b1.title in filtered, f'{b1.title} not in {filtered}'
-        assert b2.title in filtered, f'{b2.title} not in {filtered}'
-        assert b3.title in filtered, f'{b3.title} not in {filtered}'
-        assert b4.title in filtered, f'{b4.title} not in {filtered}'
-        assert test_middleware.callback_counter == 7
+        self.check(client_id, [b1, b2, b3, b4], sent)
 
     def test_sync_sequential_multiclient(self):
         client_1 = uuid.UUID('20000000-0000-0000-0000-000000000000')
         client_2 = uuid.UUID('21000000-0000-0000-0000-000000000000')
         client_3 = uuid.UUID('22000000-0000-0000-0000-000000000000')
         test_middleware = TestMiddleware()
-        serializer = Q1OutSerializer()
 
         b1, b2, b3, b4 = self.make_4_books()
 
@@ -193,37 +186,16 @@ class TestUtils(unittest.TestCase):
         worker = Query1Synchronizer(n_workers=4, test_middleware=test_middleware)
         worker.run()
 
-        def check(client_id, books, sent):
-            sent = [msg for msg in sent if msg.client_id == client_id]
-            eofs = [msg for msg in sent if msg.type == MessageType.EOF]
-            _filtered_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
-            filtered_chunks = [serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks]
-            filtered = [
-                b.title
-                for chunk in filtered_chunks
-                for b in chunk
-            ]
-            assert len(eofs) == 1, f'unexpected amount of EOF, sent: {eofs}'
-            assert eofs[0].args[TOTAL] == len(books), \
-                f'wrong EOF[TOTAL] | exp: {len(books)}, real: {eofs[0].args[TOTAL]}'
-
-            assert len(filtered) == len(books), \
-                f'wrong len(sent) | exp: {len(books)}, real: {len(filtered)}'
-
-            for b in books:
-                assert b.title in filtered, f'{b.title} not in {filtered}'
-
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
-        check(client_1, [b1, b2, b3, b4], sent)
-        check(client_2, [b1, b2, b3, b4], sent)
-        check(client_3, [b1, b2, b3, b4], sent)
+        self.check(client_1, [b1, b2, b3, b4], sent)
+        self.check(client_2, [b1, b2, b3, b4], sent)
+        self.check(client_3, [b1, b2, b3, b4], sent)
 
     def test_sync_parallel_multiclient(self):
         client_1 = uuid.UUID('30000000-0000-0000-0000-000000000000')
         client_2 = uuid.UUID('31000000-0000-0000-0000-000000000000')
         client_3 = uuid.UUID('32000000-0000-0000-0000-000000000000')
         test_middleware = TestMiddleware()
-        serializer = Q1OutSerializer()
 
         b1, b2, b3, b4 = self.make_4_books()
 
@@ -253,35 +225,14 @@ class TestUtils(unittest.TestCase):
         worker = Query1Synchronizer(n_workers=4, test_middleware=test_middleware)
         worker.run()
 
-        def check(client_id, books, sent):
-            sent = [msg for msg in sent if msg.client_id == client_id]
-            eofs = [msg for msg in sent if msg.type == MessageType.EOF]
-            _filtered_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
-            filtered_chunks = [serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks]
-            filtered = [
-                b.title
-                for chunk in filtered_chunks
-                for b in chunk
-            ]
-            assert len(eofs) == 1, f'unexpected amount of EOF, sent: {eofs}'
-            assert eofs[0].args[TOTAL] == len(books), \
-                f'wrong EOF[TOTAL] | exp: {len(books)}, real: {eofs[0].args[TOTAL]}'
-
-            assert len(filtered) == len(books), \
-                f'wrong len(sent) | exp: {len(books)}, real: {len(filtered)}'
-
-            for b in books:
-                assert b.title in filtered, f'{b.title} not in {filtered}'
-
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
-        check(client_1, [b1, b2, b3, b4], sent)
-        check(client_2, [b1, b2, b3, b4], sent)
-        check(client_3, [b1, b2, b3, b4], sent)
+        self.check(client_1, [b1, b2, b3, b4], sent)
+        self.check(client_2, [b1, b2, b3, b4], sent)
+        self.check(client_3, [b1, b2, b3, b4], sent)
 
     def test_infected_sync(self):
         client_id = uuid.UUID('40000000-0000-0000-0000-000000000000')
         test_middleware = TestMiddleware()
-        serializer = Q1OutSerializer()
 
         b1, b2, b3, b4 = self.make_4_books()
         self.append_chunk(client_id, test_middleware, 1, [b1, b2])
@@ -305,28 +256,13 @@ class TestUtils(unittest.TestCase):
         virus.mutate(0)
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
-        eofs = [msg for msg in sent if msg.type == MessageType.EOF]
-        _filtered_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
-        filtered_chunks = [serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks]
-        filtered = [
-            b.title
-            for chunk in filtered_chunks
-            for b in chunk
-        ]
-        assert len(eofs) == 1, f'unexpected amount of EOF, sent: {eofs}'
-        assert eofs[0].args[TOTAL] == 4, f'wrong EOF[TOTAL] | exp: {4}, real: {eofs[0].args[TOTAL]}'
-        assert len(filtered) == 4, f'wrong len(filtered) | exp: {4}, real: {len(filtered)}'
-        assert b1.title in filtered, f'{b1.title} not in {filtered}'
-        assert b2.title in filtered, f'{b2.title} not in {filtered}'
-        assert b3.title in filtered, f'{b3.title} not in {filtered}'
-        assert b4.title in filtered, f'{b4.title} not in {filtered}'
+        self.check(client_id, [b1, b2, b3, b4], sent)
 
     def test_infected_sync_parallel_multiclient(self):
         client_1 = uuid.UUID('50000000-0000-0000-0000-000000000000')
         client_2 = uuid.UUID('51000000-0000-0000-0000-000000000000')
         client_3 = uuid.UUID('52000000-0000-0000-0000-000000000000')
         test_middleware = TestMiddleware()
-        serializer = Q1OutSerializer()
 
         b1, b2, b3, b4 = self.make_4_books()
 
@@ -363,30 +299,10 @@ class TestUtils(unittest.TestCase):
                 continue
         virus.mutate(0)
 
-        def check(client_id, books, sent):
-            sent = [msg for msg in sent if msg.client_id == client_id]
-            eofs = [msg for msg in sent if msg.type == MessageType.EOF]
-            _filtered_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
-            filtered_chunks = [serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks]
-            filtered = [
-                b.title
-                for chunk in filtered_chunks
-                for b in chunk
-            ]
-            assert len(eofs) == 1, f'unexpected amount of EOF, sent: {eofs}'
-            assert eofs[0].args[TOTAL] == len(books), \
-                f'wrong EOF[TOTAL] | exp: {len(books)}, real: {eofs[0].args[TOTAL]}'
-
-            assert len(filtered) == len(books), \
-                f'wrong len(sent) | exp: {len(books)}, real: {len(filtered)}'
-
-            for b in books:
-                assert b.title in filtered, f'{b.title} not in {filtered}'
-
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
-        check(client_1, [b1, b2, b3, b4], sent)
-        check(client_2, [b1, b2, b3, b4], sent)
-        check(client_3, [b1, b2, b3, b4], sent)
+        self.check(client_1, [b1, b2, b3, b4], sent)
+        self.check(client_2, [b1, b2, b3, b4], sent)
+        self.check(client_3, [b1, b2, b3, b4], sent)
 
 
 if __name__ == '__main__':

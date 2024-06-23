@@ -62,11 +62,31 @@ class TestUtils(unittest.TestCase):
         n10 = Q5Partial(title='N10', n=10, sentimentAvg=0.1)
         return [n1, n2, n3, n4, n5, n6, n7, n8, n9, n10]
 
+    def check(self, client_id, expected, sent):
+        serializer = Q5OutSerializer()
+        sent = [msg for msg in sent if msg.client_id == client_id]
+        eofs = [msg for msg in sent if msg.type == MessageType.EOF]
+        _sent_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
+        sent_chunks = [serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _sent_chunks]
+        sent_ns = [
+            n
+            for chunk in sent_chunks
+            for n in chunk
+        ]
+        assert len(eofs) == 1, f'unexpected amount of EOFs, sent: {eofs}'
+        assert eofs[0].args[TOTAL] == len(expected), \
+            f'wrong EOF[TOTAL] | exp: {len(expected)}, real: {eofs[0].args[TOTAL]}'
+
+        assert len(sent_ns) == len(expected), \
+            f'wrong len(sent) | exp: {len(expected)}, real: {len(sent_ns)}'
+
+        for n in expected:
+            assert n.title in sent_ns, f'{n.title} not in {sent_ns}'
+
     def test_sync(self):
         client_id = uuid.UUID('00000000-0000-0000-0000-000000000000')
 
         test_middleware = TestMiddleware()
-        out_serializer = Q5OutSerializer()
 
         n1, n2, n3, n4, n5, n6, n7, n8, n9, n10 = self.make_partials()
         # -- -- -- -- Worker 1 sends n1, n4, n7 -- -- -- --
@@ -91,35 +111,12 @@ class TestUtils(unittest.TestCase):
         sync.run()
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
-        eofs = [msg for msg in sent if msg.type == MessageType.EOF]
-        _sent_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
-        sent_chunks = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _sent_chunks]
-        sent_authors = [
-            n
-            for chunk in sent_chunks
-            for n in chunk
-        ]
-
-        assert len(eofs) == 1, f'expected 1 EOF, but sent {len(eofs)}: {eofs}'
-        assert eofs[0].args[TOTAL] == 5, f'wrong EOF[TOTAL] | exp: {5}, real: {eofs[0].args[TOTAL]}'
-
-        assert len(sent_authors) == 5, f'wrong len(sent) | exp: {5}, real: {len(sent_authors)}'
-        assert n1.title in sent_authors, f'{n1.title} not in {sent_authors}'
-        assert n2.title in sent_authors, f'{n2.title} not in {sent_authors}'
-        assert n3.title in sent_authors, f'{n3.title} not in {sent_authors}'
-        assert n4.title in sent_authors, f'{n4.title} not in {sent_authors}'
-        assert n5.title in sent_authors, f'{n5.title} not in {sent_authors}'
-        assert n6.title not in sent_authors, f'{n6.title} in {sent_authors}'
-        assert n7.title not in sent_authors, f'{n7.title} in {sent_authors}'
-        assert n8.title not in sent_authors, f'{n8.title} in {sent_authors}'
-        assert n9.title not in sent_authors, f'{n9.title} in {sent_authors}'
-        assert n10.title not in sent_authors, f'{n10.title} in {sent_authors}'
+        self.check(client_id, [n1, n2, n3, n4, n5], sent)
 
     def test_sync_premature_eof(self):
         client_id = uuid.UUID('10000000-0000-0000-0000-000000000000')
 
         test_middleware = TestMiddleware()
-        out_serializer = Q5OutSerializer()
 
         n1, n2, n3, n4, n5, n6, n7, n8, n9, n10 = self.make_partials()
 
@@ -145,29 +142,7 @@ class TestUtils(unittest.TestCase):
         sync.run()
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
-        eofs = [msg for msg in sent if msg.type == MessageType.EOF]
-        _sent_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
-        sent_chunks = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _sent_chunks]
-        sent_authors = [
-            n
-            for chunk in sent_chunks
-            for n in chunk
-        ]
-
-        assert len(eofs) == 1, f'expected 1 EOF, but sent {len(eofs)}: {eofs}'
-        assert eofs[0].args[TOTAL] == 5, f'wrong EOF[TOTAL] | exp: {5}, real: {eofs[0].args[TOTAL]}'
-
-        assert len(sent_authors) == 5, f'wrong len(sent) | exp: {5}, real: {len(sent_authors)}'
-        assert n1.title in sent_authors, f'{n1.title} not in {sent_authors}'
-        assert n2.title in sent_authors, f'{n2.title} not in {sent_authors}'
-        assert n3.title in sent_authors, f'{n3.title} not in {sent_authors}'
-        assert n4.title in sent_authors, f'{n4.title} not in {sent_authors}'
-        assert n5.title in sent_authors, f'{n5.title} not in {sent_authors}'
-        assert n6.title not in sent_authors, f'{n6.title} in {sent_authors}'
-        assert n7.title not in sent_authors, f'{n7.title} in {sent_authors}'
-        assert n8.title not in sent_authors, f'{n8.title} in {sent_authors}'
-        assert n9.title not in sent_authors, f'{n9.title} in {sent_authors}'
-        assert n10.title not in sent_authors, f'{n10.title} in {sent_authors}'
+        self.check(client_id, [n1, n2, n3, n4, n5], sent)
 
     def test_sync_sequential_multiclient(self):
         client_1 = uuid.UUID('20000000-0000-0000-0000-000000000000')
@@ -175,7 +150,6 @@ class TestUtils(unittest.TestCase):
         client_3 = uuid.UUID('22000000-0000-0000-0000-000000000000')
 
         test_middleware = TestMiddleware()
-        out_serializer = Q5OutSerializer()
 
         n1, n2, n3, n4, n5, n6, n7, n8, n9, n10 = self.make_partials()
 
@@ -235,30 +209,10 @@ class TestUtils(unittest.TestCase):
         sync = Query5Synchronizer(n_workers=4, chunk_size=2, percentage=51, test_middleware=test_middleware)
         sync.run()
 
-        def check(client_id, expected, sent):
-            sent = [msg for msg in sent if msg.client_id == client_id]
-            eofs = [msg for msg in sent if msg.type == MessageType.EOF]
-            _sent_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
-            sent_chunks = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _sent_chunks]
-            sent_ns = [
-                n
-                for chunk in sent_chunks
-                for n in chunk
-            ]
-            assert len(eofs) == 1, f'sent more than one EOF, sent: {eofs}'
-            assert eofs[0].args[TOTAL] == len(expected), \
-                f'wrong EOF[TOTAL] | exp: {len(expected)}, real: {eofs[0].args[TOTAL]}'
-
-            assert len(sent_ns) == len(expected), \
-                f'wrong len(sent) | exp: {len(expected)}, real: {len(sent_ns)}'
-
-            for n in expected:
-                assert n.title in sent_ns, f'{n.title} not in {sent_ns}'
-
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
-        check(client_1, [n1, n2, n3, n4, n5], sent)
-        check(client_2, [n1, n2, n3, n4, n5], sent)
-        check(client_3, [n1, n2, n3, n4, n5], sent)
+        self.check(client_1, [n1, n2, n3, n4, n5], sent)
+        self.check(client_2, [n1, n2, n3, n4, n5], sent)
+        self.check(client_3, [n1, n2, n3, n4, n5], sent)
 
     def test_sync_parallel_multiclient(self):
         client_1 = uuid.UUID('30000000-0000-0000-0000-000000000000')
@@ -266,7 +220,6 @@ class TestUtils(unittest.TestCase):
         client_3 = uuid.UUID('32000000-0000-0000-0000-000000000000')
 
         test_middleware = TestMiddleware()
-        out_serializer = Q5OutSerializer()
 
         n1, n2, n3, n4, n5, n6, n7, n8, n9, n10 = self.make_partials()
 
@@ -307,36 +260,15 @@ class TestUtils(unittest.TestCase):
         sync = Query5Synchronizer(n_workers=4, chunk_size=2, percentage=51, test_middleware=test_middleware)
         sync.run()
 
-        def check(client_id, expected, sent):
-            sent = [msg for msg in sent if msg.client_id == client_id]
-            eofs = [msg for msg in sent if msg.type == MessageType.EOF]
-            _sent_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
-            sent_chunks = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _sent_chunks]
-            sent_ns = [
-                n
-                for chunk in sent_chunks
-                for n in chunk
-            ]
-            assert len(eofs) == 1, f'sent more than one EOF, sent: {eofs}'
-            assert eofs[0].args[TOTAL] == len(expected), \
-                f'wrong EOF[TOTAL] | exp: {len(expected)}, real: {eofs[0].args[TOTAL]}'
-
-            assert len(sent_ns) == len(expected), \
-                f'wrong len(sent) | exp: {len(expected)}, real: {len(sent_ns)}'
-
-            for n in expected:
-                assert n.title in sent_ns, f'{n.title} not in {sent_ns}'
-
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
-        check(client_1, [n1, n2, n3, n4, n5], sent)
-        check(client_2, [n1, n2, n3, n4, n5], sent)
-        check(client_3, [n1, n2, n3, n4, n5], sent)
+        self.check(client_1, [n1, n2, n3, n4, n5], sent)
+        self.check(client_2, [n1, n2, n3, n4, n5], sent)
+        self.check(client_3, [n1, n2, n3, n4, n5], sent)
 
     def test_infected_sync(self):
         client_id = uuid.UUID('40000000-0000-0000-0000-000000000000')
 
         test_middleware = TestMiddleware()
-        out_serializer = Q5OutSerializer()
 
         n1, n2, n3, n4, n5, n6, n7, n8, n9, n10 = self.make_partials()
         # -- -- -- -- Worker 1 sends n1, n4, n7 -- -- -- --
@@ -368,29 +300,7 @@ class TestUtils(unittest.TestCase):
         virus.mutate(0)
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
-        eofs = [msg for msg in sent if msg.type == MessageType.EOF]
-        _sent_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
-        sent_chunks = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _sent_chunks]
-        sent_authors = [
-            n
-            for chunk in sent_chunks
-            for n in chunk
-        ]
-
-        assert len(eofs) == 1, f'expected 1 EOF, but sent {len(eofs)}: {eofs}'
-        assert eofs[0].args[TOTAL] == 5, f'wrong EOF[TOTAL] | exp: {5}, real: {eofs[0].args[TOTAL]}'
-
-        assert len(sent_authors) == 5, f'wrong len(sent) | exp: {5}, real: {len(sent_authors)}'
-        assert n1.title in sent_authors, f'{n1.title} not in {sent_authors}'
-        assert n2.title in sent_authors, f'{n2.title} not in {sent_authors}'
-        assert n3.title in sent_authors, f'{n3.title} not in {sent_authors}'
-        assert n4.title in sent_authors, f'{n4.title} not in {sent_authors}'
-        assert n5.title in sent_authors, f'{n5.title} not in {sent_authors}'
-        assert n6.title not in sent_authors, f'{n6.title} in {sent_authors}'
-        assert n7.title not in sent_authors, f'{n7.title} in {sent_authors}'
-        assert n8.title not in sent_authors, f'{n8.title} in {sent_authors}'
-        assert n9.title not in sent_authors, f'{n9.title} in {sent_authors}'
-        assert n10.title not in sent_authors, f'{n10.title} in {sent_authors}'
+        self.check(client_id, [n1, n2, n3, n4, n5], sent)
 
     def test_infected_sync_parallel_multiclient(self):
         client_1 = uuid.UUID('50000000-0000-0000-0000-000000000000')
@@ -398,7 +308,6 @@ class TestUtils(unittest.TestCase):
         client_3 = uuid.UUID('52000000-0000-0000-0000-000000000000')
 
         test_middleware = TestMiddleware()
-        out_serializer = Q5OutSerializer()
 
         n1, n2, n3, n4, n5, n6, n7, n8, n9, n10 = self.make_partials()
 
@@ -446,30 +355,10 @@ class TestUtils(unittest.TestCase):
                 continue
         virus.mutate(0)
 
-        def check(client_id, expected, sent):
-            sent = [msg for msg in sent if msg.client_id == client_id]
-            eofs = [msg for msg in sent if msg.type == MessageType.EOF]
-            _sent_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
-            sent_chunks = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _sent_chunks]
-            sent_ns = [
-                n
-                for chunk in sent_chunks
-                for n in chunk
-            ]
-            assert len(eofs) == 1, f'sent more than one EOF, sent: {eofs}'
-            assert eofs[0].args[TOTAL] == len(expected), \
-                f'wrong EOF[TOTAL] | exp: {len(expected)}, real: {eofs[0].args[TOTAL]}'
-
-            assert len(sent_ns) == len(expected), \
-                f'wrong len(sent) | exp: {len(expected)}, real: {len(sent_ns)}'
-
-            for n in expected:
-                assert n.title in sent_ns, f'{n.title} not in {sent_ns}'
-
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
-        check(client_1, [n1, n2, n3, n4, n5], sent)
-        check(client_2, [n1, n2, n3, n4, n5], sent)
-        check(client_3, [n1, n2, n3, n4, n5], sent)
+        self.check(client_1, [n1, n2, n3, n4, n5], sent)
+        self.check(client_2, [n1, n2, n3, n4, n5], sent)
+        self.check(client_3, [n1, n2, n3, n4, n5], sent)
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 from utils.synchronizer import Synchronizer, TOTAL
 from utils.middleware.middleware import Middleware
-from utils.serializer.q1OutSerializer import Q1OutSerializer        # type: ignore
+from utils.serializer.q1OutSerializer import Q1OutSerializer    # type: ignore
 from utils.model.message import Message, MessageType
 
 IN_QUEUE_NAME = 'Q1-Sync'
