@@ -3,6 +3,7 @@ class TestMiddleware:
         self.callback = None
         self.messages = []
         self.sent = []
+        self.sent_by_tag = {}
         self.callback_counter = 0
 
     def add_message(self, msg):
@@ -26,7 +27,13 @@ class TestMiddleware:
         return 'test-queue'
 
     def produce(self, data, out_queue_name):
+        if out_queue_name not in self.sent_by_tag:
+            self.sent_by_tag[out_queue_name] = []
+        self.sent_by_tag[out_queue_name].append(data)
         self.sent.append(data)
 
     def publish(self, data, topic, tag):
+        if tag not in self.sent_by_tag:
+            self.sent_by_tag[tag] = []
+        self.sent_by_tag[tag].append(data)
         self.sent.append(data)
