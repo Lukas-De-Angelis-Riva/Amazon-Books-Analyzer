@@ -24,6 +24,14 @@ services:
     image: query3_worker:latest
     volumes:
     - ./server/query3/worker/test/tests.py:/test/tests.py
+  query5Worker:
+    container_name: query5Worker
+    entrypoint: ./test.sh
+    environment:
+    - PYTHONUNBUFFERED=1
+    image: query5_worker:latest
+    volumes:
+    - ./server/query5/worker/test/tests.py:/test/tests.py
   query1Synchronizer:
     container_name: query1Synchronizer
     entrypoint: python -m unittest test/tests.py
