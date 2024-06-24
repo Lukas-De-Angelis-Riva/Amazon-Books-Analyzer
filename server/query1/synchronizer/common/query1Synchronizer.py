@@ -1,6 +1,6 @@
 from utils.synchronizer import Synchronizer, TOTAL
 from utils.middleware.middleware import Middleware
-from utils.serializer.q1OutSerializer import Q1OutSerializer        # type: ignore
+from utils.serializer.q1OutSerializer import Q1OutSerializer    # type: ignore
 from utils.model.message import Message, MessageType
 
 IN_QUEUE_NAME = 'Q1-Sync'
@@ -21,13 +21,15 @@ class Query1Synchronizer(Synchronizer):
             # Also, it is not used in 'Synchronizer' abstraction. So might be deleted
             chunk_size=1
         )
+        self.recovery()
 
-    def process_chunk(self, chunk):
+    def process_chunk(self, chunk, chunk_id):
         data = self.out_serializer.to_bytes(chunk)
         msg = Message(
             client_id=self.tracker.client_id,
             type=MessageType.DATA,
-            data=data
+            data=data,
+            ID=chunk_id
         )
         self.middleware.publish(msg.to_bytes(), OUT_TOPIC, TAG)
 
@@ -38,6 +40,7 @@ class Query1Synchronizer(Synchronizer):
             data=b'',
             args={
                 TOTAL: self.tracker.total_worked()
-            }
+            },
+            ID=self.tracker.eof_id()
         )
         self.middleware.publish(eof.to_bytes(), OUT_TOPIC, TAG)

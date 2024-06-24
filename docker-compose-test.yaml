@@ -1,0 +1,66 @@
+name: tp2-server-test
+services:
+  query1Worker:
+    container_name: query1Worker
+    entrypoint: ./test.sh
+    environment:
+    - PYTHONUNBUFFERED=1
+    image: query1_worker:latest
+    volumes:
+    - ./server/query1/worker/test/tests.py:/test/tests.py
+  query2Worker:
+    container_name: query2Worker
+    entrypoint: ./test.sh
+    environment:
+    - PYTHONUNBUFFERED=1
+    image: query2_worker:latest
+    volumes:
+    - ./server/query2/worker/test/tests.py:/test/tests.py
+  query3Worker:
+    container_name: query3Worker
+    entrypoint: ./test.sh
+    environment:
+    - PYTHONUNBUFFERED=1
+    image: query3_worker:latest
+    volumes:
+    - ./server/query3/worker/test/tests.py:/test/tests.py
+  query5Worker:
+    container_name: query5Worker
+    entrypoint: ./test.sh
+    environment:
+    - PYTHONUNBUFFERED=1
+    image: query5_worker:latest
+    volumes:
+    - ./server/query5/worker/test/tests.py:/test/tests.py
+  query1Synchronizer:
+    container_name: query1Synchronizer
+    entrypoint: python -m unittest test/tests.py
+    environment:
+    - PYTHONUNBUFFERED=1
+    image: query1_synchronizer:latest
+    volumes:
+    - ./server/query1/synchronizer/test/tests.py:/test/tests.py
+  query2Synchronizer:
+    container_name: query2Synchronizer
+    entrypoint: python -m unittest test/tests.py
+    environment:
+    - PYTHONUNBUFFERED=1
+    image: query2_synchronizer:latest
+    volumes:
+    - ./server/query2/synchronizer/test/tests.py:/test/tests.py
+  query3Synchronizer:
+    container_name: query3Synchronizer
+    entrypoint: python -m unittest test/tests.py
+    environment:
+    - PYTHONUNBUFFERED=1
+    image: query3_synchronizer:latest
+    volumes:
+    - ./server/query3/synchronizer/test/tests.py:/test/tests.py
+  query5Synchronizer:
+    container_name: query5Synchronizer
+    entrypoint: python -m unittest test/tests.py
+    environment:
+    - PYTHONUNBUFFERED=1
+    image: query5_synchronizer:latest
+    volumes:
+    - ./server/query5/synchronizer/test/tests.py:/test/tests.py

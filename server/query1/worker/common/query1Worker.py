@@ -1,4 +1,5 @@
 import logging
+
 from utils.worker import Worker, WORKER_ID
 from utils.middleware.middleware import Middleware
 from utils.serializer.q1InSerializer import Q1InSerializer      # type: ignore
@@ -28,6 +29,8 @@ class Query1Worker(Worker):
         self.matching_books = []
         self.matches = matches
 
+        self.recovery()
+
     def forward_eof(self, eof):
         self.middleware.produce(eof, OUT_QUEUE_NAME())
 
@@ -41,7 +44,7 @@ class Query1Worker(Worker):
             logging.debug(f'action: new_book | result: match | book: {book}')
             self.matching_books.append(book)
 
-    def do_after_work(self):
+    def do_after_work(self, chunk_id):
         if self.matching_books:
             data = self.out_serializer.to_bytes(self.matching_books)
             msg = Message(
@@ -50,8 +53,13 @@ class Query1Worker(Worker):
                 data=data,
                 args={
                     WORKER_ID: self.peer_id,
-                }
+                },
+                ID=chunk_id
             )
             self.forward_data(msg.to_bytes())
-            self.tracker.total_sent += len(self.matching_books)
+        n = len(self.matching_books)
         self.matching_books = []
+        return n if n != 0 else None
+
+    def terminator(self):
+        self.send_eof(self.tracker.get_sent())

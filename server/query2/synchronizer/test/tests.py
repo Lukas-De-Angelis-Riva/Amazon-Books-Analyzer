@@ -1,16 +1,28 @@
-import io
 import unittest
+import shutil
 import uuid
+import os
+import io
 
-from common.query2Synchronizer import Query2Synchronizer
+from common.query2Synchronizer import Query2Synchronizer, IN_QUEUE_NAME
+from utils.clientTrackerSynchronizer import BASE_DIRECTORY
 from utils.worker import TOTAL, WORKER_ID
 from utils.middleware.testMiddleware import TestMiddleware
 from utils.serializer.q2OutSerializer import Q2OutSerializer    # type: ignore
 from utils.model.message import Message, MessageType
+from utils.model.virus import Disease, virus
 
 
 class TestUtils(unittest.TestCase):
-    def append_eof(self, client_id, test_middleware, peer_id, sent):
+    @classmethod
+    def setUpClass(cls):
+        if os.path.exists(BASE_DIRECTORY):
+            shutil.rmtree(BASE_DIRECTORY)
+
+    def setUp(self):
+        virus.regenerate()
+
+    def append_eof(self, client_id, test_middleware, peer_id, sent, eof_id=None):
         eof = Message(
             client_id=client_id,
             type=MessageType.EOF,
@@ -20,9 +32,11 @@ class TestUtils(unittest.TestCase):
                 WORKER_ID: peer_id,
             }
         )
-        test_middleware.add_message(eof.to_bytes())
+        if eof_id:
+            eof.ID = eof_id
+        test_middleware.add_message(eof.to_bytes(), IN_QUEUE_NAME)
 
-    def append_chunk(self, client_id, test_middleware, peer_id, chunk):
+    def append_chunk(self, client_id, test_middleware, peer_id, chunk, chunk_id=None):
         serializer = Q2OutSerializer()
         msg = Message(
             client_id=client_id,
@@ -32,7 +46,9 @@ class TestUtils(unittest.TestCase):
                 WORKER_ID: peer_id,
             }
         )
-        test_middleware.add_message(msg.to_bytes())
+        if chunk_id:
+            msg.ID = chunk_id
+        test_middleware.add_message(msg.to_bytes(), IN_QUEUE_NAME)
 
     def test_resultq2serializer(self):
         serializer = Q2OutSerializer()
@@ -64,10 +80,30 @@ class TestUtils(unittest.TestCase):
         a8 = 'Jane Austen'
         return a1, a2, a3, a4, a5, a6, a7, a8
 
-    def test_sync(self):
-        client_id = uuid.uuid4()
-        test_middleware = TestMiddleware()
+    def check(self, client_id, authors, sent):
         serializer = Q2OutSerializer()
+        sent = [msg for msg in sent if msg.client_id == client_id]
+        eofs = [msg for msg in sent if msg.type == MessageType.EOF]
+        _sent_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
+        sent_chunks = [serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _sent_chunks]
+        sent_authors = [
+            a
+            for chunk in sent_chunks
+            for a in chunk
+        ]
+        assert len(eofs) == 1, f'unexpected amount of EOFs, sent: {eofs}'
+        assert eofs[0].args[TOTAL] == len(authors), \
+            f'wrong EOF[TOTAL] | exp: {len(authors)}, real: {eofs[0].args[TOTAL]}'
+
+        assert len(sent_authors) == len(authors), \
+            f'wrong len(sent) | exp: {len(authors)}, real: {len(sent_authors)}'
+        for a in authors:
+            assert a in sent_authors, f'{a} not in {sent_authors}'
+
+    def test_sync(self):
+        client_id = uuid.UUID('00000000-0000-0000-0000-000000000000')
+
+        test_middleware = TestMiddleware()
 
         a1, a2, a3, a4, a5, a6, a7, a8 = self.make_authors()
 
@@ -89,33 +125,13 @@ class TestUtils(unittest.TestCase):
         sync = Query2Synchronizer(n_workers=4, test_middleware=test_middleware)
         sync.run()
 
-        sent = [Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent]
-        eofs = [msg for msg in sent if msg.type == MessageType.EOF]
-        _sent_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
-        sent_chunks = [serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _sent_chunks]
-        sent_authors = [
-            a
-            for chunk in sent_chunks
-            for a in chunk
-        ]
-
-        assert len(eofs) == 1
-        assert eofs[0].args[TOTAL] == 8
-
-        assert len(sent_authors) == 8
-        assert a1 in sent_authors
-        assert a2 in sent_authors
-        assert a3 in sent_authors
-        assert a4 in sent_authors
-        assert a5 in sent_authors
-        assert a6 in sent_authors
-        assert a7 in sent_authors
-        assert a8 in sent_authors
+        sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
+        self.check(client_id, [a1, a2, a3, a4, a5, a6, a7, a8], sent)
 
     def test_sync_premature_eof(self):
-        client_id = uuid.uuid4()
+        client_id = uuid.UUID('10000000-0000-0000-0000-000000000000')
+
         test_middleware = TestMiddleware()
-        serializer = Q2OutSerializer()
 
         a1, a2, a3, a4, a5, a6, a7, a8 = self.make_authors()
 
@@ -137,35 +153,14 @@ class TestUtils(unittest.TestCase):
         sync = Query2Synchronizer(n_workers=4, test_middleware=test_middleware)
         sync.run()
 
-        sent = [Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent]
-        eofs = [msg for msg in sent if msg.type == MessageType.EOF]
-        _sent_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
-        sent_chunks = [serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _sent_chunks]
-        sent_authors = [
-            a
-            for chunk in sent_chunks
-            for a in chunk
-        ]
-
-        assert len(eofs) == 1
-        assert eofs[0].args[TOTAL] == 8
-
-        assert len(sent_authors) == 8
-        assert a1 in sent_authors
-        assert a2 in sent_authors
-        assert a3 in sent_authors
-        assert a4 in sent_authors
-        assert a5 in sent_authors
-        assert a6 in sent_authors
-        assert a7 in sent_authors
-        assert a8 in sent_authors
+        sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
+        self.check(client_id, [a1, a2, a3, a4, a5, a6, a7, a8], sent)
 
     def test_sync_sequential_multiclient(self):
-        client_1 = uuid.uuid4()
-        client_2 = uuid.uuid4()
-        client_3 = uuid.uuid4()
+        client_1 = uuid.UUID('20000000-0000-0000-0000-000000000000')
+        client_2 = uuid.UUID('21000000-0000-0000-0000-000000000000')
+        client_3 = uuid.UUID('22000000-0000-0000-0000-000000000000')
         test_middleware = TestMiddleware()
-        serializer = Q2OutSerializer()
 
         a1, a2, a3, a4, a5, a6, a7, a8 = self.make_authors()
 
@@ -213,35 +208,16 @@ class TestUtils(unittest.TestCase):
         sync = Query2Synchronizer(n_workers=4, test_middleware=test_middleware)
         sync.run()
 
-        def check(client_id, authors, sent):
-            sent = [msg for msg in sent if msg.client_id == client_id]
-            eofs = [msg for msg in sent if msg.type == MessageType.EOF]
-            _sent_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
-            sent_chunks = [serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _sent_chunks]
-            sent_authors = [
-                a
-                for chunk in sent_chunks
-                for a in chunk
-            ]
-
-            assert len(eofs) == 1
-            assert eofs[0].args[TOTAL] == len(authors)
-
-            assert len(sent_authors) == len(authors)
-            for a in authors:
-                assert a in sent_authors
-
-        sent = [Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent]
-        check(client_1, [a1, a2, a3], sent)
-        check(client_2, [a4, a5], sent)
-        check(client_3, [a6, a7, a8], sent)
+        sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
+        self.check(client_1, [a1, a2, a3], sent)
+        self.check(client_2, [a4, a5], sent)
+        self.check(client_3, [a6, a7, a8], sent)
 
     def test_sync_parallel_multiclient(self):
-        client_1 = uuid.uuid4()
-        client_2 = uuid.uuid4()
-        client_3 = uuid.uuid4()
+        client_1 = uuid.UUID('30000000-0000-0000-0000-000000000000')
+        client_2 = uuid.UUID('31000000-0000-0000-0000-000000000000')
+        client_3 = uuid.UUID('32000000-0000-0000-0000-000000000000')
         test_middleware = TestMiddleware()
-        serializer = Q2OutSerializer()
 
         a1, a2, a3, a4, a5, a6, a7, a8 = self.make_authors()
 
@@ -270,28 +246,90 @@ class TestUtils(unittest.TestCase):
         sync = Query2Synchronizer(n_workers=4, test_middleware=test_middleware)
         sync.run()
 
-        def check(client_id, authors, sent):
-            sent = [msg for msg in sent if msg.client_id == client_id]
-            eofs = [msg for msg in sent if msg.type == MessageType.EOF]
-            _sent_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
-            sent_chunks = [serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _sent_chunks]
-            sent_authors = [
-                a
-                for chunk in sent_chunks
-                for a in chunk
-            ]
+        sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
+        self.check(client_1, [a1, a2, a3], sent)
+        self.check(client_2, [a4, a5], sent)
+        self.check(client_3, [a6, a7, a8], sent)
 
-            assert len(eofs) == 1
-            assert eofs[0].args[TOTAL] == len(authors)
+    def test_infected_sync(self):
+        client_id = uuid.UUID('40000000-0000-0000-0000-000000000000')
 
-            assert len(sent_authors) == len(authors)
-            for a in authors:
-                assert a in sent_authors
+        test_middleware = TestMiddleware()
 
-        sent = [Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent]
-        check(client_1, [a1, a2, a3], sent)
-        check(client_2, [a4, a5], sent)
-        check(client_3, [a6, a7, a8], sent)
+        a1, a2, a3, a4, a5, a6, a7, a8 = self.make_authors()
+
+        # -- -- -- -- Worker 1 sends a1, a2, a7 & a8 -- -- -- --
+        self.append_chunk(client_id, test_middleware, 1, [a1, a2])
+        self.append_chunk(client_id, test_middleware, 1, [a7, a8])
+        # -- -- -- -- -- Worker 2 sends a5 -- -- -- -- --
+        self.append_chunk(client_id, test_middleware, 2, [a5])
+        # -- -- -- -- Worker 3 does not send authors -- -- -- --
+        # -- -- -- -- Worker 4 sends a3, a4, a6 -- -- -- --
+        self.append_chunk(client_id, test_middleware, 4, [a3, a4])
+        self.append_chunk(client_id, test_middleware, 4, [a6])
+
+        self.append_eof(client_id, test_middleware, 1, 4)
+        self.append_eof(client_id, test_middleware, 2, 1)
+        self.append_eof(client_id, test_middleware, 3, 0)
+        self.append_eof(client_id, test_middleware, 4, 3)
+
+        virus.mutate(0.20)
+        while True:
+            try:
+                sync = Query2Synchronizer(n_workers=4, test_middleware=test_middleware)
+                sync.run()
+                break
+            except Disease:
+                test_middleware.requeue()
+                continue
+
+        sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
+        self.check(client_id, [a1, a2, a3, a4, a5, a6, a7, a8], sent)
+
+    def test_infected_sync_parallel_multiclient(self):
+        client_1 = uuid.UUID('50000000-0000-0000-0000-000000000000')
+        client_2 = uuid.UUID('51000000-0000-0000-0000-000000000000')
+        client_3 = uuid.UUID('52000000-0000-0000-0000-000000000000')
+        test_middleware = TestMiddleware()
+
+        a1, a2, a3, a4, a5, a6, a7, a8 = self.make_authors()
+
+        # -- -- -- -- --  CHAOS -- -- -- -- --
+        self.append_eof(client_3, test_middleware, 1, 1)
+        self.append_eof(client_3, test_middleware, 4, 0)
+        self.append_eof(client_2, test_middleware, 2, 0)
+        self.append_chunk(client_1, test_middleware, 4, [a2])
+        self.append_eof(client_2, test_middleware, 1, 1)
+        self.append_chunk(client_2, test_middleware, 1, [a4])
+        self.append_chunk(client_1, test_middleware, 4, [a3])
+        self.append_eof(client_1, test_middleware, 4, 2)
+        self.append_eof(client_1, test_middleware, 2, 1)
+        self.append_eof(client_2, test_middleware, 4, 0)
+        self.append_chunk(client_2, test_middleware, 3, [a5])
+        self.append_eof(client_3, test_middleware, 2, 1)
+        self.append_eof(client_3, test_middleware, 3, 1)
+        self.append_chunk(client_3, test_middleware, 3, [a8])
+        self.append_eof(client_2, test_middleware, 3, 1)
+        self.append_eof(client_1, test_middleware, 1, 0)
+        self.append_eof(client_1, test_middleware, 3, 0)
+        self.append_chunk(client_3, test_middleware, 1, [a6])
+        self.append_chunk(client_3, test_middleware, 2, [a7])
+        self.append_chunk(client_1, test_middleware, 2, [a1])
+
+        virus.mutate(0.15)
+        while True:
+            try:
+                sync = Query2Synchronizer(n_workers=4, test_middleware=test_middleware)
+                sync.run()
+                break
+            except Disease:
+                test_middleware.requeue()
+                continue
+
+        sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
+        self.check(client_1, [a1, a2, a3], sent)
+        self.check(client_2, [a4, a5], sent)
+        self.check(client_3, [a6, a7, a8], sent)
 
 
 if __name__ == '__main__':

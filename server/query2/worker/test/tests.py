@@ -1,6 +1,8 @@
 import io
 import unittest
 import uuid
+import shutil
+import os
 
 from dto.q2Partial import Q2Partial
 from model.book import Book
@@ -9,13 +11,26 @@ from utils.middleware.testMiddleware import TestMiddleware
 from utils.serializer.q2PartialSerializer import Q2PartialSerializer    # type: ignore
 from utils.serializer.q2InSerializer import Q2InSerializer              # type: ignore
 from utils.serializer.q2OutSerializer import Q2OutSerializer            # type: ignore
-from utils.worker import TOTAL
+from utils.worker import TOTAL, BASE_DIRECTORY
 from utils.model.message import Message, MessageType
-from common.query2Worker import Query2Worker
+from common.query2Worker import Query2Worker, in_queue_name
+
+from utils.model.virus import virus, Disease
+
+WORKER_ID = 2
 
 
 class TestUtils(unittest.TestCase):
-    def append_eof(self, client_id, test_middleware, sent):
+
+    @classmethod
+    def setUpClass(cls):
+        if os.path.exists(BASE_DIRECTORY):
+            shutil.rmtree(BASE_DIRECTORY)
+
+    def setUp(self):
+        virus.regenerate()
+
+    def append_eof(self, client_id, test_middleware, sent, eof_id=None):
         eof = Message(
             client_id=client_id,
             type=MessageType.EOF,
@@ -24,16 +39,20 @@ class TestUtils(unittest.TestCase):
                 TOTAL: sent,
             }
         )
-        test_middleware.add_message(eof.to_bytes())
+        if eof_id:
+            eof.ID = eof_id
+        test_middleware.add_message(eof.to_bytes(), in_queue_name(WORKER_ID))
 
-    def append_chunk(self, client_id, test_middleware, chunk):
+    def append_chunk(self, client_id, test_middleware, chunk, chunk_id=None):
         serializer = Q2InSerializer()
         msg = Message(
             client_id=client_id,
             type=MessageType.DATA,
             data=serializer.to_bytes(chunk),
         )
-        test_middleware.add_message(msg.to_bytes())
+        if chunk_id:
+            msg.ID = chunk_id
+        test_middleware.add_message(msg.to_bytes(), in_queue_name(WORKER_ID))
 
     def test_intarray(self):
         decades = [1850, 1970, 2020]
@@ -217,10 +236,29 @@ class TestUtils(unittest.TestCase):
         )
         return tfe, twoa, thoa
 
+    def check(self, client_id, authors, sent):
+        serializer = Q2OutSerializer()
+        sent = [msg for msg in sent if msg.client_id == client_id]
+        eofs = [msg for msg in sent if msg.type == MessageType.EOF]
+        _sent_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
+        sent_chunks = [serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _sent_chunks]
+        sent_authors = [
+            a
+            for chunk in sent_chunks
+            for a in chunk
+        ]
+        assert len(eofs) == 1, f'unexpected amount of EOFs, sent: {eofs}'
+        assert eofs[0].args[TOTAL] == len(authors), \
+            f'wrong EOF[TOTAL] | exp: {len(authors)}, real: {eofs[0].args[TOTAL]}'
+
+        assert len(sent_authors) == len(authors), \
+            f'wrong len(sent) | exp: {len(authors)}, real: {len(sent_authors)}'
+        for a in authors:
+            assert a in sent_authors, f'{a} not in {sent_authors}'
+
     def test_worker_filter(self):
-        client_id = uuid.uuid4()
+        client_id = uuid.UUID('00000000-0000-0000-0000-000000000000')
         test_middleware = TestMiddleware()
-        out_serializer = Q2OutSerializer()
         b1, b2, b3, b4, b5 = self.make_books_asoiaf()
         c1, c2, c3, c4 = self.make_books_tlotr()
         d1, d2, d3 = self.make_books_mistborn()
@@ -230,29 +268,17 @@ class TestUtils(unittest.TestCase):
         self.append_chunk(client_id, test_middleware, [b5, c4, d3])
         self.append_eof(client_id, test_middleware, 12)
 
-        worker = Query2Worker(peer_id=1, peers=10, chunk_size=2, min_decades=2, test_middleware=test_middleware)
+        worker = Query2Worker(peer_id=WORKER_ID, peers=10, chunk_size=2, min_decades=2, test_middleware=test_middleware)
         worker.run()
-        sent = [Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent]
-        eofs = [msg for msg in sent if msg.type == MessageType.EOF]
-        _filtered_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
-        filtered_chunks = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks]
-        filtered = [
-            a
-            for chunk in filtered_chunks
-            for a in chunk
-        ]
 
-        assert len(eofs) == 1
-        assert eofs[0].args[TOTAL] == 2
-        assert len(filtered) == 2
-        assert b1.authors[0] in filtered
-        assert c1.authors[0] in filtered
-        assert d1.authors[0] not in filtered
+        sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
+        martin = b1.authors[0]
+        tolkien = c1.authors[0]
+        self.check(client_id, [martin, tolkien], sent)
 
     def test_worker_premature_eof(self):
-        client_id = uuid.uuid4()
+        client_id = uuid.UUID('10000000-0000-0000-0000-000000000000')
         test_middleware = TestMiddleware()
-        out_serializer = Q2OutSerializer()
         b1, b2, b3, b4, b5 = self.make_books_asoiaf()
         c1, c2, c3, c4 = self.make_books_tlotr()
         d1, d2, d3 = self.make_books_mistborn()
@@ -262,30 +288,18 @@ class TestUtils(unittest.TestCase):
         self.append_chunk(client_id, test_middleware, [b4])
         self.append_chunk(client_id, test_middleware, [b5, c4, d3])
 
-        worker = Query2Worker(peer_id=1, peers=10, chunk_size=2, min_decades=2, test_middleware=test_middleware)
+        worker = Query2Worker(peer_id=WORKER_ID, peers=10, chunk_size=2, min_decades=2, test_middleware=test_middleware)
         worker.run()
-        sent = [Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent]
-        eofs = [msg for msg in sent if msg.type == MessageType.EOF]
-        _filtered_chunks = [msg.data for msg in sent if msg.type == MessageType.DATA]
-        filtered_chunks = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks]
-        filtered = [
-            a
-            for chunk in filtered_chunks
-            for a in chunk
-        ]
 
-        assert len(eofs) == 1
-        assert eofs[0].args[TOTAL] == 2
-        assert len(filtered) == 2
-        assert b1.authors[0] in filtered
-        assert c1.authors[0] in filtered
-        assert d1.authors[0] not in filtered
+        sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
+        martin = b1.authors[0]
+        tolkien = c1.authors[0]
+        self.check(client_id, [martin, tolkien], sent)
 
     def test_sequential_multiclient(self):
-        client_1 = uuid.uuid4()
-        client_2 = uuid.uuid4()
+        client_1 = uuid.UUID('20000000-0000-0000-0000-000000000000')
+        client_2 = uuid.UUID('21000000-0000-0000-0000-000000000000')
         test_middleware = TestMiddleware()
-        out_serializer = Q2OutSerializer()
         b1, b2, b3, b4, b5 = self.make_books_asoiaf()
         c1, c2, c3, c4 = self.make_books_tlotr()
         d1, d2, d3 = self.make_books_mistborn()
@@ -300,45 +314,19 @@ class TestUtils(unittest.TestCase):
         self.append_chunk(client_2, test_middleware, [c4, d3])
         self.append_eof(client_2, test_middleware, 7)
 
-        worker = Query2Worker(peer_id=1, peers=10, chunk_size=2, min_decades=2, test_middleware=test_middleware)
+        worker = Query2Worker(peer_id=WORKER_ID, peers=10, chunk_size=2, min_decades=2, test_middleware=test_middleware)
         worker.run()
-        sent = [Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent]
 
-        sent_1 = [msg for msg in sent if msg.client_id == client_1]
-        eofs = [msg for msg in sent_1 if msg.type == MessageType.EOF]
-        _filtered_chunks = [msg.data for msg in sent_1 if msg.type == MessageType.DATA]
-        filtered_chunks = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks]
-        filtered = [
-            a
-            for chunk in filtered_chunks
-            for a in chunk
-        ]
-        assert len(eofs) == 1
-        assert eofs[0].args[TOTAL] == 1
-        assert len(filtered) == 1
-        assert b1.authors[0] in filtered
-        assert d1.authors[0] not in filtered
-
-        sent_2 = [msg for msg in sent if msg.client_id == client_2]
-        eofs = [msg for msg in sent_2 if msg.type == MessageType.EOF]
-        _filtered_chunks = [msg.data for msg in sent_2 if msg.type == MessageType.DATA]
-        filtered_chunks = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks]
-        filtered = [
-            a
-            for chunk in filtered_chunks
-            for a in chunk
-        ]
-        assert len(eofs) == 1
-        assert eofs[0].args[TOTAL] == 1
-        assert len(filtered) == 1
-        assert c1.authors[0] in filtered
-        assert d1.authors[0] not in filtered
+        sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
+        martin = b1.authors[0]
+        tolkien = c1.authors[0]
+        self.check(client_1, [martin], sent)
+        self.check(client_2, [tolkien], sent)
 
     def test_parallel_multiclient(self):
-        client_1 = uuid.uuid4()
-        client_2 = uuid.uuid4()
+        client_1 = uuid.UUID('30000000-0000-0000-0000-000000000000')
+        client_2 = uuid.UUID('31000000-0000-0000-0000-000000000000')
         test_middleware = TestMiddleware()
-        out_serializer = Q2OutSerializer()
         b1, b2, b3, b4, b5 = self.make_books_asoiaf()
         c1, c2, c3, c4 = self.make_books_tlotr()
         d1, d2, d3 = self.make_books_mistborn()
@@ -352,39 +340,82 @@ class TestUtils(unittest.TestCase):
         self.append_chunk(client_1, test_middleware, [b5, d3])
         self.append_chunk(client_2, test_middleware, [c4, d3])
 
-        worker = Query2Worker(peer_id=1, peers=10, chunk_size=2, min_decades=2, test_middleware=test_middleware)
+        worker = Query2Worker(peer_id=WORKER_ID, peers=10, chunk_size=2, min_decades=2, test_middleware=test_middleware)
         worker.run()
-        sent = [Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent]
 
-        sent_1 = [msg for msg in sent if msg.client_id == client_1]
-        eofs = [msg for msg in sent_1 if msg.type == MessageType.EOF]
-        _filtered_chunks = [msg.data for msg in sent_1 if msg.type == MessageType.DATA]
-        filtered_chunks = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks]
-        filtered = [
-            a
-            for chunk in filtered_chunks
-            for a in chunk
-        ]
-        assert len(eofs) == 1
-        assert eofs[0].args[TOTAL] == 1
-        assert len(filtered) == 1
-        assert b1.authors[0] in filtered
-        assert d1.authors[0] not in filtered
+        sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
+        martin = b1.authors[0]
+        tolkien = c1.authors[0]
+        self.check(client_1, [martin], sent)
+        self.check(client_2, [tolkien], sent)
 
-        sent_2 = [msg for msg in sent if msg.client_id == client_2]
-        eofs = [msg for msg in sent_2 if msg.type == MessageType.EOF]
-        _filtered_chunks = [msg.data for msg in sent_2 if msg.type == MessageType.DATA]
-        filtered_chunks = [out_serializer.from_chunk(io.BytesIO(_chunk)) for _chunk in _filtered_chunks]
-        filtered = [
-            a
-            for chunk in filtered_chunks
-            for a in chunk
-        ]
-        assert len(eofs) == 1
-        assert eofs[0].args[TOTAL] == 1
-        assert len(filtered) == 1
-        assert c1.authors[0] in filtered
-        assert d1.authors[0] not in filtered
+    def test_infected_worker(self):
+        client_id = uuid.UUID('40000000-0000-0000-0000-000000000000')
+        test_middleware = TestMiddleware()
+        b1, b2, b3, b4, b5 = self.make_books_asoiaf()
+        c1, c2, c3, c4 = self.make_books_tlotr()
+        d1, d2, d3 = self.make_books_mistborn()
+
+        self.append_chunk(client_id, test_middleware, [b1, b2, c1, d1],
+                          chunk_id=uuid.UUID('40000000-0000-0000-0000-000000000001'))
+        self.append_chunk(client_id, test_middleware, [b3, c2, c3, d2],
+                          chunk_id=uuid.UUID('40000000-0000-0000-0000-000000000002'))
+        self.append_chunk(client_id, test_middleware, [b4],
+                          chunk_id=uuid.UUID('40000000-0000-0000-0000-000000000003'))
+        self.append_chunk(client_id, test_middleware, [b5, c4, d3],
+                          chunk_id=uuid.UUID('40000000-0000-0000-0000-000000000004'))
+        self.append_eof(client_id, test_middleware, 12,
+                        eof_id=uuid.UUID('40000000-0000-0000-0000-000000000005'))
+
+        virus.mutate(0.20)
+        while True:
+            try:
+                worker = Query2Worker(peer_id=WORKER_ID, peers=10, chunk_size=2, min_decades=2,
+                                      test_middleware=test_middleware)
+                worker.run()
+                break
+            except Disease:
+                test_middleware.requeue()
+                continue
+
+        sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
+        martin = b1.authors[0]
+        tolkien = c1.authors[0]
+        self.check(client_id, [martin, tolkien], sent)
+
+    def test_infected_worker_parallel_multiclient(self):
+        client_1 = uuid.UUID('50000000-0000-0000-0000-000000000000')
+        client_2 = uuid.UUID('51000000-0000-0000-0000-000000000000')
+        test_middleware = TestMiddleware()
+        b1, b2, b3, b4, b5 = self.make_books_asoiaf()
+        c1, c2, c3, c4 = self.make_books_tlotr()
+        d1, d2, d3 = self.make_books_mistborn()
+
+        self.append_chunk(client_1, test_middleware, [b1, b2, d1])
+        self.append_eof(client_1, test_middleware, 8)
+        self.append_chunk(client_2, test_middleware, [c1, c2, d1])
+        self.append_chunk(client_1, test_middleware, [b3, b4, d2])
+        self.append_chunk(client_2, test_middleware, [c3, d2])
+        self.append_eof(client_2, test_middleware, 7)
+        self.append_chunk(client_1, test_middleware, [b5, d3])
+        self.append_chunk(client_2, test_middleware, [c4, d3])
+
+        virus.mutate(0.10)
+        while True:
+            try:
+                worker = Query2Worker(peer_id=WORKER_ID, peers=10, chunk_size=2, min_decades=2,
+                                      test_middleware=test_middleware)
+                worker.run()
+                break
+            except Disease:
+                test_middleware.requeue()
+                continue
+
+        sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
+        martin = b1.authors[0]
+        tolkien = c1.authors[0]
+        self.check(client_1, [martin], sent)
+        self.check(client_2, [tolkien], sent)
 
 
 if __name__ == '__main__':
