@@ -95,7 +95,7 @@ class QueryManager:
         self.__send_book_eof(QUERY3_ID)
         self.__send_book_eof(QUERY5_ID)
 
-    def __distribute_books(self, sharded_chunks: list, query_id: str):
+    def __distribute_books(self, chunk_id: int, sharded_chunks: list, query_id: str):
         n_workers = len(sharded_chunks)
         for worker_i in range(1, n_workers+1):
             i = worker_i - 1
@@ -104,6 +104,7 @@ class QueryManager:
             self.total_books[query_id][worker_i] += len(sharded_chunks[i])
             data_wi = self.book_serializers[query_id].to_bytes(sharded_chunks[i])
             msg = Message(
+                ID=chunk_id,
                 client_id=self.client_id,
                 type=MessageType.DATA,
                 data=data_wi,
@@ -113,23 +114,23 @@ class QueryManager:
                 out_queue_name=OUT_BOOKS_QUEUE(query_id, worker_i)
             )
 
-    def distribute_books(self, chunk):
+    def distribute_books(self, chunk_id, chunk):
         # Query 1:
         value_grouped_by_title = group_by_key(chunk, self.workers_by_query[QUERY1_ID], lambda b: b.title)
-        self.__distribute_books(value_grouped_by_title, QUERY1_ID)
+        self.__distribute_books(chunk_id, value_grouped_by_title, QUERY1_ID)
 
         # Query 2:
         exploded = explode_by_authors(chunk)
         value_grouped_by_author = group_by_key(exploded, self.workers_by_query[QUERY2_ID], lambda b: b.authors[0])
-        self.__distribute_books(value_grouped_by_author, QUERY2_ID)
+        self.__distribute_books(chunk_id, value_grouped_by_author, QUERY2_ID)
 
         # Query 3/4:
         value_grouped_by_title = group_by_key(chunk, self.workers_by_query[QUERY3_ID], lambda b: b.title)
-        self.__distribute_books(value_grouped_by_title, QUERY3_ID)
+        self.__distribute_books(chunk_id, value_grouped_by_title, QUERY3_ID)
 
         # Query 5:
         value_grouped_by_title = group_by_key(chunk, self.workers_by_query[QUERY5_ID], lambda b: b.title)
-        self.__distribute_books(value_grouped_by_title, QUERY5_ID)
+        self.__distribute_books(chunk_id, value_grouped_by_title, QUERY5_ID)
 
     def __send_review_eof(self, query_id):
         for worker_i in self.total_reviews[query_id]:
@@ -150,7 +151,7 @@ class QueryManager:
         self.__send_review_eof(QUERY3_ID)
         self.__send_review_eof(QUERY5_ID)
 
-    def __distribute_reviews(self, sharded_chunks: list, query_id: str):
+    def __distribute_reviews(self, chunk_id: int, sharded_chunks: list, query_id: str):
         n_workers = len(sharded_chunks)
         for worker_i in range(1, n_workers+1):
             i = worker_i - 1
@@ -159,6 +160,7 @@ class QueryManager:
             self.total_reviews[query_id][worker_i] += len(sharded_chunks[i])
             data_wi = self.review_serializers[query_id].to_bytes(sharded_chunks[i])
             msg = Message(
+                ID=chunk_id,
                 client_id=self.client_id,
                 type=MessageType.DATA,
                 data=data_wi,
@@ -168,14 +170,14 @@ class QueryManager:
                 out_queue_name=OUT_REVIEWS_QUEUE(query_id, worker_i)
             )
 
-    def distribute_reviews(self, chunk):
+    def distribute_reviews(self, chunk_id, chunk):
         # Query 3/4:
         reviews_grouped_by_title = group_by_key(chunk, self.workers_by_query[QUERY3_ID], lambda r: r.title)
-        self.__distribute_reviews(reviews_grouped_by_title, QUERY3_ID)
+        self.__distribute_reviews(chunk_id, reviews_grouped_by_title, QUERY3_ID)
 
         # Query 5:
         reviews_grouped_by_author = group_by_key(chunk, self.workers_by_query[QUERY5_ID], lambda r: r.title)
-        self.__distribute_reviews(reviews_grouped_by_author, QUERY5_ID)
+        self.__distribute_reviews(chunk_id, reviews_grouped_by_author, QUERY5_ID)
 
     def stop(self):
         self.middleware.stop()

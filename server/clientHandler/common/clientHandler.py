@@ -70,13 +70,13 @@ class ClientHandler:
             manager = QueryManager(client_id, workers_by_query=self.workers_by_query)
             keep_reading = True
             while keep_reading and not event_stop.is_set():
-                t, value = protocolHandler.read()
+                t, msg_id, value = protocolHandler.read()
 
                 if protocolHandler.is_review(t):
-                    manager.distribute_reviews(value)
+                    manager.distribute_reviews(msg_id, value)
                     logging.debug(f'action: send_reviews | N: {len(value)} | result: success')
                 elif protocolHandler.is_book(t):
-                    manager.distribute_books(value)
+                    manager.distribute_books(msg_id, value)
                     logging.debug(f'action: send_books | N: {len(value)} | result: success')
                 elif protocolHandler.is_book_eof(t):
                     manager.terminate_books()

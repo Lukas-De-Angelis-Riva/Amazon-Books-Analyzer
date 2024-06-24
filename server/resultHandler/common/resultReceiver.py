@@ -105,6 +105,13 @@ class ResultReceiver(Process):
         file_name = self.results_directory + '/' + str(self.tracker.client_id) + '.csv'
 
         with self.stop_lock, self.directory_lock, open(file_name, 'a', encoding='UTF8') as file:
+            if not results:
+                return ACK
+
+            # write the start of curr chunk
+            with open(file_name + ".ptrs", "ab") as chunk_ptrs:
+                chunk_ptrs.write(int.to_bytes(file.tell(), 4, "big"))
+
             writer = csv.writer(file)
 
             for result in results:
