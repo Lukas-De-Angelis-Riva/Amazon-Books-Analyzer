@@ -28,9 +28,9 @@ class Query1Synchronizer(Synchronizer):
         msg = Message(
             client_id=self.tracker.client_id,
             type=MessageType.DATA,
-            data=data
+            data=data,
+            ID=chunk_id
         )
-        msg.ID = chunk_id
         self.middleware.publish(msg.to_bytes(), OUT_TOPIC, TAG)
 
     def terminator(self):
@@ -40,7 +40,7 @@ class Query1Synchronizer(Synchronizer):
             data=b'',
             args={
                 TOTAL: self.tracker.total_worked()
-            }
+            },
+            ID=self.tracker.eof_id()
         )
-        eof.ID = self.tracker.eof_id()
         self.middleware.publish(eof.to_bytes(), OUT_TOPIC, TAG)

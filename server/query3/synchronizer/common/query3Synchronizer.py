@@ -37,8 +37,8 @@ class Query3Synchronizer(Synchronizer):
             client_id=self.tracker.client_id,
             type=MessageType.DATA,
             data=data,
+            ID=chunk_id
         )
-        msg.ID = chunk_id
         self.middleware.publish(msg.to_bytes(), OUT_TOPIC, Q3_TAG)
 
         for result in chunk:
@@ -58,8 +58,8 @@ class Query3Synchronizer(Synchronizer):
             args={
                 TOTAL: self.tracker.total_worked(),
             },
+            ID=self.tracker.eof_id()
         )
-        eof.ID = self.tracker.eof_id()
         self.middleware.publish(eof.to_bytes(), OUT_TOPIC, Q3_TAG)
 
         top = self.get_top()
@@ -67,11 +67,10 @@ class Query3Synchronizer(Synchronizer):
         msg = Message(
             client_id=self.tracker.client_id,
             type=MessageType.DATA,
-            data=data
+            data=data,
+            # mimic first chunk_id sent, but with Q4_TAG
+            ID=self.tracker.worked_chunks[0]
         )
-
-        # mimic first chunk_id sent, but with Q4_TAG
-        msg.ID = self.tracker.worked_chunks[0]
         self.middleware.publish(msg.to_bytes(), OUT_TOPIC, Q4_TAG)
         eof.ID = uuid.UUID(self.tracker.meta_data[Q4_EOF_ID])
         eof.args[TOTAL] = len(top)

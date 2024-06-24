@@ -100,7 +100,7 @@ class Worker(Listener):
             args={
                 WORKER_ID: self.peer_id,
             },
-            id=chunk_id
+            ID=chunk_id
         )
         self.forward_data(msg.to_bytes())
         return
@@ -132,7 +132,7 @@ class Worker(Listener):
                 TOTAL: sent,
                 WORKER_ID: self.peer_id,
             },
-            id=self.tracker.eof_id()
+            ID=self.tracker.eof_id()
         )
         self.forward_eof(eof.to_bytes())
         return

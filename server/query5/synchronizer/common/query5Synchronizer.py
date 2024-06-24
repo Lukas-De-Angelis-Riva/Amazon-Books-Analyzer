@@ -53,9 +53,9 @@ class Query5Synchronizer(Synchronizer):
         msg = Message(
             client_id=self.tracker.client_id,
             type=MessageType.DATA,
-            data=data
+            data=data,
+            ID=chunk_id
         )
-        msg.ID = chunk_id
         self.middleware.publish(msg.to_bytes(), topic=OUT_TOPIC, tag=TAG)
         return
 
@@ -80,9 +80,9 @@ class Query5Synchronizer(Synchronizer):
             data=b'',
             args={
                 TOTAL: sent
-            }
+            },
+            ID=self.tracker.eof_id()
         )
-        eof.ID = self.tracker.eof_id()
         self.middleware.publish(eof.to_bytes(), topic=OUT_TOPIC, tag=TAG)
         return
 
