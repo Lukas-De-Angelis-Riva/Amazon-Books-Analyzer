@@ -71,7 +71,7 @@ class Poller():
                 chunk_ptrs.seek(page * 4) # every ptr is an integer
                 chunk_ptr = int.from_bytes(chunk_ptrs.read(4), "big")
                 next_chunk_ptr = int.from_bytes(chunk_ptrs.read(4), "big")
-                print(f"PAGE -> {page}; CHUNK_PTR -> {chunk_ptr}; NEXT_CHUNK_PTR -> {next_chunk_ptr}")
+                #print(f"PAGE -> {page}; CHUNK_PTR -> {chunk_ptr}; NEXT_CHUNK_PTR -> {next_chunk_ptr}")
             
             file.seek(chunk_ptr)
 
