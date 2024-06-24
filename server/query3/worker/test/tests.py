@@ -27,6 +27,9 @@ class TestUtils(unittest.TestCase):
         if os.path.exists(BASE_DIRECTORY):
             shutil.rmtree(BASE_DIRECTORY)
 
+    def setUp(self):
+        virus.regenerate()
+
     def append_book_eof(self, client_id, test_middleware, sent, eof_id=None):
         eof = Message(
             client_id=client_id,
@@ -442,7 +445,6 @@ class TestUtils(unittest.TestCase):
         self.append_review_eof(client_id, test_middleware, sent=len(rs))
 
         virus.mutate(0.20)
-        virus.disease_counter = 0
         while True:
             try:
                 worker = Query3Worker(min_amount_reviews=5, minimum_date=2000, maximum_date=2015,
@@ -451,8 +453,6 @@ class TestUtils(unittest.TestCase):
                 break
             except Disease:
                 continue
-        virus.mutate(0)
-        print(f"UNIQUE-CLIENT | DISEASE COUNTER: {virus.disease_counter}")
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
         self.check(client_id, [b1.title, b2.title], sent)
@@ -516,7 +516,6 @@ class TestUtils(unittest.TestCase):
         self.append_review_chunk(client_3, test_middleware, [rs1_3[4], rs2_3[0]])
 
         virus.mutate(0.10)
-        virus.disease_counter = 0
         while True:
             try:
                 worker = Query3Worker(min_amount_reviews=5, minimum_date=2000, maximum_date=2015,
@@ -525,10 +524,6 @@ class TestUtils(unittest.TestCase):
                 break
             except Disease:
                 continue
-        virus.mutate(0)
-        worker.run()
-
-        print(f"PARALLEL-CLIENTS | DISEASE COUNTER: {virus.disease_counter}")
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
         self.check(client_1, [b1.title, b2.title], sent)

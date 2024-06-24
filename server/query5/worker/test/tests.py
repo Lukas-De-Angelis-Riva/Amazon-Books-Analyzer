@@ -30,6 +30,9 @@ class TestUtils(unittest.TestCase):
         if os.path.exists(BASE_DIRECTORY):
             shutil.rmtree(BASE_DIRECTORY)
 
+    def setUp(self):
+        virus.regenerate()
+
     def append_book_eof(self, client_id, test_middleware, sent, eof_id=None):
         eof = Message(
             client_id=client_id,
@@ -456,7 +459,6 @@ class TestUtils(unittest.TestCase):
         self.append_review_eof(client_id, test_middleware, sent=len(rs))
 
         virus.mutate(0.20)
-        virus.disease_counter = 0
         while True:
             try:
                 worker = Query5Worker(category='Distributed Systems', peer_id=WORKER_ID, peers=10, chunk_size=2,
@@ -465,8 +467,6 @@ class TestUtils(unittest.TestCase):
                 break
             except Disease:
                 continue
-        virus.mutate(0)
-        print(f"UNIQUE-CLIENT | DISEASE COUNTER: {virus.disease_counter}")
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
         self.check(client_id, [b1.title, b2.title], sent)
@@ -525,7 +525,6 @@ class TestUtils(unittest.TestCase):
         self.append_book_chunk(client_2, test_middleware, [b2, b3])
 
         virus.mutate(0.10)
-        virus.disease_counter = 0
         while True:
             try:
                 worker = Query5Worker(category='Distributed Systems', peer_id=WORKER_ID, peers=10, chunk_size=2,
@@ -534,13 +533,88 @@ class TestUtils(unittest.TestCase):
                 break
             except Disease:
                 continue
-        virus.mutate(0)
-        print(f"UNIQUE-CLIENT | DISEASE COUNTER: {virus.disease_counter}")
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
         self.check(client_1, [b1.title, b2.title], sent)
         self.check(client_2, [b1.title], sent)
         self.check(client_3, [b1.title, b2.title, b3.title], sent)
+
+    def infected_worker_in_one_specific_line(self):
+        client_1 = uuid.uuid4()
+        client_2 = uuid.uuid4()
+        client_3 = uuid.uuid4()
+        test_middleware = TestMiddleware()
+        b1, b2, b3, b4 = self.make_books_distributed()
+
+        rs1_1 = self.make_reviews(b1, 2, SENTIMENT_HIGH)
+        rs2_1 = self.make_reviews(b2, 4, SENTIMENT_LOW)
+        rs3_1 = []    # no reviews about b3
+        rs4_1 = self.make_reviews(b4, 2, SENTIMENT_NEUTRAL)
+        rs_1 = rs1_1+rs2_1+rs3_1+rs4_1
+
+        rs1_2 = self.make_reviews(b1, 4, SENTIMENT_HIGH)
+        rs2_2 = []    # no reviews about b2
+        rs3_2 = []    # no reviews about b3
+        rs4_2 = self.make_reviews(b4, 2, SENTIMENT_NEUTRAL)
+        rs_2 = rs1_2+rs2_2+rs3_2+rs4_2
+
+        rs1_3 = self.make_reviews(b1, 2, SENTIMENT_HIGH)
+        rs2_3 = self.make_reviews(b2, 2, SENTIMENT_NEUTRAL)
+        rs3_3 = self.make_reviews(b3, 2, SENTIMENT_LOW)
+        rs4_3 = self.make_reviews(b4, 2, SENTIMENT_NEUTRAL)
+        rs_3 = rs1_3+rs2_3+rs3_3+rs4_3
+
+        # -- -- -- -- CHAOS -- -- -- --
+        self.append_review_chunk(client_2, test_middleware, [rs1_2[3], rs4_2[1]])
+        self.append_review_chunk(client_2, test_middleware, [rs1_2[0], rs1_2[1], rs4_2[0]])
+        self.append_book_eof(client_2, test_middleware, sent=4)
+        self.append_book_chunk(client_3, test_middleware, [b4])
+        self.append_review_chunk(client_2, test_middleware, [rs1_2[2]])
+        self.append_review_eof(client_2, test_middleware, sent=len(rs_2))
+        self.append_review_chunk(client_3, test_middleware, [rs3_3[0], rs2_3[1]])
+        self.append_review_chunk(client_3, test_middleware, [rs1_3[0], rs3_3[1]])
+        self.append_book_eof(client_3, test_middleware, sent=4)
+        self.append_review_chunk(client_1, test_middleware, [rs1_1[1], rs4_1[1]])
+        self.append_book_chunk(client_3, test_middleware, [b2])
+        self.append_book_eof(client_1, test_middleware, sent=4)
+        self.append_review_chunk(client_3, test_middleware, [rs4_3[0], rs1_3[1]])
+        self.append_book_chunk(client_1, test_middleware, [b2])
+        self.append_book_chunk(client_3, test_middleware, [b1])
+        self.append_review_eof(client_3, test_middleware, sent=len(rs_3))
+        self.append_book_chunk(client_1, test_middleware, [b3, b4])
+        self.append_book_chunk(client_1, test_middleware, [b1])
+        self.append_book_chunk(client_2, test_middleware, [b1, b4])
+        self.append_book_chunk(client_3, test_middleware, [b3])
+        self.append_review_chunk(client_1, test_middleware, [rs2_1[2], rs2_1[1]])
+        self.append_review_chunk(client_1, test_middleware, [rs1_1[0], rs2_1[3]])
+        self.append_review_eof(client_1, test_middleware, sent=len(rs_1))
+        self.append_review_chunk(client_3, test_middleware, [rs2_3[0], rs4_3[1]])
+        self.append_review_chunk(client_1, test_middleware, [rs2_1[0], rs4_1[0]])
+        self.append_book_chunk(client_2, test_middleware, [b2, b3])
+
+        while True:
+            try:
+                worker = Query5Worker(category='Distributed Systems', peer_id=WORKER_ID, peers=10, chunk_size=2,
+                                      test_middleware=test_middleware)
+                worker.run()
+                break
+            except Disease:
+                continue
+
+        sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
+        self.check(client_1, [b1.title, b2.title], sent)
+        self.check(client_2, [b1.title], sent)
+        self.check(client_3, [b1.title, b2.title, b3.title], sent)
+
+    # add test_ to test it.
+    def infected_worker_parallel_multiclient_every_line(self):
+        self.infected_worker_in_one_specific_line()
+        print(f"TEST EVERY LINE | lines: {virus.infect_counter}")
+        iis = range(1, virus.infect_counter+1)
+        for i in iis:
+            virus.regenerate()
+            virus.mutate(i)
+            self.infected_worker_in_one_specific_line()
 
 
 if __name__ == '__main__':

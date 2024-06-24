@@ -19,6 +19,9 @@ class TestUtils(unittest.TestCase):
         if os.path.exists(BASE_DIRECTORY):
             shutil.rmtree(BASE_DIRECTORY)
 
+    def setUp(self):
+        virus.regenerate()
+
     def append_eof(self, client_id, test_middleware, peer_id, sent, eof_id=None):
         eof = Message(
             client_id=client_id,
@@ -279,7 +282,6 @@ class TestUtils(unittest.TestCase):
             except Disease:
                 test_middleware.requeue()
                 continue
-        virus.mutate(0)
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
         self.check(client_id, [a1, a2, a3, a4, a5, a6, a7, a8], sent)
@@ -323,7 +325,6 @@ class TestUtils(unittest.TestCase):
             except Disease:
                 test_middleware.requeue()
                 continue
-        virus.mutate(0)
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
         self.check(client_1, [a1, a2, a3], sent)
