@@ -174,12 +174,18 @@ def intarr_from_bytes(bytes_arr):
         array.append(int.from_bytes(bytes_i, 'big'))
     return array
 
-
 def make_msg_id():
     return uuid.uuid4().bytes
 
 def msg_id_from_bytes(raw):
     return uuid.UUID(bytes=raw)
+
+def make_paging_args(page):
+    return int.to_bytes(page, 4, "big")
+
+def paging_args_from_bytes(raw):
+    page = int.from_bytes(raw, "big")
+    return page
 
 class UnexpectedType(Exception):
     pass

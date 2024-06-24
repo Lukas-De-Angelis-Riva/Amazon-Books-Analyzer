@@ -4,6 +4,7 @@ import struct
 from utils.TCPhandler import TCPHandler
 from utils.protocol import TlvTypes, UnexpectedType, SIZE_LENGTH, make_eof, code_to_bytes
 from utils.protocol import UUID_LEN, MSG_ID_LEN, msg_id_from_bytes, make_msg_id
+from utils.protocol import make_paging_args, paging_args_from_bytes
 from utils.serializer.bookSerializer import BookSerializer
 from utils.serializer.reviewSerializer import ReviewSerializer
 from utils.serializer.lineSerializer import LineSerializer
@@ -49,8 +50,11 @@ class ProtocolHandler:
         assert result == len(wait), 'TCP Error: cannot send WAIT'
         self.wait_confimation()
 
-    def poll_results(self):
-        poll = self.make_header(TlvTypes.POLL, 0)
+    def poll_results(self, page):
+        payload = make_paging_args(page)
+        poll = self.make_header(TlvTypes.POLL, len(payload))
+        poll += payload
+
         result = self.TCPHandler.send_all(poll)
         assert result == len(poll), 'TCP Error: cannot send POLL'
         r = self.read()
@@ -123,7 +127,7 @@ class ProtocolHandler:
     def read(self):
         tlv_type, msg_id, tlv_len = self.read_header()
 
-        if tlv_type in [TlvTypes.EOF, TlvTypes.ACK, TlvTypes.WAIT, TlvTypes.POLL]:
+        if tlv_type in [TlvTypes.EOF, TlvTypes.ACK, TlvTypes.WAIT]:
             return tlv_type, msg_id, None
 
         elif tlv_type == TlvTypes.BOOK_CHUNK:
@@ -134,6 +138,11 @@ class ProtocolHandler:
 
         elif tlv_type == TlvTypes.LINE_CHUNK:
             return TlvTypes.LINE_CHUNK, msg_id, self.line_serializer.from_chunk(self.TCPHandler, header=False, n_chunks=tlv_len)
+
+        elif tlv_type == TlvTypes.POLL:
+            raw = self.TCPHandler.read(tlv_len)
+            page = paging_args_from_bytes(raw)
+            return tlv_type, msg_id, page
 
         else:
             raise UnexpectedType()

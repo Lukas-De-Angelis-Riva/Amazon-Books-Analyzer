@@ -45,6 +45,7 @@ def initialize_config():
         config_params["chunk_size_review"] = int(os.getenv('CHUNK_SIZE_REVIEW', config["DEFAULT"]["CHUNK_SIZE_REVIEW"]))
 
         config_params["results_path"] = os.getenv('RESULTS_PATH', config["DEFAULT"]["RESULTS_PATH"])
+        config_params["chunk_size_result"] = int(os.getenv('CHUNK_SIZE_RESULT', config["DEFAULT"]["CHUNK_SIZE_RESULT"]))
 
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
 

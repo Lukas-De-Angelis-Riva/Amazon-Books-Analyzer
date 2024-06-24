@@ -43,6 +43,7 @@ class Client:
 
         signal.signal(signal.SIGTERM, self.__handle_signal)
         self.signal_received = False
+        self.curr_results_page = 0
 
     def run(self):
         logging.info(f'action: running client | CLIENT-ID: {self.id}')
@@ -208,7 +209,8 @@ class Client:
 
     def get_results(self):
         t_sleep = MIN_TIME_SLEEP
-
+        self.curr_results_page = 0
+        
         for _ in range(1+N_RETRIES):
             try:
                 logging.info('action: poll_results | result: in_progress')
@@ -224,20 +226,20 @@ class Client:
                     logging.error(f'action: poll_results | result: fail | reason: connection refused {1+N_RETRIES} times')
                     return False
 
-            except (Exception, KeyboardInterrupt) as e:
-                if not self.signal_received:
-                    logging.error(f'action: polling | result: fail | error: {str(e) or repr(e)}')
-                return False
+            #except Exception as e:
+            #    if not self.signal_received:
+            #        logging.error(f'action: polling | result: fail | error: {e}')
+            #    return False
         return False
 
 
     def poll_results(self):
+        logging.debug('action: polling | result: in_progress')
         keep_running = True
         t_sleep = MIN_TIME_SLEEP
-        logging.debug('action: polling | result: in_progress')
 
         while keep_running:
-            t, msg_id, value = self.protocolHandler.poll_results()
+            t, msg_id, value = self.protocolHandler.poll_results(self.curr_results_page)
             
             if self.protocolHandler.is_result_wait(t):
                 logging.debug('action: polling | result: wait')
@@ -245,13 +247,14 @@ class Client:
                 t_sleep = min(TIME_SLEEP_SCALE*t_sleep, MAX_TIME_SLEEP)
                 
             elif self.protocolHandler.is_result_eof(t):
-                logging.debug('action: polling | result: eof')
+                logging.info('action: polling | result: eof')
                 keep_running = False
 
             elif self.protocolHandler.is_results(t):
-                logging.debug(f'action: polling | result: succes | len(results): {len(value)}')
+                logging.debug(f'action: polling | result: success | len(results): {len(value)}')
                 t_sleep = max(t_sleep/TIME_SLEEP_SCALE, MIN_TIME_SLEEP)
                 self.save_results(value)
+                self.curr_results_page += 1 # increase page once result is saved
             else:
                 logging.error(f'action: polling | result: fail | unknown_type: {t}')
         return True
