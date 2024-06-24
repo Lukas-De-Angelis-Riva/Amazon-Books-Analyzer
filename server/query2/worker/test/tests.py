@@ -13,9 +13,11 @@ from utils.serializer.q2InSerializer import Q2InSerializer              # type: 
 from utils.serializer.q2OutSerializer import Q2OutSerializer            # type: ignore
 from utils.worker import TOTAL, BASE_DIRECTORY
 from utils.model.message import Message, MessageType
-from common.query2Worker import Query2Worker
+from common.query2Worker import Query2Worker, in_queue_name
 
 from utils.model.virus import virus, Disease
+
+WORKER_ID = 2
 
 
 class TestUtils(unittest.TestCase):
@@ -36,7 +38,7 @@ class TestUtils(unittest.TestCase):
         )
         if eof_id:
             eof.ID = eof_id
-        test_middleware.add_message(eof.to_bytes())
+        test_middleware.add_message(eof.to_bytes(), in_queue_name(WORKER_ID))
 
     def append_chunk(self, client_id, test_middleware, chunk, chunk_id=None):
         serializer = Q2InSerializer()
@@ -47,7 +49,7 @@ class TestUtils(unittest.TestCase):
         )
         if chunk_id:
             msg.ID = chunk_id
-        test_middleware.add_message(msg.to_bytes())
+        test_middleware.add_message(msg.to_bytes(), in_queue_name(WORKER_ID))
 
     def test_intarray(self):
         decades = [1850, 1970, 2020]
@@ -263,7 +265,7 @@ class TestUtils(unittest.TestCase):
         self.append_chunk(client_id, test_middleware, [b5, c4, d3])
         self.append_eof(client_id, test_middleware, 12)
 
-        worker = Query2Worker(peer_id=1, peers=10, chunk_size=2, min_decades=2, test_middleware=test_middleware)
+        worker = Query2Worker(peer_id=WORKER_ID, peers=10, chunk_size=2, min_decades=2, test_middleware=test_middleware)
         worker.run()
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
@@ -283,7 +285,7 @@ class TestUtils(unittest.TestCase):
         self.append_chunk(client_id, test_middleware, [b4])
         self.append_chunk(client_id, test_middleware, [b5, c4, d3])
 
-        worker = Query2Worker(peer_id=1, peers=10, chunk_size=2, min_decades=2, test_middleware=test_middleware)
+        worker = Query2Worker(peer_id=WORKER_ID, peers=10, chunk_size=2, min_decades=2, test_middleware=test_middleware)
         worker.run()
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
@@ -309,7 +311,7 @@ class TestUtils(unittest.TestCase):
         self.append_chunk(client_2, test_middleware, [c4, d3])
         self.append_eof(client_2, test_middleware, 7)
 
-        worker = Query2Worker(peer_id=1, peers=10, chunk_size=2, min_decades=2, test_middleware=test_middleware)
+        worker = Query2Worker(peer_id=WORKER_ID, peers=10, chunk_size=2, min_decades=2, test_middleware=test_middleware)
         worker.run()
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
@@ -335,7 +337,7 @@ class TestUtils(unittest.TestCase):
         self.append_chunk(client_1, test_middleware, [b5, d3])
         self.append_chunk(client_2, test_middleware, [c4, d3])
 
-        worker = Query2Worker(peer_id=1, peers=10, chunk_size=2, min_decades=2, test_middleware=test_middleware)
+        worker = Query2Worker(peer_id=WORKER_ID, peers=10, chunk_size=2, min_decades=2, test_middleware=test_middleware)
         worker.run()
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
@@ -365,7 +367,8 @@ class TestUtils(unittest.TestCase):
         virus.mutate(0.20)
         while True:
             try:
-                worker = Query2Worker(peer_id=1, peers=10, chunk_size=2, min_decades=2, test_middleware=test_middleware)
+                worker = Query2Worker(peer_id=WORKER_ID, peers=10, chunk_size=2, min_decades=2,
+                                      test_middleware=test_middleware)
                 worker.run()
                 break
             except Disease:
@@ -398,7 +401,8 @@ class TestUtils(unittest.TestCase):
         virus.mutate(0.10)
         while True:
             try:
-                worker = Query2Worker(peer_id=1, peers=10, chunk_size=2, min_decades=2, test_middleware=test_middleware)
+                worker = Query2Worker(peer_id=WORKER_ID, peers=10, chunk_size=2, min_decades=2,
+                                      test_middleware=test_middleware)
                 worker.run()
                 break
             except Disease:

@@ -5,7 +5,9 @@ import io
 import os
 
 from utils.listener import Listener
-from utils.clientTracker import ClientTracker, BASE_DIRECTORY, NULL_DIRECTORY
+from utils.clientTracker import ClientTracker
+from utils.clientTracker import BASE_DIRECTORY, NULL_DIRECTORY
+from utils.persistentList import PersistentList
 from utils.model.message import Message, MessageType
 from utils.middleware.middleware import ACK
 
@@ -15,9 +17,7 @@ from utils.model.virus import virus
 TOTAL = "total"
 WORKER_ID = "worker_id"
 
-EXPECTED = "EXPECT"
-WORKED = "WORKED"
-SENT = "SENT"
+WORKED_CLIENTS_FILE_PATH = '/worked_clients'
 
 
 class Worker(Listener):
@@ -29,6 +29,7 @@ class Worker(Listener):
         self.in_serializer = in_serializer
         self.out_serializer = out_serializer
         self.clients = {}
+        self.worked_clients = PersistentList(WORKED_CLIENTS_FILE_PATH)
         self.tracker = None
 
     def forward_eof(self, eof):
@@ -57,6 +58,8 @@ class Worker(Listener):
 
     def recovery(self):
         virus.infect()
+        self.worked_clients.load()
+        virus.infect()
         if not os.path.exists(BASE_DIRECTORY):
             return
         for directory in os.listdir(BASE_DIRECTORY):
@@ -67,6 +70,10 @@ class Worker(Listener):
                 virus.infect()
                 continue
             client_id = uuid.UUID(directory)
+            if client_id in self.worked_clients:
+                ClientTracker.clear(client_id)
+                continue
+
             self.context_switch(client_id)
             virus.infect()
             self.tracker.recovery()
@@ -76,7 +83,9 @@ class Worker(Listener):
                 virus.infect()
                 self.terminator()
                 virus.infect()
-                self.tracker.clear()
+                self.worked_clients.append(client_id)
+                virus.infect()
+                ClientTracker.clear(client_id)
                 virus.infect()
                 del self.clients[self.tracker.client_id]
                 self.tracker = None
@@ -130,6 +139,10 @@ class Worker(Listener):
 
     def recv(self, raw_msg, key):
         msg = Message.from_bytes(raw_msg)
+
+        if msg.client_id in self.worked_clients:
+            return ACK
+
         self.context_switch(msg.client_id)
 
         if msg.ID in self.tracker.worked_chunks:
@@ -152,14 +165,16 @@ class Worker(Listener):
         sent = self.do_after_work(chunk_id)
         virus.infect()
 
-        self.tracker.persist(chunk_id, worked=len(input_chunk), sent=sent)
+        self.tracker.persist(chunk_id, flush_data=True, WORKED=len(input_chunk), SENT=sent)
         virus.infect()
 
         if self.tracker.is_completed():
             virus.infect()
             self.terminator()
             virus.infect()
-            self.tracker.clear()
+            self.worked_clients.append(self.tracker.client_id)
+            virus.infect()
+            ClientTracker.clear(self.tracker.client_id)
             virus.infect()
             del self.clients[self.tracker.client_id]
             self.tracker = None
@@ -167,14 +182,16 @@ class Worker(Listener):
 
     def recv_eof(self, total, eof_id):
         virus.infect()
-        self.tracker.persist(eof_id, expected=total)
+        self.tracker.persist(eof_id, EXPECTED=total)
         virus.infect()
 
         if self.tracker.is_completed():
             virus.infect()
             self.terminator()
             virus.infect()
-            self.tracker.clear()
+            self.worked_clients.append(self.tracker.client_id)
+            virus.infect()
+            ClientTracker.clear(self.tracker.client_id)
             virus.infect()
             del self.clients[self.tracker.client_id]
             self.tracker = None

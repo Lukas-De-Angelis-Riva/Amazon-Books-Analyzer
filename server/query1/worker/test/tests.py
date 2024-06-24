@@ -1,18 +1,28 @@
-import io
 import unittest
+import shutil
 import uuid
+import os
+import io
+
 
 from model.book import Book
 from utils.serializer.q1InSerializer import Q1InSerializer      # type: ignore
 from utils.serializer.q1OutSerializer import Q1OutSerializer    # type: ignore
-from common.query1Worker import Query1Worker
-from utils.worker import TOTAL
+from common.query1Worker import Query1Worker, IN_QUEUE_NAME
+from utils.worker import TOTAL, BASE_DIRECTORY
 from utils.middleware.testMiddleware import TestMiddleware
 from utils.model.message import Message, MessageType
 from utils.model.virus import Disease, virus
 
+WORKER_ID = 2
+
 
 class TestUtils(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if os.path.exists(BASE_DIRECTORY):
+            shutil.rmtree(BASE_DIRECTORY)
+
     def append_eof(self, client_id, test_middleware, sent, eof_id=None):
         eof = Message(
             client_id=client_id,
@@ -25,7 +35,7 @@ class TestUtils(unittest.TestCase):
         if eof_id:
             eof.ID = eof_id
 
-        test_middleware.add_message(eof.to_bytes())
+        test_middleware.add_message(eof.to_bytes(), IN_QUEUE_NAME(WORKER_ID))
 
     def append_chunk(self, client_id, test_middleware, chunk, chunk_id=None):
         serializer = Q1InSerializer()
@@ -36,7 +46,7 @@ class TestUtils(unittest.TestCase):
         )
         if chunk_id:
             msg.ID = chunk_id
-        test_middleware.add_message(msg.to_bytes())
+        test_middleware.add_message(msg.to_bytes(), IN_QUEUE_NAME(WORKER_ID))
 
     def check(self, client_id, books, sent):
         serializer = Q1OutSerializer()
@@ -253,7 +263,8 @@ class TestUtils(unittest.TestCase):
         self.append_chunk(client_id, test_middleware, [b2])
         self.append_eof(client_id, test_middleware, 4)
 
-        worker = Query1Worker(1, 10, 2, matches_function, test_middleware=test_middleware)
+        worker = Query1Worker(peer_id=WORKER_ID, peers=10, chunk_size=2,
+                              matches=matches_function, test_middleware=test_middleware)
         worker.run()
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
@@ -272,7 +283,8 @@ class TestUtils(unittest.TestCase):
         self.append_chunk(client_id, test_middleware, [b3])
         self.append_chunk(client_id, test_middleware, [b2])
 
-        worker = Query1Worker(1, 10, 2, matches_function, test_middleware=test_middleware)
+        worker = Query1Worker(peer_id=WORKER_ID, peers=10, chunk_size=2,
+                              matches=matches_function, test_middleware=test_middleware)
         worker.run()
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
@@ -298,7 +310,8 @@ class TestUtils(unittest.TestCase):
         def matches_function(b: Book):
             return int(b.publishedDate) < 1990 or int(b.publishedDate) > 2000
 
-        worker = Query1Worker(1, 10, 2, matches_function, test_middleware=test_middleware)
+        worker = Query1Worker(peer_id=WORKER_ID, peers=10, chunk_size=2,
+                              matches=matches_function, test_middleware=test_middleware)
         worker.run()
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
         self.check(client_1, [b4, b5], sent)
@@ -325,7 +338,8 @@ class TestUtils(unittest.TestCase):
         def matches_function(b: Book):
             return int(b.publishedDate) < 1990 or int(b.publishedDate) > 2000
 
-        worker = Query1Worker(1, 10, 2, matches_function, test_middleware=test_middleware)
+        worker = Query1Worker(peer_id=WORKER_ID, peers=10, chunk_size=2,
+                              matches=matches_function, test_middleware=test_middleware)
         worker.run()
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
@@ -348,7 +362,8 @@ class TestUtils(unittest.TestCase):
         virus.mutate(0.20)
         while True:
             try:
-                worker = Query1Worker(1, 10, 2, matches_function, test_middleware=test_middleware)
+                worker = Query1Worker(peer_id=WORKER_ID, peers=10, chunk_size=2,
+                                      matches=matches_function, test_middleware=test_middleware)
                 worker.run()
                 break
             except Disease:
@@ -383,7 +398,8 @@ class TestUtils(unittest.TestCase):
         virus.mutate(0.10)
         while True:
             try:
-                worker = Query1Worker(1, 10, 2, matches_function, test_middleware=test_middleware)
+                worker = Query1Worker(peer_id=WORKER_ID, peers=10, chunk_size=2,
+                                      matches=matches_function, test_middleware=test_middleware)
                 worker.run()
                 break
             except Disease:

@@ -4,7 +4,7 @@ import uuid
 import os
 import io
 
-from common.query2Synchronizer import Query2Synchronizer
+from common.query2Synchronizer import Query2Synchronizer, IN_QUEUE_NAME
 from utils.clientTrackerSynchronizer import BASE_DIRECTORY
 from utils.worker import TOTAL, WORKER_ID
 from utils.middleware.testMiddleware import TestMiddleware
@@ -31,7 +31,7 @@ class TestUtils(unittest.TestCase):
         )
         if eof_id:
             eof.ID = eof_id
-        test_middleware.add_message(eof.to_bytes())
+        test_middleware.add_message(eof.to_bytes(), IN_QUEUE_NAME)
 
     def append_chunk(self, client_id, test_middleware, peer_id, chunk, chunk_id=None):
         serializer = Q2OutSerializer()
@@ -45,7 +45,7 @@ class TestUtils(unittest.TestCase):
         )
         if chunk_id:
             msg.ID = chunk_id
-        test_middleware.add_message(msg.to_bytes())
+        test_middleware.add_message(msg.to_bytes(), IN_QUEUE_NAME)
 
     def test_resultq2serializer(self):
         serializer = Q2OutSerializer()

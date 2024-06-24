@@ -1,5 +1,6 @@
 from uuid import UUID
 import enum
+import ast
 
 
 class LogLineType(enum.Enum):
@@ -28,7 +29,8 @@ class WriteMetadataLine():
             raise TypeError(f"Line '{line}' is not of type {WriteMetadataLine.REPR}.")
 
         key = splitted[1]
-        old_value = int(splitted[2])
+        # TODO: CHANGE THIS!
+        old_value = ast.literal_eval(splitted[2])
         return cls(
             key,
             old_value

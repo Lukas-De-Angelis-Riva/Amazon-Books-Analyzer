@@ -13,7 +13,7 @@ from utils.model.virus import virus
 BASE_DIRECTORY = '/clients'
 NULL_DIRECTORY = BASE_DIRECTORY + '/null'
 
-EXPECTED = "EXPECT"
+EXPECTED = "EXPECTED"
 WORKED = "WORKED"
 SENT = "SENT"
 EOF_ID = "EOF_ID"
@@ -46,6 +46,14 @@ class ClientTracker():
 
         # DUMMY PARSER
         self.parser = lambda k, v: v
+
+    @classmethod
+    def clear(cls, client_id):
+        virus.infect()
+        os.rename(f'{BASE_DIRECTORY}/{str(client_id)}', NULL_DIRECTORY)
+        virus.infect()
+        shutil.rmtree(NULL_DIRECTORY)
+        virus.infect()
 
     def undo(self):
         virus.infect()
@@ -95,13 +103,6 @@ class ClientTracker():
             self.undo()
             virus.infect()
 
-    def clear(self):
-        virus.infect()
-        os.rename(f'{BASE_DIRECTORY}/{str(self.client_id)}', NULL_DIRECTORY)
-        virus.infect()
-        shutil.rmtree(NULL_DIRECTORY)
-        virus.infect()
-
     def eof_id(self):
         return uuid.UUID(self.meta_data[EOF_ID])
 
@@ -111,29 +112,27 @@ class ClientTracker():
     def is_completed(self):
         return self.meta_data[EXPECTED] == self.meta_data[WORKED]
 
-    def persist(self, chunk_id, worked=None, expected=None, sent=None):
+    def persist(self, chunk_id, flush_data=False, **meta_changes):
         virus.infect()
         self.log_manager.begin(chunk_id)
         virus.infect()
-        if expected is not None:
-            self.log_manager.log_metadata(EXPECTED, self.meta_data[EXPECTED])
-        virus.infect()
-        if sent is not None:
-            self.log_manager.log_metadata(SENT, self.meta_data[SENT])
-        virus.infect()
-        if worked is not None:
-            self.log_manager.log_metadata(WORKED, self.meta_data[WORKED])
-            self.log_manager.log_changes()
-        virus.infect()
+        for meta_k in meta_changes:
+            self.log_manager.log_metadata(meta_k, self.meta_data[meta_k])
 
-        if expected is not None:
-            self.meta_data[EXPECTED] = expected
-        if sent is not None:
-            self.meta_data[SENT] += sent
-        if worked is not None:
-            self.meta_data[WORKED] += worked
-            virus.infect()
+        if flush_data:
+            self.log_manager.log_changes()
+
+        for meta_k, meta_v in meta_changes.items():
+            if meta_v is None:
+                continue
+            if meta_k == WORKED or meta_k == SENT:
+                self.meta_data[meta_k] += meta_v
+            else:
+                self.meta_data[meta_k] = meta_v
+
+        if flush_data:
             self.data.flush()
+
         virus.infect()
         self.meta_data.flush()
         virus.infect()

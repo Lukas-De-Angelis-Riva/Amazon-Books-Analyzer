@@ -5,7 +5,7 @@ import os
 import io
 
 from model.book import Book
-from common.query1Synchronizer import Query1Synchronizer
+from common.query1Synchronizer import Query1Synchronizer, IN_QUEUE_NAME
 from utils.clientTrackerSynchronizer import BASE_DIRECTORY
 from utils.worker import TOTAL, WORKER_ID
 from utils.middleware.testMiddleware import TestMiddleware
@@ -32,7 +32,7 @@ class TestUtils(unittest.TestCase):
         )
         if eof_id:
             eof.ID = eof_id
-        test_middleware.add_message(eof.to_bytes())
+        test_middleware.add_message(eof.to_bytes(), IN_QUEUE_NAME)
 
     def append_chunk(self, client_id, test_middleware, peer_id, chunk, chunk_id=None):
         serializer = Q1OutSerializer()
@@ -46,7 +46,7 @@ class TestUtils(unittest.TestCase):
         )
         if chunk_id:
             msg.ID = chunk_id
-        test_middleware.add_message(msg.to_bytes())
+        test_middleware.add_message(msg.to_bytes(), IN_QUEUE_NAME)
 
     def make_4_books(self):
         book1 = Book(

@@ -4,7 +4,7 @@ import uuid
 import os
 import io
 
-from common.query3Synchronizer import Query3Synchronizer, Q3_TAG, Q4_TAG
+from common.query3Synchronizer import Query3Synchronizer, IN_QUEUE_NAME, Q3_TAG, Q4_TAG
 from utils.clientTrackerSynchronizer import BASE_DIRECTORY
 from utils.worker import TOTAL, WORKER_ID
 from utils.middleware.testMiddleware import TestMiddleware
@@ -33,7 +33,7 @@ class TestUtils(unittest.TestCase):
         )
         if eof_id:
             eof.ID = eof_id
-        test_middleware.add_message(eof.to_bytes())
+        test_middleware.add_message(eof.to_bytes(), IN_QUEUE_NAME)
 
     def append_chunk(self, client_id, test_middleware, peer_id, chunk, chunk_id=None):
         serializer = Q3PartialSerializer()
@@ -47,7 +47,7 @@ class TestUtils(unittest.TestCase):
         )
         if chunk_id:
             msg.ID = chunk_id
-        test_middleware.add_message(msg.to_bytes())
+        test_middleware.add_message(msg.to_bytes(), IN_QUEUE_NAME)
 
     def make_partials(self):
         authors1 = ['A1', 'A2', 'A3']
