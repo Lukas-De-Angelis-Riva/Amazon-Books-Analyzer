@@ -34,3 +34,7 @@ class TCPHandler:
                 raise SocketBroken()
             bytesSended += b
         return bytesSended
+
+    def close(self):
+        self.socket.close()
+

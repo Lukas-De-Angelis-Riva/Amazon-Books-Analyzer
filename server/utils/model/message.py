@@ -24,8 +24,8 @@ class MessageType(enum.Enum):
 
 class Message():
 
-    def __init__(self, client_id: UUID, type: MessageType, data: bytes, args: dict = {}):
-        self.ID = uuid4()   # random 16 bytes UUID
+    def __init__(self, client_id: UUID, type: MessageType, data: bytes, ID=None, args: dict = {}):
+        self.ID = ID if ID else uuid4()
 
         if not isinstance(client_id, UUID):
             raise TypeError("`client_id` must be of type uuid.UUID")
@@ -83,3 +83,15 @@ class Message():
         )
         m.ID = ID
         return m
+
+    def __eq__(self, other) -> bool:
+        return self.ID == other.ID
+
+    def __hash__(self) -> int:
+        return hash(str(self))
+
+    def __str__(self) -> str:
+        return f'Message({str(self.ID)})'
+
+    def __repr__(self) -> str:
+        return f'Message({str(self.ID)})'

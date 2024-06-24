@@ -36,6 +36,7 @@ def initialize_config():
     config_params = {}
     try:
         config_params["port"] = int(os.getenv('SERVER_PORT', config["DEFAULT"]["SERVER_PORT"]))
+        config_params["max_users"] = int(os.getenv('MAX_USERS', config["DEFAULT"]["MAX_USERS"]))
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
         config_params["n_workers_q1"] = int(os.getenv('N_WORKERS_Q1', config["DEFAULT"]["N_WORKERS_Q1"]))
         config_params["n_workers_q2"] = int(os.getenv('N_WORKERS_Q2', config["DEFAULT"]["N_WORKERS_Q2"]))

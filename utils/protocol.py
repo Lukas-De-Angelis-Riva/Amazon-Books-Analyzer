@@ -1,6 +1,9 @@
 import struct
+import uuid
 
 SIZE_LENGTH = 4
+MSG_ID_LEN = 16
+UUID_LEN = 16
 
 i = -1
 
@@ -14,12 +17,14 @@ def next():
 class TlvTypes():
     # sizes
     SIZE_CODE_MSG = 4
+    SIZE_UUID_MSG = 16
 
     # types
     EOF = next()
     WAIT = next()
     POLL = next()
     ACK = next()
+    UUID = next()
 
     BOOK_CHUNK = next()
     BOOK = next()
@@ -101,7 +106,6 @@ def make_token(peer_id, total, worked, sent):
     return bytes
 
 
-
 def make_eof(i=0):
     bytes = code_to_bytes(TlvTypes.EOF)
     bytes += int.to_bytes(i, SIZE_LENGTH, 'big')
@@ -170,6 +174,18 @@ def intarr_from_bytes(bytes_arr):
         array.append(int.from_bytes(bytes_i, 'big'))
     return array
 
+def make_msg_id():
+    return uuid.uuid4().bytes
+
+def msg_id_from_bytes(raw):
+    return uuid.UUID(bytes=raw)
+
+def make_paging_args(page):
+    return int.to_bytes(page, 4, "big")
+
+def paging_args_from_bytes(raw):
+    page = int.from_bytes(raw, "big")
+    return page
 
 class UnexpectedType(Exception):
     pass

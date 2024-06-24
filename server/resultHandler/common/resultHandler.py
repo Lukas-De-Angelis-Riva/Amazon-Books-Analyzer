@@ -9,13 +9,14 @@ class ResultHandler():
     def __init__(self, config_params):
         signal.signal(signal.SIGTERM, self.__handle_signal)
         self.lock = Lock()
-        self.file_name = config_params['file_name']
+        self.results_directory = config_params['results_directory']
         self.ip = config_params['ip']
         self.port = config_params['port']
+        self.max_users = config_params['max_users']
 
     def run(self):
-        self.psnd = ResultReceiver(self.file_name, self.lock)
-        self.prcv = ResultSender(self.ip, self.port, self.file_name, self.lock)
+        self.psnd = ResultReceiver(self.results_directory, self.lock)
+        self.prcv = ResultSender(self.ip, self.port, self.max_users, self.results_directory, self.lock)
 
         self.psnd.start()
         self.prcv.start()

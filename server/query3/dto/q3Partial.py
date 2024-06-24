@@ -1,3 +1,4 @@
+import ast
 from model.review import Review
 
 
@@ -13,6 +14,30 @@ class Q3Partial:
 
     def __str__(self):
         return f'Q3Partial(Title:{self.title}, author: {self.authors}, n: {self.n}, scoreAvg: {self.scoreAvg})'
+
+    def copy(self):
+        return Q3Partial(
+            title=self.title,
+            authors=self.authors.copy(),
+            n=self.n,
+            scoreAvg=self.scoreAvg
+        )
+
+    @classmethod
+    def decode(cls, k: str, v: str):
+        # TODO: mejorar!!
+        authors, n, scoreAvg = ast.literal_eval(v)
+        p = cls(
+            title=k,
+            authors=authors,
+            n=n,
+            scoreAvg=scoreAvg
+        )
+        return p
+
+    def encode(self):
+        # TODO: mejorar!!
+        return str((self.authors, self.n, self.scoreAvg))
 
     def update(self, review: Review):
         avg = self.scoreAvg

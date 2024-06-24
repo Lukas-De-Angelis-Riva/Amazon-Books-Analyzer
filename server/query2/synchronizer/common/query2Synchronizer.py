@@ -1,6 +1,6 @@
 from utils.synchronizer import Synchronizer, TOTAL
 from utils.middleware.middleware import Middleware
-from utils.serializer.q2OutSerializer import Q2OutSerializer            # type: ignore
+from utils.serializer.q2OutSerializer import Q2OutSerializer    # type: ignore
 from utils.model.message import Message, MessageType
 
 IN_QUEUE_NAME = 'Q2-Sync'
@@ -9,8 +9,8 @@ TAG = 'Q2'
 
 
 class Query2Synchronizer(Synchronizer):
-    def __init__(self, n_workers):
-        middleware = Middleware()
+    def __init__(self, n_workers, test_middleware=None):
+        middleware = test_middleware if test_middleware else Middleware()
         middleware.consume(queue_name=IN_QUEUE_NAME, callback=self.recv)
         super().__init__(
             middleware=middleware,
@@ -21,23 +21,26 @@ class Query2Synchronizer(Synchronizer):
             # Also, it is not used in 'Synchronizer' abstraction. So might be deleted
             chunk_size=1
         )
+        self.recovery()
 
-    def process_chunk(self, chunk, client_id):
+    def process_chunk(self, chunk, chunk_id):
         data = self.out_serializer.to_bytes(chunk)
         msg = Message(
-            client_id=client_id,
+            client_id=self.tracker.client_id,
             type=MessageType.DATA,
-            data=data
+            data=data,
+            ID=chunk_id
         )
         self.middleware.publish(msg.to_bytes(), OUT_TOPIC, TAG)
 
-    def terminator(self, client_id):
+    def terminator(self):
         eof = Message(
-            client_id=client_id,
+            client_id=self.tracker.client_id,
             type=MessageType.EOF,
             data=b'',
             args={
-                TOTAL: sum(self.total_by_worker.values())
-            }
+                TOTAL: self.tracker.total_worked()
+            },
+            ID=self.tracker.eof_id()
         )
         self.middleware.publish(eof.to_bytes(), OUT_TOPIC, TAG)

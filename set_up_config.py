@@ -27,7 +27,8 @@ set_up_config('client/config.ini',
 
 # CLIENT HANDLER
 set_up_config('server/clientHandler/config.ini',
-              SERVER_PORT=SERVER_PORT)
+              SERVER_PORT=SERVER_PORT,
+              MAX_USERS=3)
 
 # QUERY 1
 # ## WORKER
@@ -87,4 +88,5 @@ set_up_config('server/resultHandler/config.ini',
               LOGGING_LEVEL='INFO',
               SERVER_PORT=RESULT_PORT,
               SERVER_IP=RESULT_IP,
-              FILE_NAME='results.csv')
+              FILE_NAME='results.csv',
+              MAX_USERS=3)

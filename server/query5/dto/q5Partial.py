@@ -1,3 +1,4 @@
+import ast
 from model.review import Review
 from textblob import TextBlob
 
@@ -18,6 +19,26 @@ class Q5Partial:
 
     def __str__(self):
         return f'Q5Partial(Title:{self.title} | n: {self.n} | avg: {self.sentimentAvg})'
+
+    def copy(self):
+        return Q5Partial(
+            title=self.title,
+            n=self.n,
+            sentimentAvg=self.sentimentAvg
+        )
+
+    @classmethod
+    def decode(cls, k: str, v: str):
+        n_savg = ast.literal_eval(v)
+        p = cls(
+            title=k,
+            n=n_savg[0],
+            sentimentAvg=n_savg[1],
+        )
+        return p
+
+    def encode(self):
+        return str((self.n, self.sentimentAvg))
 
     def update(self, review: Review):
         avg = self.sentimentAvg
