@@ -190,22 +190,22 @@ class Client:
                             if len(batch) == chunk_size or not line:
                                 self.protocolHandler.send_batch(batch, msg_type, serializer)
                                 batch = []
-                                logging.info("SENT!")
+                                logging.debug(f'action: send_batch | result: success')
                             break
-                        except (socket.error, SocketBroken):
-                            logging.info("ERROR!")
+                        except (socket.error, SocketBroken) as e:
+                            logging.error(f'action: socket_error | error: {e}')
                             # retry connection
                             if not self.connect(self.config["ip"], self.config["port"], timeout=SOCK_TIMEOUT, tries=1+N_RETRIES):
                                 return False
                         # if send has timeouted (includes if ack not received)
                         # TODO: make ProtocolHandler exception class 
                         except socket.timeout:
-                            logging.info("TIMEOUT ERROR!")
+                            logging.error(f'action: timeout_error')
                             time.sleep(sleep)
                             sleep *= min(sleep*TIME_SLEEP_SCALE, MAX_TIME_SLEEP) 
 
-                    if msg_type == TlvTypes.BOOK_CHUNK:
-                        time.sleep(0.01)
+                    #if msg_type == TlvTypes.BOOK_CHUNK:
+                    #    time.sleep(0.01)
                             
                 bar(1.0)
                 self.protocolHandler.send_eof()
