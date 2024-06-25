@@ -3,6 +3,10 @@ from utils.TCPhandler import SocketBroken
 from model.book import Book
 from model.review import Review
 
+from utils.protocol import TlvTypes
+from utils.serializer.bookSerializer import BookSerializer
+from utils.serializer.reviewSerializer import ReviewSerializer
+
 import logging
 import socket
 import signal
@@ -59,8 +63,11 @@ class Client:
         if not self.connect(self.config["ip"], self.config["port"], timeout=SOCK_TIMEOUT):
             return
 
-        self.send_books()
-        self.send_reviews()
+        if not self.send_books(): 
+            return
+
+        if not self.send_reviews():
+            return
 
         if self.signal_received:
             return
@@ -82,21 +89,21 @@ class Client:
 
     def connect(self, ip, port, timeout=None, tries=1):
         if self.socket is not None:
-            self.socket.close()
+            self.disconnect()
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
         self.socket.settimeout(timeout)
-        self.protocolHandler = ProtocolHandler(self.socket)
-        time = MIN_TIME_SLEEP 
+        sleep = MIN_TIME_SLEEP 
         err = None
 
         for _ in range(tries):
             try:
                 self.socket.connect((ip, port))
+                self.protocolHandler = ProtocolHandler(self.socket)
                 return self.handshake(tries=tries)
-            except socket.timeout as e:
+            except socket.error as e:
                 err = e
-                time.sleep(time)
-                time = min(time*TIME_SLEEP_SCALE, MAX_TIME_SLEEP)
+                time.sleep(sleep)
+                sleep = min(sleep*TIME_SLEEP_SCALE, MAX_TIME_SLEEP)
                 continue 
         logging.error(f'action: connect | result: fail | error: {str(err)} | tries: {tries}')
         #self.socket.settimeout(None)
@@ -104,6 +111,8 @@ class Client:
 
     def disconnect(self):
         self.protocolHandler.close()
+        self.protocolHandler = None
+        self.socket = None
 
     def __handle_signal(self, signum, frame):
         logging.debug(f'action: stop_client | result: in_progress | signal {signum}')
@@ -112,7 +121,7 @@ class Client:
         logging.debug('action: stop_client | result: success')
 
     def handshake(self, tries=1):
-        time = MIN_TIME_SLEEP 
+        sleep = MIN_TIME_SLEEP 
         err = None
         for i in range(tries):
             try:
@@ -120,35 +129,34 @@ class Client:
                 self.protocolHandler.handshake(self.id)
                 logging.debug('action: handshake | result: success')
                 return True
-            except socket.timeout as e:
+            except socket.error as e:
                 err = e
-                time.sleep(time)
-                time = min(time*TIME_SLEEP_SCALE, MAX_TIME_SLEEP)
+                time.sleep(sleep)
+                sleep = min(sleep*TIME_SLEEP_SCALE, MAX_TIME_SLEEP)
                 continue
             except (SocketBroken, OSError) as e:
                 logging.error(f'action: handshake | result: fail | error: {str(e) or repr(e)} | tries: {i}')
                 return False
 
-        logging.error(f'action: handshake | result: fail | error: {str(err) or repr(err)} | tries: {tries}')
         return False
 
     def send_books(self):
-        self.send_file(self.config["book_file_path"],
+        return self.send_file(self.config["book_file_path"],
                        self.read_book_line,
                        self.config["chunk_size_book"],
-                       self.protocolHandler.send_books,
-                       self.protocolHandler.send_book_eof,
+                       TlvTypes.BOOK_CHUNK,
+                       BookSerializer(),
                        )
 
     def send_reviews(self):
-        self.send_file(self.config["review_file_path"],
+        return self.send_file(self.config["review_file_path"],
                        self.read_review_line,
                        self.config["chunk_size_review"],
-                       self.protocolHandler.send_reviews,
-                       self.protocolHandler.send_review_eof,
+                       TlvTypes.REVIEW_CHUNK,
+                       ReviewSerializer(),
                        )
 
-    def send_file(self, path, read_line, chunk_size, send_message, send_eof, pos=0):
+    def send_file(self, path, read_line, chunk_size, msg_type, serializer, pos=0):
         logging.info(f'action: send file | result: in_progress | path: {path}')
 
         try:
@@ -171,33 +179,45 @@ class Client:
                     logging.debug(f'action: read_element | result: success | element: {element}')
                     batch.append(element)
                     i += 1
-                    sleep = 0
+                    sleep = MIN_TIME_SLEEP
 
                     for _ in range(1 + N_RETRIES):
                         try:
+                            if _:
+                                logging.info("TRYING AGAIN!")
+
                             # send also if next line is null
                             if len(batch) == chunk_size or not line:
-                                send_message(batch)
+                                self.protocolHandler.send_batch(batch, msg_type, serializer)
                                 batch = []
+                                logging.info("SENT!")
                             break
-                        except SocketBroken:
+                        except (socket.error, SocketBroken):
+                            logging.info("ERROR!")
                             # retry connection
-                            if not self.connect(self.config["ip"], self.config["port"], timeout=SOCK_TIMEOUT, tries=1 + N_RETRIES):
+                            if not self.connect(self.config["ip"], self.config["port"], timeout=SOCK_TIMEOUT, tries=1+N_RETRIES):
                                 return False
                         # if send has timeouted (includes if ack not received)
                         # TODO: make ProtocolHandler exception class 
-                        except (socket.timeout, Exception):
+                        except socket.timeout:
+                            logging.info("TIMEOUT ERROR!")
                             time.sleep(sleep)
-                            sleep *= 2
+                            sleep *= min(sleep*TIME_SLEEP_SCALE, MAX_TIME_SLEEP) 
+
+                    if msg_type == TlvTypes.BOOK_CHUNK:
+                        time.sleep(0.01)
                             
                 bar(1.0)
-                send_eof()
+                self.protocolHandler.send_eof()
+                return True
 
         except OSError as e:
             if not self.signal_received:
                 logging.error(f'action: send file | result: fail | error: {e}')
+            return False
         else:
             logging.info(f'action: send file | result: success | path: {path}')
+            return True 
 
     def save_results(self, results):
         with open(self.config['results_path'], 'a') as file:
