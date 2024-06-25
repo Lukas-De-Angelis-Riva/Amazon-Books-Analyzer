@@ -1,6 +1,7 @@
 import shutil
 import uuid
 import os
+import io
 
 from utils.model.log import LogFactory, LogLineType
 from utils.persistentList import PersistentList
@@ -47,7 +48,8 @@ class ClientTrackerSynchronizer():
 
     def undo(self):
         with open(self.log_manager.log_file, 'rb') as f:
-            log_lines = LogFactory.from_bytes(f, self.parser, self.log_manager.meta_decoder)
+            aux = f.read()
+        log_lines = LogFactory.from_bytes(io.BytesIO(aux), self.parser, self.log_manager.meta_decoder)
         if not log_lines:
             return
         if log_lines[-1].type == LogLineType.COMMIT:

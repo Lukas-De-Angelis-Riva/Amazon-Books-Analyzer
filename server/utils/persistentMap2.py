@@ -1,4 +1,5 @@
 import os
+import io
 
 from utils.model.virus import virus
 
@@ -68,4 +69,5 @@ class PersistentMap2():
     def load(self, decoder):
         if os.path.exists(self.path) and os.path.getsize(self.path) > 0:
             with open(self.path, "rb") as fp:
-                self.map = self.decode(fp, decoder)
+                aux = fp.read()
+            self.map = self.decode(io.BytesIO(aux), decoder)
