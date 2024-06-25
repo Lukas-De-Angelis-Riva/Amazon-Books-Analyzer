@@ -50,6 +50,11 @@ class Worker(Listener):
     def adapt_tracker(self):
         return
 
+    def sign_uuid(self, u):
+        b = int.to_bytes(self.peer_id, length=1, byteorder='big')
+        b += u.bytes[1:]
+        return uuid.UUID(bytes=b)
+
     def context_switch(self, client_id):
         if client_id not in self.clients:
             self.clients[client_id] = ClientTracker(client_id)
@@ -100,7 +105,7 @@ class Worker(Listener):
             args={
                 WORKER_ID: self.peer_id,
             },
-            ID=chunk_id
+            ID=self.sign_uuid(chunk_id)
         )
         self.forward_data(msg.to_bytes())
         return

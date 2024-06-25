@@ -1,4 +1,4 @@
-import ast
+import struct
 from model.review import Review
 from textblob import TextBlob
 
@@ -27,18 +27,32 @@ class Q5Partial:
             sentimentAvg=self.sentimentAvg
         )
 
+    def key(self):
+        return self.title
+
     @classmethod
-    def decode(cls, k: str, v: str):
-        n_savg = ast.literal_eval(v)
-        p = cls(
-            title=k,
-            n=n_savg[0],
-            sentimentAvg=n_savg[1],
+    def decode(cls, reader):
+        title_len = int.from_bytes(reader.read(1), byteorder='big')
+        title = reader.read(title_len).decode('utf-8')
+
+        n = int.from_bytes(reader.read(4), byteorder='big')
+        avg = struct.unpack('!f', reader.read(4))[0]
+        return cls(
+            title,
+            n,
+            avg
         )
-        return p
 
     def encode(self):
-        return str((self.n, self.sentimentAvg))
+        bytes_title = self.title.encode('utf-8')
+
+        bytes = b''
+        bytes += int.to_bytes(len(bytes_title), length=1, byteorder='big')
+        bytes += bytes_title
+
+        bytes += int.to_bytes(self.n, length=4, byteorder='big')
+        bytes += struct.pack("!f", self.sentimentAvg)   # std_length=4
+        return bytes
 
     def update(self, review: Review):
         avg = self.sentimentAvg

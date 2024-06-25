@@ -51,8 +51,10 @@ class Query3Worker(Worker):
 
     def adapt_tracker(self):
         if N_BOOKS not in self.tracker.meta_data:
+            self.tracker.log_manager.integers.append(N_BOOKS)
             self.tracker.meta_data[N_BOOKS] = 0
         if ALL_BOOKS_RECEIVED not in self.tracker.meta_data:
+            self.tracker.log_manager.booleans.append(ALL_BOOKS_RECEIVED)
             self.tracker.meta_data[ALL_BOOKS_RECEIVED] = False
 
         self.tracker.parser = Q3Partial.decode
