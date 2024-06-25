@@ -46,7 +46,7 @@ class ClientTracker():
         self.meta_data[EOF_ID] = str(uuid.uuid4())
 
         # DUMMY PARSER
-        self.parser = lambda k, v: v
+        self.parser = lambda v: v
 
         self.log_manager.booleans = []
         self.log_manager.integers = [WORKED, SENT, EXPECTED]

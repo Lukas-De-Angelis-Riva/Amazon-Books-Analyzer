@@ -5,6 +5,7 @@ import os
 from utils.model.log import LogFactory, LogLineType
 from utils.persistentList import PersistentList
 from utils.persistentMap import PersistentMap
+from utils.persistentMap2 import PersistentMap2
 from utils.logManager import LogManager
 
 # TEST PURPOSES
@@ -33,19 +34,20 @@ class ClientTrackerSynchronizer():
 
         self.worked_chunks = PersistentList(BASE_DIRECTORY + '/' + str(client_id) + '/' + 'chunks')
         self.meta_data = PersistentMap(BASE_DIRECTORY + '/' + str(client_id) + '/' + "meta")
-        self.data = PersistentMap(BASE_DIRECTORY + '/' + str(client_id) + '/' + "data")
+        self.data = PersistentMap2(BASE_DIRECTORY + '/' + str(client_id) + '/' + "data")
 
         self.meta_data[WORKED_BY_WORKER] = {str(i): 0 for i in range(1, n_workers+1)}
         self.meta_data[TOTAL_BY_WORKER] = {str(i): -1 for i in range(1, n_workers+1)}
         self.meta_data[EOF_ID] = str(uuid.uuid4())
 
         # DUMMY PARSER
-        self.parser = lambda k, v: v
+        self.parser = lambda v: v
+        self.log_manager.booleans = []
+        self.log_manager.integers = [WORKED_BY_WORKER, TOTAL_BY_WORKER]
 
     def undo(self):
-        with open(self.log_manager.log_file, 'r') as f:
-            aux = f.readlines()
-        log_lines = LogFactory.from_lines(aux)
+        with open(self.log_manager.log_file, 'rb') as f:
+            log_lines = LogFactory.from_bytes(f, self.parser, self.log_manager.meta_decoder)
         if not log_lines:
             return
         if log_lines[-1].type == LogLineType.COMMIT:
@@ -56,13 +58,14 @@ class ClientTrackerSynchronizer():
                 virus.infect()
             return
 
-        worker_id = log_lines[0].worker_id
+        worker_id = str(log_lines[0].worker_id)
         log_lines.reverse()
         for log_line in log_lines:
             if log_line.type == LogLineType.WRITE_METADATA:
                 self.meta_data[log_line.key][worker_id] = log_line.old_value
             elif log_line.type == LogLineType.BEGIN:
                 break
+
         virus.infect()
         self.meta_data.flush()
         virus.infect()
@@ -101,7 +104,7 @@ class ClientTrackerSynchronizer():
 
     def persist(self, chunk_id, worker_id, worked=None, total=None):
         virus.infect()
-        self.log_manager.begin(chunk_id, worker_id)
+        self.log_manager.begin(chunk_id, int(worker_id))
         virus.infect()
         if worked is not None:
             self.log_manager.log_metadata(WORKED_BY_WORKER, self.meta_data[WORKED_BY_WORKER][worker_id])
@@ -115,7 +118,7 @@ class ClientTrackerSynchronizer():
         virus.infect()
         self.meta_data.flush()
         virus.infect()
-        self.log_manager.commit(chunk_id, worker_id)
+        self.log_manager.commit(chunk_id, int(worker_id))
         virus.infect()
         # append & flush chunk_id
         self.worked_chunks.append(chunk_id)
