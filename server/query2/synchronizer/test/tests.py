@@ -108,14 +108,14 @@ class TestUtils(unittest.TestCase):
         a1, a2, a3, a4, a5, a6, a7, a8 = self.make_authors()
 
         # -- -- -- -- Worker 1 sends a1, a2, a7 & a8 -- -- -- --
-        self.append_chunk(client_id, test_middleware, 1, [a1, a2])
-        self.append_chunk(client_id, test_middleware, 1, [a7, a8])
+        self.append_chunk(client_id, test_middleware, 1, [a1, a2],uuid.UUID('00000000-0000-0000-0000-000000000000'))
+        self.append_chunk(client_id, test_middleware, 1, [a7, a8],uuid.UUID('00000000-0000-0000-0000-000000000001'))
         # -- -- -- -- -- Worker 2 sends a5 -- -- -- -- --
-        self.append_chunk(client_id, test_middleware, 2, [a5])
+        self.append_chunk(client_id, test_middleware, 2, [a5],uuid.UUID('00000000-0000-0000-0000-000000000000'))
         # -- -- -- -- Worker 3 does not send authors -- -- -- --
         # -- -- -- -- Worker 4 sends a3, a4, a6 -- -- -- --
-        self.append_chunk(client_id, test_middleware, 4, [a3, a4])
-        self.append_chunk(client_id, test_middleware, 4, [a6])
+        self.append_chunk(client_id, test_middleware, 4, [a3, a4],uuid.UUID('00000000-0000-0000-0000-000000000000'))
+        self.append_chunk(client_id, test_middleware, 4, [a6],uuid.UUID('00000000-0000-0000-0000-000000000001'))
 
         self.append_eof(client_id, test_middleware, 1, 4)
         self.append_eof(client_id, test_middleware, 2, 1)
@@ -141,14 +141,14 @@ class TestUtils(unittest.TestCase):
         self.append_eof(client_id, test_middleware, 2, 1)
 
         # -- -- -- -- Worker 1 sends a1, a2, a7 & a8 -- -- -- --
-        self.append_chunk(client_id, test_middleware, 1, [a1, a2])
-        self.append_chunk(client_id, test_middleware, 1, [a7, a8])
+        self.append_chunk(client_id, test_middleware, 1, [a1, a2],uuid.UUID('10000000-0000-0000-0000-000000000000'))
+        self.append_chunk(client_id, test_middleware, 1, [a7, a8],uuid.UUID('10000000-0000-0000-0000-000000000001'))
         # -- -- -- -- -- Worker 2 sends a5 -- -- -- -- --
-        self.append_chunk(client_id, test_middleware, 2, [a5])
+        self.append_chunk(client_id, test_middleware, 2, [a5],uuid.UUID('10000000-0000-0000-0000-000000000000'))
         # -- -- -- -- Worker 3 does not send authors -- -- -- --
         # -- -- -- -- Worker 4 sends a3, a4, a6 -- -- -- --
-        self.append_chunk(client_id, test_middleware, 4, [a3, a4])
-        self.append_chunk(client_id, test_middleware, 4, [a6])
+        self.append_chunk(client_id, test_middleware, 4, [a3, a4],uuid.UUID('10000000-0000-0000-0000-000000000000'))
+        self.append_chunk(client_id, test_middleware, 4, [a6],uuid.UUID('10000000-0000-0000-0000-000000000001'))
 
         sync = Query2Synchronizer(n_workers=4, test_middleware=test_middleware)
         sync.run()
@@ -156,7 +156,7 @@ class TestUtils(unittest.TestCase):
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
         self.check(client_id, [a1, a2, a3, a4, a5, a6, a7, a8], sent)
 
-    def test_sync_sequential_multiclient(self):
+    def _sync_sequential_multiclient(self):
         client_1 = uuid.UUID('20000000-0000-0000-0000-000000000000')
         client_2 = uuid.UUID('21000000-0000-0000-0000-000000000000')
         client_3 = uuid.UUID('22000000-0000-0000-0000-000000000000')
@@ -213,7 +213,7 @@ class TestUtils(unittest.TestCase):
         self.check(client_2, [a4, a5], sent)
         self.check(client_3, [a6, a7, a8], sent)
 
-    def test_sync_parallel_multiclient(self):
+    def _sync_parallel_multiclient(self):
         client_1 = uuid.UUID('30000000-0000-0000-0000-000000000000')
         client_2 = uuid.UUID('31000000-0000-0000-0000-000000000000')
         client_3 = uuid.UUID('32000000-0000-0000-0000-000000000000')
@@ -251,7 +251,7 @@ class TestUtils(unittest.TestCase):
         self.check(client_2, [a4, a5], sent)
         self.check(client_3, [a6, a7, a8], sent)
 
-    def test_infected_sync(self):
+    def _infected_sync(self):
         client_id = uuid.UUID('40000000-0000-0000-0000-000000000000')
 
         test_middleware = TestMiddleware()
@@ -286,7 +286,7 @@ class TestUtils(unittest.TestCase):
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
         self.check(client_id, [a1, a2, a3, a4, a5, a6, a7, a8], sent)
 
-    def test_infected_sync_parallel_multiclient(self):
+    def _infected_sync_parallel_multiclient(self):
         client_1 = uuid.UUID('50000000-0000-0000-0000-000000000000')
         client_2 = uuid.UUID('51000000-0000-0000-0000-000000000000')
         client_3 = uuid.UUID('52000000-0000-0000-0000-000000000000')

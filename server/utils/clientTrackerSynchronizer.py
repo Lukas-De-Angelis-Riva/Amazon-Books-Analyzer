@@ -3,7 +3,7 @@ import uuid
 import os
 
 from utils.model.log import LogFactory, LogLineType
-from utils.persistentList import PersistentList
+from utils.persistentList2 import PersistentList2
 from utils.persistentMap import PersistentMap
 from utils.logManager import LogManager
 
@@ -31,7 +31,7 @@ class ClientTrackerSynchronizer():
         self.n_workers = n_workers
         self.log_manager = LogManager(client_id)
 
-        self.worked_chunks = PersistentList(BASE_DIRECTORY + '/' + str(client_id) + '/' + 'chunks')
+        self.worked_chunks = PersistentList2(BASE_DIRECTORY + '/' + str(client_id) + '/' + 'chunks')
         self.meta_data = PersistentMap(BASE_DIRECTORY + '/' + str(client_id) + '/' + "meta")
         self.data = PersistentMap(BASE_DIRECTORY + '/' + str(client_id) + '/' + "data")
 
@@ -50,9 +50,10 @@ class ClientTrackerSynchronizer():
             return
         if log_lines[-1].type == LogLineType.COMMIT:
             chunk_id = log_lines[-1].chunk_id
+            worker_id = log_lines[-1].worker_id
             if chunk_id not in self.worked_chunks:
                 virus.infect()
-                self.worked_chunks.append(chunk_id)
+                self.worked_chunks.append((chunk_id,int(worker_id)))
                 virus.infect()
             return
 
@@ -118,7 +119,7 @@ class ClientTrackerSynchronizer():
         self.log_manager.commit(chunk_id, worker_id)
         virus.infect()
         # append & flush chunk_id
-        self.worked_chunks.append(chunk_id)
+        self.worked_chunks.append((chunk_id,int(worker_id)))
         virus.infect()
 
     def __repr__(self) -> str:

@@ -8,6 +8,7 @@ from utils.serializer.q2OutSerializer import Q2OutSerializer    # type: ignore
 from utils.serializer.q3OutSerializer import Q3OutSerializer    # type: ignore
 from utils.serializer.q5OutSerializer import Q5OutSerializer    # type: ignore
 
+from utils.persistentList import PersistentList
 from utils.middleware.middleware import Middleware, ACK
 from utils.model.message import Message, MessageType
 
@@ -19,7 +20,7 @@ QUERY4_ID = 'Q4'
 QUERY5_ID = 'Q5'
 
 TOTAL = "total"
-
+WORKED_CLIENTS_FILE_PATH = '/worked_clients'
 
 class ClientTracker():
     def __init__(self, client_id):
@@ -70,6 +71,8 @@ class ResultReceiver(Process):
             'Q4': Q3OutSerializer(),
             'Q5': Q5OutSerializer(),
         }
+        self.worked_clients = PersistentList(WORKED_CLIENTS_FILE_PATH)
+
         self.middleware = Middleware()
         self.middleware.consume(IN_QUEUE, callback=self.save_results)
 
@@ -94,6 +97,7 @@ class ResultReceiver(Process):
 
     def save_results(self, results_raw, results_type):
         msg = Message.from_bytes(results_raw)
+        
         self.context_switch(msg.client_id)
 
         results = self.deserialize_result(msg, results_type)

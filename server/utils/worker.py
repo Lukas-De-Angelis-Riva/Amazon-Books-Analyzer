@@ -102,6 +102,7 @@ class Worker(Listener):
             },
             ID=chunk_id
         )
+        logging.info(msg)
         self.forward_data(msg.to_bytes())
         return
 

@@ -67,8 +67,8 @@ class Synchronizer(Listener):
     def recv(self, raw_msg, key):
         msg = Message.from_bytes(raw_msg)
         self.context_switch(msg.client_id)
-
-        if msg.ID in self.tracker.worked_chunks:
+        
+        if (msg.ID,int(msg.args[WORKER_ID])) in self.tracker.worked_chunks:
             return ACK
 
         if msg.type == MessageType.EOF:

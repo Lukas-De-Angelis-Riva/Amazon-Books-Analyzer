@@ -69,7 +69,7 @@ class Query3Synchronizer(Synchronizer):
             type=MessageType.DATA,
             data=data,
             # mimic first chunk_id sent, but with Q4_TAG
-            ID=self.tracker.worked_chunks[0]
+            ID=self.tracker.worked_chunks[0][0]
         )
         self.middleware.publish(msg.to_bytes(), OUT_TOPIC, Q4_TAG)
         eof.ID = uuid.UUID(self.tracker.meta_data[Q4_EOF_ID])
