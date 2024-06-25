@@ -6,10 +6,10 @@ from model.review import Review
 
 
 class Q5ReviewInTypes():
-    CHUNK = 0
-    REVIEW = 1
-    TITLE = 2
-    TEXT = 3
+    CHUNK = 50
+    REVIEW = 51
+    TITLE = 52
+    TEXT = 53
 
 
 class Q5ReviewInSerializer(Serializer):

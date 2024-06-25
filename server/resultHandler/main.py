@@ -24,7 +24,8 @@ def initialize_config():
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
         config_params["port"] = int(os.getenv('SERVER_PORT', config["DEFAULT"]["SERVER_PORT"]))
         config_params["ip"] = os.getenv('SERVER_IP', config["DEFAULT"]["SERVER_IP"])
-        config_params["file_name"] = os.getenv('FILE_NAME', config["DEFAULT"]["FILE_NAME"])
+        config_params["results_directory"] = os.getenv('RESULTS_DIRECTORY', config["DEFAULT"]["RESULTS_DIRECTORY"])
+        config_params['max_users'] = int(os.getenv('MAX_USERS', config["DEFAULT"]["MAX_USERS"]))
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
     except ValueError as e:
@@ -43,8 +44,8 @@ def main():
     # of the component
     logging.debug(f"action: config | result: success | logging_level: {logging_level}")
 
-    # creating the file
-    open(config_params['file_name'], "w").close()
+    # creating the directory
+    os.mkdir(config_params['results_directory'])
 
     # start server loop
     handler = ResultHandler(config_params)

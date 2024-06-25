@@ -1,7 +1,7 @@
 from utils.serializer.serializer import Serializer
 from utils.protocol import TlvTypes, SIZE_LENGTH
 from utils.protocol import string_to_bytes, string_from_bytes
-from utils.protocol import code_to_bytes
+from utils.protocol import code_to_bytes, make_msg_id
 
 
 class LineSerializer(Serializer):
@@ -25,7 +25,9 @@ class LineSerializer(Serializer):
             raw_chunk += raw_result
 
         result = code_to_bytes(TlvTypes.LINE_CHUNK)
+        result += make_msg_id() # TODO: move to protocolHandler
         result += int.to_bytes(len(chunk), SIZE_LENGTH, 'big')
-        result += raw_chunk
+        result = raw_chunk
 
         return result
+

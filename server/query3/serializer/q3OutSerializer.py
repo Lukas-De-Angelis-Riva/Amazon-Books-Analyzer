@@ -6,10 +6,10 @@ from dto.q3Result import Q3Result
 
 
 class Q3OutTypes():
-    CHUNK = 0
-    RESULT = 1
-    TITLE = 2
-    AUTHORS = 3
+    CHUNK = 30
+    RESULT = 31
+    TITLE = 32
+    AUTHORS = 33
 
 
 class Q3OutSerializer(Serializer):

@@ -25,6 +25,7 @@ def initialize_config():
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
         config_params["chunk_size"] = int(os.getenv('CHUNK_SIZE', config["DEFAULT"]["CHUNK_SIZE"]))
         config_params["peers"] = int(os.environ['PEERS'])
+        config_params["peer_id"] = int(os.environ['PEER_ID'])
 
         config_params["category"] = os.getenv('CATEGORY', config["DEFAULT"]["CATEGORY"])
     except KeyError as e:
@@ -39,6 +40,7 @@ def main():
     config_params = initialize_config()
     logging_level = config_params["logging_level"]
     peers = config_params["peers"]
+    peer_id = config_params["peer_id"]
     chunk_size = config_params["chunk_size"]
 
     initialize_log(logging_level)
@@ -48,7 +50,7 @@ def main():
     logging.debug(f"action: config | result: success | logging_level: {logging_level}")
 
     # Initialize server and start server loop
-    worker = Query5Worker(config_params["category"], peers, chunk_size)
+    worker = Query5Worker(config_params["category"], peer_id, peers, chunk_size)
     exitcode = worker.run()
     return exitcode
 

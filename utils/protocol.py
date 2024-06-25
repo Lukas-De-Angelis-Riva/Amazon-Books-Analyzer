@@ -1,6 +1,9 @@
 import struct
+import uuid
 
 SIZE_LENGTH = 4
+MSG_ID_LEN = 16
+UUID_LEN = 16
 
 i = -1
 
@@ -14,12 +17,14 @@ def next():
 class TlvTypes():
     # sizes
     SIZE_CODE_MSG = 4
+    SIZE_UUID_MSG = 16
 
     # types
     EOF = next()
     WAIT = next()
     POLL = next()
     ACK = next()
+    UUID = next()
 
     BOOK_CHUNK = next()
     BOOK = next()
@@ -42,14 +47,17 @@ class TlvTypes():
 
 
 def is_eof(bytes):
-    if len(bytes) == TlvTypes.SIZE_CODE_MSG:
-        data = struct.unpack("!i", bytes)[0]
-        return data == TlvTypes.EOF
-    elif len(bytes) == TlvTypes.SIZE_CODE_MSG+SIZE_LENGTH:
+    if len(bytes) >= TlvTypes.SIZE_CODE_MSG:
+        t = struct.unpack("!i", bytes[0:TlvTypes.SIZE_CODE_MSG])[0]
+        return t == TlvTypes.EOF
+    return False
+
+
+def get_eof_argument(bytes):
+    if len(bytes) == TlvTypes.SIZE_CODE_MSG + SIZE_LENGTH:
         data, n = struct.unpack("!ii", bytes)
-        return data == TlvTypes.EOF
-    else:
-        return False
+        return n
+    return -1
 
 
 def get_eof_argument(bytes):
@@ -69,6 +77,32 @@ def get_closed_peers(bytes):
 def make_wait():
     bytes = code_to_bytes(TlvTypes.WAIT)
     bytes += int.to_bytes(i, SIZE_LENGTH, 'big')
+    return bytes
+
+
+def get_eof_argument2(bytes):
+    if len(bytes) == TlvTypes.SIZE_CODE_MSG + 3 * SIZE_LENGTH:
+        t, total, worked, sent = struct.unpack("!iiii", bytes)
+        return total, worked, sent
+    return None, None, None
+
+
+# total: total amount of individual data received
+# worked: total amount of data worked by your peers
+# sent: total amount of data sent by your peers to next stage
+def make_eof2(total, worked, sent):
+    bytes = code_to_bytes(tlvtypes.eof)
+    bytes += int.to_bytes(total, size_length, 'big')
+    bytes += int.to_bytes(worked, size_length, 'big')
+    bytes += int.to_bytes(sent, size_length, 'big')
+    return bytes
+
+
+def make_token(peer_id, total, worked, sent):
+    bytes = code_to_bytes(tlvtypes.eof)
+    bytes += int.to_bytes(total, size_length, 'big')
+    bytes += int.to_bytes(worked, size_length, 'big')
+    bytes += int.to_bytes(sent, size_length, 'big')
     return bytes
 
 
@@ -132,7 +166,6 @@ def intarr_to_bytes(int_array, code: int):
     bytes += bytes_arr
     return bytes
 
-
 def intarr_from_bytes(bytes_arr):
     array = []
     n = len(bytes_arr)//SIZE_LENGTH
@@ -141,6 +174,18 @@ def intarr_from_bytes(bytes_arr):
         array.append(int.from_bytes(bytes_i, 'big'))
     return array
 
+def make_msg_id():
+    return uuid.uuid4().bytes
+
+def msg_id_from_bytes(raw):
+    return uuid.UUID(bytes=raw)
+
+def make_paging_args(page):
+    return int.to_bytes(page, 4, "big")
+
+def paging_args_from_bytes(raw):
+    page = int.from_bytes(raw, "big")
+    return page
 
 class UnexpectedType(Exception):
     pass
