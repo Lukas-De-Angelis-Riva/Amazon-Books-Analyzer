@@ -97,6 +97,24 @@ def create_doctor(i):
         ],
     }
 
+def create_monkey():
+    return {
+        'container_name': f'chaosMonkey',
+        'image': 'chaos_monkey:latest',
+        'privileged': 'true',
+        'entrypoint': 'python3 /main.py',
+        'environment': [
+            'PYTHONUNBUFFERED=1',
+            f'NODES={list_of_nodes()}',
+        ],
+        'volumes': [
+            './chaosMonkey/config.ini:/config.ini',
+            '/var/run/docker.sock:/var/run/docker.sock',
+        ],
+        'networks': [
+            NETWORK_NAME,
+        ],
+    }
 
 def create_query1Worker(i):
     return {
@@ -387,6 +405,8 @@ def create_server_side():
     # DOCTOR
     for i in range(AMOUNT_OF_DOCTOR):
         config['services'][f'doctor{i+1}'] = create_doctor(i+1)
+
+    config['services']['chaosMonkey'] = create_monkey()
 
     config['services']['resultHandler'] = create_resultHandler()
 
