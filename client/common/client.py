@@ -184,13 +184,16 @@ class Client:
                     for _ in range(1 + N_RETRIES):
                         try:
                             if _:
-                                logging.info("TRYING AGAIN!")
+                                logging.info("action: retry send_batch | result: in_progress")
 
                             # send also if next line is null
                             if len(batch) == chunk_size or not line:
                                 self.protocolHandler.send_batch(batch, msg_type, serializer)
                                 batch = []
                                 logging.debug(f'action: send_batch | result: success')
+                            if not line:
+                                self.protocolHandler.send_eof()
+
                             break
                         except (socket.error, SocketBroken) as e:
                             logging.error(f'action: socket_error | error: {e}')
@@ -204,11 +207,11 @@ class Client:
                             time.sleep(sleep)
                             sleep *= min(sleep*TIME_SLEEP_SCALE, MAX_TIME_SLEEP) 
 
-                    #if msg_type == TlvTypes.BOOK_CHUNK:
-                    #    time.sleep(0.01)
+                    if msg_type == TlvTypes.BOOK_CHUNK:
+                        time.sleep(0.01)
                             
+                #self.protocolHandler.send_eof()
                 bar(1.0)
-                self.protocolHandler.send_eof()
                 return True
 
         except OSError as e:
@@ -242,7 +245,7 @@ class Client:
 
             # conn failed
             except SocketBroken:
-                if not self.connect(self.config["results_ip"], self.config["results_port"], tries=1+N_RETRIES):
+                if not self.connect(self.config["results_ip"], self.config["results_port"], timeout=SOCK_TIMEOUT, tries=1+N_RETRIES):
                     logging.error(f'action: poll_results | result: fail | reason: connection refused {1+N_RETRIES} times')
                     return False
 

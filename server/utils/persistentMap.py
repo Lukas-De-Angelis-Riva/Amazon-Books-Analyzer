@@ -5,9 +5,9 @@ from utils.model.virus import virus
 
 
 class PersistentMap():
-    def __init__(self, path):
+    def __init__(self, path, map={}):
         self.path = path
-        self.map = {}
+        self.map = map 
         self.tmp_file = path + '_tmp'
 
         if not os.path.exists(self.path):
@@ -64,3 +64,4 @@ class PersistentMap():
                 k: parser(k, v)
                 for k, v in aux.items()
             }
+
