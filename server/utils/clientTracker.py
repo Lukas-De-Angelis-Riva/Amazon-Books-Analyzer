@@ -1,10 +1,12 @@
 import shutil
 import uuid
 import os
+import io
 
 from utils.model.log import LogFactory, LogLineType
 from utils.persistentList import PersistentList
 from utils.persistentMap import PersistentMap
+from utils.persistentMap2 import PersistentMap2
 from utils.logManager import LogManager
 
 # TEST PURPOSES
@@ -36,7 +38,7 @@ class ClientTracker():
         virus.infect()
         self.meta_data = PersistentMap(BASE_DIRECTORY + '/' + str(client_id) + '/meta')
         virus.infect()
-        self.data = PersistentMap(BASE_DIRECTORY + '/' + str(client_id) + '/data')
+        self.data = PersistentMap2(BASE_DIRECTORY + '/' + str(client_id) + '/data')
         virus.infect()
 
         self.meta_data[EXPECTED] = -1
@@ -45,7 +47,10 @@ class ClientTracker():
         self.meta_data[EOF_ID] = str(uuid.uuid4())
 
         # DUMMY PARSER
-        self.parser = lambda k, v: v
+        self.parser = lambda v: v
+
+        self.log_manager.booleans = []
+        self.log_manager.integers = [WORKED, SENT, EXPECTED]
 
     @classmethod
     def clear(cls, client_id):
@@ -57,11 +62,9 @@ class ClientTracker():
 
     def undo(self):
         virus.infect()
-        with open(self.log_manager.log_file, 'r') as f:
-            virus.infect()
-            aux = f.readlines()
-        virus.infect()
-        log_lines = LogFactory.from_lines(aux)
+        with open(self.log_manager.log_file, 'rb') as f:
+            aux = f.read()
+        log_lines = LogFactory.from_bytes(io.BytesIO(aux), self.parser, self.log_manager.meta_decoder)
         if not log_lines:
             return
         if log_lines[-1].type == LogLineType.COMMIT:
@@ -76,13 +79,14 @@ class ClientTracker():
         for log_line in log_lines:
 
             if log_line.type == LogLineType.WRITE:
-                self.data[log_line.key] = self.parser(log_line.key, log_line.old_value)
+                self.data[log_line.key] = log_line.old_value
 
             elif log_line.type == LogLineType.WRITE_METADATA:
                 self.meta_data[log_line.key] = log_line.old_value
 
             elif log_line.type == LogLineType.BEGIN:
                 break
+
         virus.infect()
         self.data.flush()
         virus.infect()

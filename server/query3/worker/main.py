@@ -1,8 +1,8 @@
-import os
-import logging
 from configparser import ConfigParser
-
 from common.query3Worker import Query3Worker
+from utils.heartbeat import HeartBeat
+import logging
+import os
 
 
 def initialize_config():
@@ -30,6 +30,9 @@ def initialize_config():
         config_params["min_amount_reviews"] = int(os.getenv('MIN_AMOUNT_REVIEWS', config["DEFAULT"]["MIN_AMOUNT_REVIEWS"]))
         config_params["minimun_date"] = int(os.getenv('MINIMUN_DATE', config["DEFAULT"]["MINIMUN_DATE"]))
         config_params["maximun_date"] = int(os.getenv('MAXIMUN_DATE', config["DEFAULT"]["MAXIMUN_DATE"]))
+
+        config_params["heartbeat_ip"] = os.environ['HEARTBEAT_IP']
+        config_params["heartbeat_port"] = int(os.environ['HEARTBEAT_PORT'])
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
     except ValueError as e:
@@ -51,6 +54,9 @@ def main():
     # of the component
     logging.debug(f"action: config | result: success | logging_level: {logging_level}")
 
+    heartbeat = HeartBeat(addr=(config_params['heartbeat_ip'], config_params['heartbeat_port']))
+    heartbeat.start()
+
     # Initialize server and start server loop
     worker = Query3Worker(
         config_params["min_amount_reviews"],
@@ -59,6 +65,9 @@ def main():
         peer_id, peers, chunk_size
     )
     exitcode = worker.run()
+
+    heartbeat.terminate()
+    heartbeat.join()
     return exitcode
 
 

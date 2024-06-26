@@ -54,7 +54,7 @@ class Query1Worker(Worker):
                 args={
                     WORKER_ID: self.peer_id,
                 },
-                ID=chunk_id
+                ID=self.sign_uuid(chunk_id)
             )
             self.forward_data(msg.to_bytes())
         n = len(self.matching_books)

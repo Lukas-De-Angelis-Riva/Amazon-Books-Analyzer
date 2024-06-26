@@ -14,15 +14,17 @@ class LogManager():
 
         self.log_file = LogManager.BASE_DIRECTORY + '/' + str(client_id) + '/log'
         if not os.path.exists(self.log_file):
-            open(self.log_file, 'w').close()
+            open(self.log_file, 'wb').close()
 
+        self.booleans = []
+        self.integers = []
         self.changes = {}
 
     def begin(self, chunk_id, worker_id=None):
-        with open(self.log_file, "w", encoding='UTF-8') as log_file:
+        with open(self.log_file, "wb") as log_file:
             begin_line = BeginLine(chunk_id, worker_id)
-            # log_file.write(begin_line.to_line())
-            virus.write_corrupt(begin_line.to_line(), log_file)
+            # log_file.write(begin_line.encode())
+            virus.write_corrupt(begin_line.encode(), log_file)
 
     def hold_change(self, k, v_old, v_new):
         if k not in self.changes:
@@ -31,23 +33,38 @@ class LogManager():
             self.changes[k][1] = v_new
 
     def log_changes(self):
-        with open(self.log_file, "a+") as log_file:
+        with open(self.log_file, "ab") as log_file:
             for k in self.changes:
-                old = self.changes[k][0].encode()
+                old = self.changes[k][0]
                 write_line = WriteLine(k, old)
-                # log_file.write(write_line.to_line())
-                virus.write_corrupt(write_line.to_line(), log_file)
+                # log_file.write(write_line.encode())
+                virus.write_corrupt(write_line.encode(), log_file)
 
         self.changes = {}
 
+    def meta_decoder(self, k, _b):
+        if k in self.booleans:
+            return bool.from_bytes(_b, byteorder='big')
+        elif k in self.integers:
+            return int.from_bytes(_b, byteorder='big', signed=True)
+
+    def bool_encoder(self, v):
+        return bool.to_bytes(v, length=1, byteorder='big')
+
+    def int_encoder(self, v):
+        return int.to_bytes(v, length=4, byteorder='big', signed=True)
+
     def log_metadata(self, key, v_old):
-        with open(self.log_file, "a+") as log_file:
-            write_line = WriteMetadataLine(key, v_old)
-            # log_file.write(write_line.to_line())
-            virus.write_corrupt(write_line.to_line(), log_file)
+        with open(self.log_file, "ab") as log_file:
+            if key in self.booleans:
+                write_line = WriteMetadataLine(key, v_old, self.bool_encoder)
+            else:
+                write_line = WriteMetadataLine(key, v_old, self.int_encoder)
+            # log_file.write(write_line.encode())
+            virus.write_corrupt(write_line.encode(), log_file)
 
     def commit(self, chunk_id, worker_id=None):
-        with open(self.log_file, "a+") as log_file:
+        with open(self.log_file, "ab") as log_file:
             commit_line = CommitLine(chunk_id, worker_id)
-            # log_file.write(commit_line.to_line())
-            virus.write_corrupt(commit_line.to_line(), log_file)
+            # log_file.write(commit_line.encode())
+            virus.write_corrupt(commit_line.encode(), log_file)

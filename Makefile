@@ -3,6 +3,7 @@ docker-image-client:
 .PHONY: docker-image-client
 
 docker-image-system:
+	docker build -f ./base-images/server-libraries.dockerfile -t "server-libraries:latest" .
 	docker build -f ./base-images/server-base.dockerfile -t "server-base:latest" .
 #	docker build -f ./server/clientHandler/Dockerfile -t "client_handler:latest" .
 	docker build -f ./server/query1/worker/Dockerfile -t "query1_worker:latest" .
@@ -13,7 +14,8 @@ docker-image-system:
 	docker build -f ./server/query3/synchronizer/Dockerfile -t "query3_synchronizer:latest" .
 	docker build -f ./server/query5/worker/Dockerfile -t "query5_worker:latest" .
 	docker build -f ./server/query5/synchronizer/Dockerfile -t "query5_synchronizer:latest" .
-#	docker build -f ./server/resultHandler/Dockerfile -t "result_handler:latest" .
+	docker build -f ./server/resultHandler/Dockerfile -t "result_handler:latest" .
+	docker build -f ./server/doctor/Dockerfile -t "doctor:latest" .
 .PHONY: docker-image-system
 
 system-run: docker-image-system

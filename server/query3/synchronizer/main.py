@@ -1,5 +1,6 @@
 from configparser import ConfigParser
 from common.query3Synchronizer import Query3Synchronizer
+from utils.heartbeat import HeartBeat
 import logging
 import os
 
@@ -25,6 +26,9 @@ def initialize_config():
         config_params["n_workers"] = int(os.getenv('N_WORKERS', config["DEFAULT"]["N_WORKERS"]))
         config_params["chunk_size"] = int(os.getenv('CHUNK_SIZE', config["DEFAULT"]["CHUNK_SIZE"]))
         config_params["n_top"] = int(os.getenv('N_TOP', config["DEFAULT"]["N_TOP"]))
+
+        config_params["heartbeat_ip"] = os.environ['HEARTBEAT_IP']
+        config_params["heartbeat_port"] = int(os.environ['HEARTBEAT_PORT'])
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
     except ValueError as e:
@@ -46,9 +50,15 @@ def main():
     # of the component
     logging.debug(f"action: config | result: success | logging_level: {logging_level}")
 
+    heartbeat = HeartBeat(addr=(config_params['heartbeat_ip'], config_params['heartbeat_port']))
+    heartbeat.start()
+
     # Initialize server and start server loop
     worker = Query3Synchronizer(n_workers, chunk_size, n_top)
     exitcode = worker.run()
+
+    heartbeat.terminate()
+    heartbeat.join()
     return exitcode
 
 
