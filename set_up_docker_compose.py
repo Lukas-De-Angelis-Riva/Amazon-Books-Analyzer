@@ -10,6 +10,8 @@ from config import AMOUNT_OF_DOCTOR
 
 NETWORK_NAME = "amazon-network"
 
+HEARTBEAT_PORT = '12349'
+
 
 def create_network(external: bool):
     net = {
@@ -58,8 +60,20 @@ def create_middleware():
 # SERVER SIDE #
 ###############
 
+
 def list_of_nodes():
-    return [f'doctor{i+1}' for i in range(AMOUNT_OF_DOCTOR)]
+    return [f'doctor{i+1}' for i in range(AMOUNT_OF_DOCTOR)] + \
+            [f'query1Worker{i}' for i in range(1, AMOUNT_OF_QUERY1_WORKERS+1)] + \
+            [f'query2Worker{i}' for i in range(1, AMOUNT_OF_QUERY2_WORKERS+1)] + \
+            [f'query3Worker{i}' for i in range(1, AMOUNT_OF_QUERY3_WORKERS+1)] + \
+            [f'query5Worker{i}' for i in range(1, AMOUNT_OF_QUERY5_WORKERS+1)] + \
+            ['query1Synchronizer'] + \
+            ['query2Synchronizer'] + \
+            ['query3Synchronizer'] + \
+            ['query5Synchronizer'] + \
+            ['resultHandler'] + \
+            ['clientHandler']
+
 
 def create_doctor(i):
     return {
@@ -94,6 +108,8 @@ def create_query1Worker(i):
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
             'PEERS='+str(AMOUNT_OF_QUERY1_WORKERS),
             'PEER_ID='+str(i),
+            f'HEARTBEAT_IP=query1Worker{i}',
+            f'HEARTBEAT_PORT={HEARTBEAT_PORT}',
         ],
         'volumes': [
             './server/query1/worker/config.ini:/config.ini',
@@ -116,6 +132,8 @@ def create_query1Synchronizer():
             'PYTHONUNBUFFERED=1',
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
             'N_WORKERS='+str(AMOUNT_OF_QUERY1_WORKERS),
+            'HEARTBEAT_IP=query1Synchronizer',
+            f'HEARTBEAT_PORT={HEARTBEAT_PORT}',
         ],
         'volumes': [
             './server/query1/synchronizer/config.ini:/config.ini',
@@ -139,6 +157,8 @@ def create_query2Worker(i):
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
             'PEERS='+str(AMOUNT_OF_QUERY2_WORKERS),
             'PEER_ID='+str(i),
+            f'HEARTBEAT_IP=query2Worker{i}',
+            f'HEARTBEAT_PORT={HEARTBEAT_PORT}',
         ],
         'volumes': [
             './server/query2/worker/config.ini:/config.ini',
@@ -161,6 +181,8 @@ def create_query2Synchronizer():
             'PYTHONUNBUFFERED=1',
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
             'N_WORKERS='+str(AMOUNT_OF_QUERY2_WORKERS),
+            'HEARTBEAT_IP=query2Synchronizer',
+            f'HEARTBEAT_PORT={HEARTBEAT_PORT}',
         ],
         'volumes': [
             './server/query2/synchronizer/config.ini:/config.ini',
@@ -184,6 +206,8 @@ def create_query3Worker(i):
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
             'PEERS='+str(AMOUNT_OF_QUERY3_WORKERS),
             'PEER_ID='+str(i),
+            f'HEARTBEAT_IP=query3Worker{i}',
+            f'HEARTBEAT_PORT={HEARTBEAT_PORT}',
         ],
         'volumes': [
             './server/query3/worker/config.ini:/config.ini',
@@ -206,6 +230,8 @@ def create_query3Synchronizer():
             'PYTHONUNBUFFERED=1',
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
             'N_WORKERS='+str(AMOUNT_OF_QUERY3_WORKERS),
+            'HEARTBEAT_IP=query3Synchronizer',
+            f'HEARTBEAT_PORT={HEARTBEAT_PORT}',
         ],
         'volumes': [
             './server/query3/synchronizer/config.ini:/config.ini',
@@ -229,6 +255,8 @@ def create_query5Worker(i):
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
             'PEERS='+str(AMOUNT_OF_QUERY5_WORKERS),
             'PEER_ID='+str(i),
+            f'HEARTBEAT_IP=query5Worker{i}',
+            f'HEARTBEAT_PORT={HEARTBEAT_PORT}',
         ],
         'volumes': [
             './server/query5/worker/config.ini:/config.ini',
@@ -251,6 +279,8 @@ def create_query5Synchronizer():
             'PYTHONUNBUFFERED=1',
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
             'N_WORKERS='+str(AMOUNT_OF_QUERY5_WORKERS),
+            'HEARTBEAT_IP=query5Synchronizer',
+            f'HEARTBEAT_PORT={HEARTBEAT_PORT}',
         ],
         'volumes': [
             './server/query5/synchronizer/config.ini:/config.ini',
@@ -272,6 +302,8 @@ def create_resultHandler():
         'environment': [
             'PYTHONUNBUFFERED=1',
             f'LOGGING_LEVEL={LOGGING_LEVEL}',
+            'HEARTBEAT_IP=resultHandler',
+            f'HEARTBEAT_PORT={HEARTBEAT_PORT}',
         ],
         'volumes': [
             './server/resultHandler/config.ini:/config.ini',
@@ -298,7 +330,9 @@ def create_clientHandler():
             f'N_WORKERS_Q1={AMOUNT_OF_QUERY1_WORKERS}',
             f'N_WORKERS_Q2={AMOUNT_OF_QUERY2_WORKERS}',
             f'N_WORKERS_Q3={AMOUNT_OF_QUERY3_WORKERS}',
-            f'N_WORKERS_Q5={AMOUNT_OF_QUERY5_WORKERS}'
+            f'N_WORKERS_Q5={AMOUNT_OF_QUERY5_WORKERS}',
+            'HEARTBEAT_IP=clientHandler',
+            f'HEARTBEAT_PORT={HEARTBEAT_PORT}',
         ],
         'volumes': [
             './server/clientHandler/config.ini:/config.ini',
@@ -323,7 +357,7 @@ def create_server_side():
     config['networks'][NETWORK_NAME] = create_network(external=False)
 
     config['services'] = {}
-    """
+
     # MIDDLEWARE
     config['services']['rabbitmq'] = create_middleware()
 
@@ -349,13 +383,12 @@ def create_server_side():
     for i in range(AMOUNT_OF_QUERY5_WORKERS):
         config['services'][f'query5Worker{i+1}'] = create_query5Worker(i+1)
     config['services']['query5Synchronizer'] = create_query5Synchronizer()
-    """
-    
+
     # DOCTOR
     for i in range(AMOUNT_OF_DOCTOR):
         config['services'][f'doctor{i+1}'] = create_doctor(i+1)
 
-    # config['services']['resultHandler'] = create_resultHandler()
+    config['services']['resultHandler'] = create_resultHandler()
 
     with open('docker-compose-server.yaml', 'w') as file:
         yaml.dump(config, file)

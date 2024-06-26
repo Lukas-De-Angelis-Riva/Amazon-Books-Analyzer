@@ -4,6 +4,7 @@ RESULT_IP = 'ResultHandler'
 RESULT_PORT = 12345
 DOCTOR_PORT = 12348
 
+
 def set_up_config(path, **kargs):
     with open(path, 'w') as f:
         s = "[DEFAULT]\n"

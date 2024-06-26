@@ -1,6 +1,5 @@
 from configparser import ConfigParser
 from common.doctor import Doctor
-from common.heartbeat import HeartBeat
 import logging
 import ast
 import os
@@ -56,7 +55,7 @@ def main():
     config_params = initialize_config()
     logging_level = config_params["logging_level"]
     config_params["port"] = config_params["heartbeat_port"]
-    initialize_log(logging_level)
+    initialize_log('DEBUG')
 
     # Log config parameters at the beginning of the program to verify the configuration
     # of the component

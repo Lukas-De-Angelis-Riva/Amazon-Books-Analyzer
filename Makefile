@@ -3,6 +3,7 @@ docker-image-client:
 .PHONY: docker-image-client
 
 docker-image-system:
+	docker build -f ./base-images/server-libraries.dockerfile -t "server-libraries:latest" .
 	docker build -f ./base-images/server-base.dockerfile -t "server-base:latest" .
 	docker build -f ./server/clientHandler/Dockerfile -t "client_handler:latest" .
 	docker build -f ./server/query1/worker/Dockerfile -t "query1_worker:latest" .

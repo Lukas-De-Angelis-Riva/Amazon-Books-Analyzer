@@ -2,12 +2,13 @@ import logging
 import signal
 
 from multiprocessing import Process
-from common.messageHandler import MessageHandler
+from utils.messageHandler import MessageHandler, MessageType
+
 
 class HeartBeat(Process):
-    def __init__(self, UDPHandler):
+    def __init__(self, addr):
         super().__init__(name='HeartBeat', args=())
-        self.UDPHandler = UDPHandler
+        self.UDPHandler = MessageHandler(addr[0], addr[1])
         self.on = True
 
     def run(self):
@@ -15,7 +16,7 @@ class HeartBeat(Process):
         while self.on:
             message, addr = self.UDPHandler.receive_message()
             if addr:
-                self.UDPHandler.send_message(message)
+                self.UDPHandler.send_message(addr=addr, type=MessageType.HEARTBEAT, id=message["id"])
 
         self.UDPHandler.close()
         logging.info('action: heartbeat | result: finish')
