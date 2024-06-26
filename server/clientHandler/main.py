@@ -1,5 +1,6 @@
 from configparser import ConfigParser
 from common.clientHandler import ClientHandler
+from utils.heartbeat import HeartBeat
 import logging
 import os
 
@@ -43,6 +44,8 @@ def initialize_config():
         config_params["n_workers_q3"] = int(os.getenv('N_WORKERS_Q3', config["DEFAULT"]["N_WORKERS_Q3"]))
         config_params["n_workers_q5"] = int(os.getenv('N_WORKERS_Q5', config["DEFAULT"]["N_WORKERS_Q5"]))
 
+        config_params["heartbeat_ip"] = os.environ['HEARTBEAT_IP']
+        config_params["heartbeat_port"] = int(os.environ['HEARTBEAT_PORT'])
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
     except ValueError as e:
@@ -57,6 +60,8 @@ def main():
     port = config_params["port"]
 
     initialize_log(logging_level)
+    heartbeat = HeartBeat(addr=(config_params['heartbeat_ip'], config_params['heartbeat_port']))
+    heartbeat.start()
 
     # Log config parameters at the beginning of the program to verify the configuration
     # of the component
@@ -66,6 +71,9 @@ def main():
     # Initialize server and start server loop
     clientHandler = ClientHandler(config_params)
     clientHandler.run()
+
+    heartbeat.terminate()
+    heartbeat.join()
 
 
 if __name__ == "__main__":
