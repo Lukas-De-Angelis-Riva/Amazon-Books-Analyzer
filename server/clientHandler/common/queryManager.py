@@ -7,7 +7,10 @@ from utils.serializer.q3BookInSerializer import Q3BookInSerializer      # type: 
 from utils.serializer.q3ReviewInSerializer import Q3ReviewInSerializer  # type: ignore
 from utils.serializer.q5BookInSerializer import Q5BookInSerializer      # type: ignore
 from utils.serializer.q5ReviewInSerializer import Q5ReviewInSerializer  # type: ignore
+from utils.persistentMap import PersistentMap
 from utils.model.message import Message, MessageType
+
+import os
 
 TOTAL = "total"
 QUERY1_ID = 'Q1'
@@ -52,12 +55,19 @@ class QueryManager:
         self.client_id = client_id
         self.workers_by_query = workers_by_query
 
-        self.total_books = {
-            QUERY1_ID: {i: 0 for i in range(1, workers_by_query[QUERY1_ID]+1)},
-            QUERY2_ID: {i: 0 for i in range(1, workers_by_query[QUERY2_ID]+1)},
-            QUERY3_ID: {i: 0 for i in range(1, workers_by_query[QUERY3_ID]+1)},
-            QUERY5_ID: {i: 0 for i in range(1, workers_by_query[QUERY5_ID]+1)},
-        }
+        if str(client_id) and not os.path.exists(str(client_id)):
+            os.mkdir(str(client_id))
+
+        self.total_books = PersistentMap(f'{client_id}/books_worked', {
+            QUERY1_ID: {str(i): 0 for i in range(1, workers_by_query[QUERY1_ID]+1)},
+            QUERY2_ID: {str(i): 0 for i in range(1, workers_by_query[QUERY2_ID]+1)},
+            QUERY3_ID: {str(i): 0 for i in range(1, workers_by_query[QUERY3_ID]+1)},
+            QUERY5_ID: {str(i): 0 for i in range(1, workers_by_query[QUERY5_ID]+1)},
+        })
+
+        if os.path.exists(f"{client_id}/books_worked"):
+            self.total_books.load(lambda k, v: v)
+
         self.book_serializers = {
             QUERY1_ID: Q1InSerializer(),
             QUERY2_ID: Q2InSerializer(),
@@ -69,10 +79,13 @@ class QueryManager:
             QUERY3_ID: Q3ReviewInSerializer(),
             QUERY5_ID: Q5ReviewInSerializer(),
         }
-        self.total_reviews = {
-            QUERY3_ID: {i: 0 for i in range(1, workers_by_query[QUERY3_ID]+1)},
-            QUERY5_ID: {i: 0 for i in range(1, workers_by_query[QUERY5_ID]+1)},
-        }
+        self.total_reviews = PersistentMap(f'{client_id}/reviews_worked', {
+            QUERY3_ID: {str(i): 0 for i in range(1, workers_by_query[QUERY3_ID]+1)},
+            QUERY5_ID: {str(i): 0 for i in range(1, workers_by_query[QUERY5_ID]+1)},
+        })
+
+        if os.path.exists(f"{client_id}/reviews_worked"):
+            self.total_books.load(lambda k, v: v)
 
     def __send_book_eof(self, query_id):
         for worker_i in self.total_books[query_id]:
@@ -101,7 +114,7 @@ class QueryManager:
             i = worker_i - 1
             if not sharded_chunks[i]:
                 continue
-            self.total_books[query_id][worker_i] += len(sharded_chunks[i])
+            self.total_books[query_id][str(worker_i)] += len(sharded_chunks[i])
             data_wi = self.book_serializers[query_id].to_bytes(sharded_chunks[i])
             msg = Message(
                 ID=chunk_id,
@@ -132,6 +145,8 @@ class QueryManager:
         value_grouped_by_title = group_by_key(chunk, self.workers_by_query[QUERY5_ID], lambda b: b.title)
         self.__distribute_books(chunk_id, value_grouped_by_title, QUERY5_ID)
 
+        self.total_books.flush()
+
     def __send_review_eof(self, query_id):
         for worker_i in self.total_reviews[query_id]:
             eof = Message(
@@ -157,7 +172,7 @@ class QueryManager:
             i = worker_i - 1
             if not sharded_chunks[i]:
                 continue
-            self.total_reviews[query_id][worker_i] += len(sharded_chunks[i])
+            self.total_reviews[query_id][str(worker_i)] += len(sharded_chunks[i])
             data_wi = self.review_serializers[query_id].to_bytes(sharded_chunks[i])
             msg = Message(
                 ID=chunk_id,
@@ -178,6 +193,8 @@ class QueryManager:
         # Query 5:
         reviews_grouped_by_author = group_by_key(chunk, self.workers_by_query[QUERY5_ID], lambda r: r.title)
         self.__distribute_reviews(chunk_id, reviews_grouped_by_author, QUERY5_ID)
+
+        self.total_reviews.flush()
 
     def stop(self):
         self.middleware.stop()
