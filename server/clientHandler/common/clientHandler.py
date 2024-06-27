@@ -76,7 +76,7 @@ class ClientHandler:
                     manager.distribute_reviews(msg_id, value)
                     logging.debug(f'action: send_reviews | N: {len(value)} | result: success')
                     # TODO: sleep
-                    time.sleep(0.5)
+                    # time.sleep(0.5)
                 elif protocolHandler.is_book(t):
                     manager.distribute_books(msg_id, value)
                     logging.debug(f'action: send_books | N: {len(value)} | result: success')
@@ -90,7 +90,7 @@ class ClientHandler:
                 protocolHandler.ack()
             manager.stop()
         except (SocketBroken, OSError) as e:
-            logging.error(f'action: receive_message | result: fail | error: {str(e)}')
+            logging.error(f'action: receive_message | result: fail | error: {str(e) or repr(e)}')
 
         logging.debug('action: release_client_socket | result: success')
         client_sock.close()
@@ -107,7 +107,7 @@ class ClientHandler:
             return c
         except OSError as e:
             if self._server_on:
-                logging.error(f'action: accept_connections | result: fail | error: {str(e)}')
+                logging.error(f'action: accept_connections | result: fail | error: {str(e) or repr(e)}')
             else:
                 logging.debug('action: stop_accept_connections | result: success')
             return

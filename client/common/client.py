@@ -105,7 +105,7 @@ class Client:
                 time.sleep(sleep)
                 sleep = min(sleep*TIME_SLEEP_SCALE, MAX_TIME_SLEEP)
                 continue
-        logging.error(f'action: connect | result: fail | error: {str(err)} | tries: {tries}')
+        logging.error(f'action: connect | result: fail | error: {str(err) or repr(err)} | tries: {tries}')
         # self.socket.settimeout(None)
         return False
 
@@ -138,12 +138,19 @@ class Client:
 
         return False
 
+    def __send_book_eof(self):
+        self.protocolHandler.send_book_eof()
+
+    def __send_review_eof(self):
+        self.protocolHandler.send_review_eof()
+
     def send_books(self):
         return self.send_file(self.config["book_file_path"],
                               self.read_book_line,
                               self.config["chunk_size_book"],
                               TlvTypes.BOOK_CHUNK,
                               BookSerializer(),
+                              self.__send_book_eof
                               )
 
     def send_reviews(self):
@@ -152,15 +159,16 @@ class Client:
                               self.config["chunk_size_review"],
                               TlvTypes.REVIEW_CHUNK,
                               ReviewSerializer(),
+                              self.__send_review_eof
                               )
 
-    def send_file(self, path, read_line, chunk_size, msg_type, serializer, pos=0):
+    def send_file(self, path, read_line, chunk_size, msg_type, serializer, send_eof, pos=0):
         logging.info(f'action: send file | result: in_progress | path: {path}')
 
         try:
             file_size = os.path.getsize(path)
             with open(path, mode='r') as file, alive_bar(100, manual=True, force_tty=True) as bar:
-                #file.seek(pos)
+                # file.seek(pos)
                 file.readline()  # skip the headers
                 batch = []
                 line = file.readline()
@@ -179,9 +187,13 @@ class Client:
                     i += 1
                     sleep = MIN_TIME_SLEEP
 
-                    for _ in range(1 + N_RETRIES):
+                    for tries in range(2 + N_RETRIES):
                         try:
-                            if _:
+                            if tries > N_RETRIES:
+                                logging.error(f'action: send_file | file: {path} | error: server not available')
+                                return False
+
+                            if tries:
                                 logging.info("action: retry send_batch | result: in_progress")
 
                             # send also if next line is null
@@ -189,12 +201,9 @@ class Client:
                                 self.protocolHandler.send_batch(batch, msg_type, serializer)
                                 batch = []
                                 logging.debug('action: send_batch | result: success')
-                            if not line:
-                                self.protocolHandler.send_eof()
-
                             break
                         except (socket.error, SocketBroken) as e:
-                            logging.error(f'action: socket_error | error: {e}')
+                            logging.error(f'action: socket_error | error: {str(e) or repr(e)}')
                             # retry connection
                             if not self.connect(self.config["ip"], self.config["port"], timeout=SOCK_TIMEOUT, tries=1+N_RETRIES):
                                 return False
@@ -205,17 +214,14 @@ class Client:
                             time.sleep(sleep)
                             sleep *= min(sleep*TIME_SLEEP_SCALE, MAX_TIME_SLEEP)
 
-                # self.protocolHandler.send_eof()
+                send_eof()
                 bar(1.0)
                 return True
 
         except OSError as e:
             if not self.signal_received:
-                logging.error(f'action: send file | result: fail | error: {e}')
+                logging.error(f'action: send file | result: fail | error: {str(e) or repr(e)}')
             return False
-        else:
-            logging.info(f'action: send file | result: success | path: {path}')
-            return True
 
     def save_results(self, results):
         with open(self.config['results_path'], 'a') as file:

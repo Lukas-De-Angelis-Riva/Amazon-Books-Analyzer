@@ -1,10 +1,8 @@
 import logging
-import struct
-import uuid
 import os
 from utils.protocolHandler import ProtocolHandler
 from utils.serializer.lineSerializer import LineSerializer
-from utils.protocol import make_eof, make_wait, TlvTypes
+from utils.protocol import TlvTypes
 from utils.TCPhandler import SocketBroken
 
 EOF_LINE = "EOF"
@@ -13,7 +11,6 @@ EOF_LINE = "EOF"
 class Poller():
     def __init__(self, client_sock, results_directory, directory_lock):
         self.serializer = LineSerializer()
-        #self.tcpHandler = TCPHandler(client_sock)
         self.protocolHandler = ProtocolHandler(client_sock)
         self.results_directory = results_directory
         self.directory_lock = directory_lock
@@ -55,7 +52,6 @@ class Poller():
         logging.debug('action: poller_stop | result: success')
         semaphore.release()
 
-
     def poll(self, page):
         logging.debug('action: poll | result: in_progress')
         if self.eof_readed or not os.path.exists(self.file_name):
@@ -68,11 +64,10 @@ class Poller():
                 return []
 
             with open(self.file_name + '.ptrs', 'rb') as chunk_ptrs:
-                chunk_ptrs.seek(page * 4) # every ptr is an integer
+                chunk_ptrs.seek(page * 4)   # every ptr is an integer
                 chunk_ptr = int.from_bytes(chunk_ptrs.read(4), "big")
                 next_chunk_ptr = int.from_bytes(chunk_ptrs.read(4), "big")
-                #print(f"PAGE -> {page}; CHUNK_PTR -> {chunk_ptr}; NEXT_CHUNK_PTR -> {next_chunk_ptr}")
-            
+
             file.seek(chunk_ptr)
 
             while line := file.readline():
@@ -84,8 +79,8 @@ class Poller():
 
                 if file.tell() == next_chunk_ptr:
                     logging.debug('action: poll | result: success')
-                    return chunk 
-            #self.cursor = file.tell()
+                    return chunk
+            # self.cursor = file.tell()
         logging.debug('action: poll | result: success')
         return chunk
 

@@ -61,22 +61,22 @@ class ProtocolHandler:
         self.ack()
         return r
 
-    def send_eof(self):
-        #eof = make_eof(0)
-        eof = self.make_header(TlvTypes.EOF, 0)
+    def __send_eof(self, eof):
         result = self.TCPHandler.send_all(eof)
         assert result == len(eof), 'TCP Error: cannot send EOF'
         self.wait_confimation()
 
     def send_book_eof(self):
-        self.send_eof()
+        eof = self.make_header(TlvTypes.EOF_BOOK, 0)
+        self.__send_eof(eof)
 
     def send_review_eof(self):
-        self.send_eof()
+        eof = self.make_header(TlvTypes.EOF_REVIEW, 0)
+        self.__send_eof(eof)
 
-    # TODO: maybe only one send_eof?
     def send_line_eof(self):
-        self.send_eof()
+        eof = self.make_header(TlvTypes.EOF_LINE, 0)
+        self.__send_eof(eof)
 
     def send_books(self, books):
         bytes = self.make_header(TlvTypes.BOOK_CHUNK, len(books))
@@ -98,7 +98,7 @@ class ProtocolHandler:
         result = self.TCPHandler.send_all(bytes)
         assert result == len(bytes), f'Cannot send all bytes {result} != {len(bytes)}'
         self.wait_confimation()
-    
+
     def send_batch(self, batch, msg_type, serializer, waitack=True):
         bytes = self.make_header(msg_type, len(batch))
         bytes += serializer.to_bytes(batch)
@@ -133,7 +133,7 @@ class ProtocolHandler:
     def read(self):
         tlv_type, msg_id, tlv_len = self.read_header()
 
-        if tlv_type in [TlvTypes.EOF, TlvTypes.ACK, TlvTypes.WAIT]:
+        if tlv_type in [TlvTypes.EOF_BOOK, TlvTypes.EOF_REVIEW, TlvTypes.EOF_LINE, TlvTypes.ACK, TlvTypes.WAIT]:
             return tlv_type, msg_id, None
 
         elif tlv_type == TlvTypes.BOOK_CHUNK:
@@ -154,7 +154,7 @@ class ProtocolHandler:
             raise UnexpectedType()
 
     def is_result_eof(self, t):
-        return t == TlvTypes.EOF
+        return t == TlvTypes.EOF_LINE
 
     def is_ack(self, t):
         return t == TlvTypes.ACK
@@ -165,20 +165,11 @@ class ProtocolHandler:
     def is_results(self, tlv_type):
         return tlv_type == TlvTypes.LINE_CHUNK
 
-    def is_book_eof(self, t):
-        if self.eof_books_received:
-            return False
-        elif t == TlvTypes.EOF:
-            self.eof_books_received = True
-            return True
-        return False
+    def is_book_eof(self, tlv_type):
+        return tlv_type == TlvTypes.EOF_BOOK
 
-    def is_review_eof(self, t):
-        if not self.eof_books_received:
-            return False
-        elif t == TlvTypes.EOF:
-            return True
-        return False
+    def is_review_eof(self, tlv_type):
+        return tlv_type == TlvTypes.EOF_REVIEW
 
     def is_book(self, tlv_type):
         return tlv_type == TlvTypes.BOOK_CHUNK

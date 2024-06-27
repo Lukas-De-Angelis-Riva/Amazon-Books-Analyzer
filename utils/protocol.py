@@ -20,7 +20,9 @@ class TlvTypes():
     SIZE_UUID_MSG = 16
 
     # types
-    EOF = next()
+    EOF_BOOK = next()
+    EOF_REVIEW = next()
+    EOF_LINE = next()
     WAIT = next()
     POLL = next()
     ACK = next()
