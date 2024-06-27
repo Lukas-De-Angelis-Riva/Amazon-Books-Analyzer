@@ -60,7 +60,7 @@ class Poller():
 
         with self.directory_lock, open(self.file_name, 'r', encoding='UTF8') as file:
             # page requested does not exist
-            if page * 4 >= os.path.getsize(self.file_name + '.ptrs'):
+            if page < 0 or page * 4 >= os.path.getsize(self.file_name + '.ptrs'):
                 return []
 
             with open(self.file_name + '.ptrs', 'rb') as chunk_ptrs:
