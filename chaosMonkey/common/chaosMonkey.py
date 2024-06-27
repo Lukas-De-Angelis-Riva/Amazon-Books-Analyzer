@@ -31,12 +31,11 @@ class ChaosMonkey():
 
             container = self.containers[victim]
 
-            if victim not in ["resultHandler"]:
-                try:
-                    container.kill()
-                    logging.info(f"kill: {victim}")
-                except docker.errors.APIError as e:
-                    logging.error(f'action: dockerAPIError | {str(e) or repr(e)}')
+            try:
+                container.kill()
+                logging.info(f"kill: {victim}")
+            except docker.errors.APIError as e:
+                logging.error(f'action: dockerAPIError | {str(e) or repr(e)}')
 
     def __handle_signal(self, signum, frame):
         logging.info(f'action: stop_chaos_monkey | result: in_progress | signal: SIGTERM({signum})')

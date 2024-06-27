@@ -1,16 +1,21 @@
-import signal
-import csv
-import io
 import logging
+import signal
+import io
+import os
+
 from multiprocessing import Process, Lock
 from utils.serializer.q1OutSerializer import Q1OutSerializer    # type: ignore
 from utils.serializer.q2OutSerializer import Q2OutSerializer    # type: ignore
 from utils.serializer.q3OutSerializer import Q3OutSerializer    # type: ignore
 from utils.serializer.q5OutSerializer import Q5OutSerializer    # type: ignore
 
-from utils.persistentList import PersistentList
+from utils.persistentMap import PersistentMap
 from utils.middleware.middleware import Middleware, ACK
 from utils.model.message import Message, MessageType
+
+# TEST PURPOSES
+from utils.model.virus import virus
+
 
 IN_QUEUE = 'RH-Results'
 QUERY1_ID = 'Q1'
@@ -19,50 +24,81 @@ QUERY3_ID = 'Q3'
 QUERY4_ID = 'Q4'
 QUERY5_ID = 'Q5'
 
+BASE_DIRECTORY = "/clients"
+
+TOTAL_BY_QUERY = "TOTAL_BY_QUERY"
+
 TOTAL = "total"
-WORKED_CLIENTS_FILE_PATH = '/worked_clients'
+
+EOF_LINE = "EOF"
+
 
 class ClientTracker():
-    def __init__(self, client_id):
+    def __init__(self, client_id, results_directory):
+        if not os.path.exists(BASE_DIRECTORY):
+            os.mkdir(BASE_DIRECTORY)
+
+        if not os.path.exists(BASE_DIRECTORY + '/' + str(client_id)):
+            os.mkdir(BASE_DIRECTORY + '/' + str(client_id))
+
         self.client_id = client_id
         self.queries = [QUERY1_ID, QUERY2_ID, QUERY3_ID, QUERY4_ID, QUERY5_ID]
-        self.eofs = {
-            q: False for q in self.queries
-        }
-        self.total_results_received = {
-            q: 0 for q in self.queries
-        }
+        self.meta_data = PersistentMap(BASE_DIRECTORY + '/' + str(client_id) + '/' + "meta")
 
-        self.total_results_expected = {
-            q: -1 for q in self.queries
-        }
+        self.meta_data[TOTAL_BY_QUERY] = {q: -1 for q in self.queries}
 
-    def eof(self, query_id):
-        assert query_id in self.queries
-        self.eofs[query_id] = True
+        self.results_path = results_directory + '/' + str(client_id) + '.csv'
+        self.results_tmp_path = results_directory + '/tmp'
+        if not os.path.exists(self.results_path):
+            open(self.results_path, 'w').close()
 
-    def expect(self, query_id, total):
-        assert query_id in self.queries
-        self.total_results_expected[query_id] = total
+        self.results_ptrs_path = self.results_path + '.ptrs'
+        if not os.path.exists(self.results_ptrs_path):
+            open(self.results_ptrs_path, 'wb').close()
 
-    def add(self, query_id, amount):
-        assert query_id in self.queries
-        self.total_results_received[query_id] += amount
+        self.results = []
 
-    def all_eofs_received(self):
-        return all(
-            self.eofs.values()
-        )
+    def flush_results(self):
+        virus.infect()
+        with open(self.results_tmp_path, 'w') as tmp:
+            virus.infect()
+            tmp.writelines(self.results)
+            virus.infect()
+            tmp.flush()
+        virus.infect()
+        os.rename(self.results_tmp_path, self.results_path)
 
-    def all_chunks_received(self):
-        return all(
-            self.total_results_received[q] == self.total_results_expected[q]
-            for q in self.queries
-        )
+    def recovery(self):
+        virus.infect()
+        self.meta_data.load(lambda k, v: v)
+        virus.infect()
+        with open(self.results_path, 'r', encoding='utf-8') as fp:
+            virus.infect()
+            lines = fp.readlines()
+        virus.infect()
+        for line in lines:
+            virus.infect()
+            if line[-1] != '\n':
+                virus.infect()
+                self.flush_results()
+                virus.infect()
+            else:
+                virus.infect()
+                self.results.append(line)
+                virus.infect()
+
+        # Check if short write in ptrs file
+        if os.path.exists(self.results_ptrs_path) and os.path.getsize(self.results_ptrs_path) % 4 != 0:
+            s = 4 * (os.path.getsize(self.results_ptrs_path) // 4)
+            os.truncate(self.results_ptrs_path, s)
+
+    def is_completed(self):
+        return all([x != -1 for x in self.meta_data[TOTAL_BY_QUERY].values()]) and \
+            len(self.results) == sum(self.meta_data[TOTAL_BY_QUERY].values())
 
 
 class ResultReceiver(Process):
-    def __init__(self, results_directory, directory_lock):
+    def __init__(self, results_directory, directory_lock, test_middleware=None):
         super().__init__(name='ResultReceiver', args=())
         self.serializers = {
             'Q1': Q1OutSerializer(),
@@ -71,9 +107,8 @@ class ResultReceiver(Process):
             'Q4': Q3OutSerializer(),
             'Q5': Q5OutSerializer(),
         }
-        self.worked_clients = PersistentList(WORKED_CLIENTS_FILE_PATH)
 
-        self.middleware = Middleware()
+        self.middleware = test_middleware if test_middleware else Middleware()
         self.middleware.consume(IN_QUEUE, callback=self.save_results)
 
         self.directory_lock = directory_lock
@@ -92,76 +127,106 @@ class ResultReceiver(Process):
 
     def context_switch(self, client_id):
         if client_id not in self.clients:
-            self.clients[client_id] = ClientTracker(client_id)
+            self.clients[client_id] = ClientTracker(client_id, self.results_directory)
+            self.clients[client_id].recovery()
         self.tracker = self.clients[client_id]
+
+    def result_to_string(self, result, result_type):
+        if result_type == QUERY1_ID:
+            return ', '.join([QUERY1_ID, str(result.title), str(result.authors), str(result.publisher)]) + '\n'
+        elif result_type == QUERY2_ID:
+            return ', '.join([QUERY2_ID, str(result)]) + '\n'
+        elif result_type == QUERY3_ID:
+            return ', '.join([QUERY3_ID, str(result.title), str(result.authors)]) + '\n'
+        elif result_type == QUERY4_ID:
+            return ', '.join([QUERY4_ID, str(result.title), str(result.authors)]) + '\n'
+        elif result_type == QUERY5_ID:
+            return ', '.join([QUERY5_ID, str(result)]) + '\n'
+        return ""
+
+    def write_ptr(self, fp):
+        with open(self.tracker.results_ptrs_path, "ab+") as chunk_ptrs:
+            curr = fp.tell()
+            if chunk_ptrs.tell() >= 4:
+                chunk_ptrs.seek(-4, io.SEEK_END)
+                prev = chunk_ptrs.read(4)
+                if prev != curr:
+                    virus.infect()
+                    virus.write_corrupt(int.to_bytes(fp.tell(), 4, "big"), chunk_ptrs)
+                    virus.infect()
+                    chunk_ptrs.flush()
+            else:
+                virus.infect()
+                virus.write_corrupt(int.to_bytes(fp.tell(), 4, "big"), chunk_ptrs)
+                virus.infect()
+                chunk_ptrs.flush()
+
+    def recv_results(self, results_raw, results_type):
+        reader = io.BytesIO(results_raw)
+        results = self.serializers[results_type].from_chunk(reader)
+
+        complete_line = ""
+        for r in results:
+            line = self.result_to_string(r, results_type)
+            if not line or line in self.tracker.results:
+                continue
+            else:
+                self.tracker.results.append(line)
+                complete_line += line
+
+        if not complete_line:
+            if self.tracker.is_completed() and (EOF_LINE+'\n') not in self.tracker.results:
+                with self.stop_lock, self.directory_lock, open(self.tracker.results_path, 'a', encoding='UTF8') as file:
+                    virus.infect()
+                    self.tracker.results.append(EOF_LINE + '\n')
+                    virus.infect()
+                    virus.write_corrupt(EOF_LINE + '\n', file)
+            return
+
+        with self.stop_lock, self.directory_lock, open(self.tracker.results_path, 'a', encoding='UTF8') as file:
+            virus.infect()
+            self.write_ptr(fp=file)
+            virus.infect()
+            virus.write_corrupt(complete_line, file)
+
+            virus.infect()
+            if self.tracker.is_completed():
+                virus.infect()
+                self.tracker.results.append(EOF_LINE + '\n')
+                virus.infect()
+                virus.write_corrupt(EOF_LINE + '\n', file)
+            file.flush()
+
+    def recv_eof(self, results_type, expected):
+        virus.infect()
+        self.tracker.meta_data[TOTAL_BY_QUERY][results_type] = expected
+        virus.infect()
+        self.tracker.meta_data.flush()
+        virus.infect()
+
+        if self.tracker.is_completed():
+            virus.infect()
+            with self.stop_lock, self.directory_lock, open(self.tracker.results_path, 'a', encoding='UTF8') as file:
+                virus.infect()
+                self.write_ptr(fp=file)
+                virus.infect()
+                self.tracker.results.append(EOF_LINE + '\n')
+                virus.infect()
+                virus.write_corrupt(EOF_LINE + '\n', file)
+                virus.infect()
+                file.flush()
+                virus.infect()
 
     def save_results(self, results_raw, results_type):
         msg = Message.from_bytes(results_raw)
-        
+
         self.context_switch(msg.client_id)
 
-        results = self.deserialize_result(msg, results_type)
-        logging.debug(f'action: save_results({results_type}) | result: in_progress | n: {len(results)}')
-        if len(results) == 0:
-            logging.debug(f'action: save_results({results_type}) | result: success')
-            return ACK
-
-        file_name = self.results_directory + '/' + str(self.tracker.client_id) + '.csv'
-
-        with self.stop_lock, self.directory_lock, open(file_name, 'a', encoding='UTF8') as file:
-            if not results:
-                return ACK
-
-            # write the start of curr chunk
-            with open(file_name + ".ptrs", "ab") as chunk_ptrs:
-                chunk_ptrs.write(int.to_bytes(file.tell(), 4, "big"))
-
-            writer = csv.writer(file)
-
-            for result in results:
-                logging.debug(f'action: save_result({results_type})_i | result: success | value: {result}')
-                if results_type == 'Q1':
-                    writer.writerow(['Q1', result.title, result.authors, result.publisher])
-                elif results_type == 'Q2':
-                    writer.writerow(['Q2', result])
-                elif results_type == 'Q3':
-                    writer.writerow(['Q3', result.title, result.authors])
-                elif results_type == 'Q4':
-                    writer.writerow(['Q4', result.title, result.authors])
-                elif results_type == 'Q5':
-                    writer.writerow(['Q5', result])
-                else:
-                    continue
-
-            self.tracker.add(results_type, len(results))
-
-            if self.tracker.all_eofs_received() and self.tracker.all_chunks_received():
-                self.write_eof()
-
-        logging.debug(f'action: save_results({results_type}) | result: success')
-        return ACK
-
-    def write_eof(self):
-        file_name = self.results_directory + '/' + str(self.tracker.client_id) + '.csv'
-        with self.stop_lock, self.directory_lock, open(file_name, 'a', encoding='UTF8') as file:
-            writer = csv.writer(file)
-            writer.writerow(['EOF'])
-
-    def deserialize_result(self, msg, type):
         if msg.type == MessageType.EOF:
-            self.tracker.eof(type)
-            self.tracker.expect(type, msg.args[TOTAL])
-            logging.debug(f'action: recv EOF {type} | client: {self.tracker.client_id}')
-            if self.tracker.all_eofs_received() and self.tracker.all_chunks_received():
-                self.write_eof()
-                logging.debug(f'action: write EOF | client: {self.tracker.client_id}')
-            else:
-                logging.debug(f'action: write EOF | client: {self.tracker.client_id} | postponed')
-            return []
-
-        reader = io.BytesIO(msg.data)
-        results = self.serializers[type].from_chunk(reader)
-        return results
+            self.recv_eof(results_type, msg.args[TOTAL])
+        else:
+            self.recv_results(msg.data, results_type)
+        return ACK
 
     def __handle_signal(self, signum, frame):
         logging.debug('action: stop_receiver | result: in_progress')

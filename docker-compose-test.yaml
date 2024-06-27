@@ -1,5 +1,14 @@
 name: tp2-server-test
 services:
+  resultHandler:
+    container_name: resultHandler
+    entrypoint: ./test.sh
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=INFO
+    image: result_handler:latest
+    volumes:
+    - ./server/resultHandler/test/tests.py:/test/tests.py
   query1Worker:
     container_name: query1Worker
     entrypoint: ./test.sh

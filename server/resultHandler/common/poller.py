@@ -71,6 +71,9 @@ class Poller():
             file.seek(chunk_ptr)
 
             while line := file.readline():
+                if line[-1] != '\n':
+                    return chunk
+
                 logging.debug(f'action: read_line | line: {line}')
                 if line.rstrip() == EOF_LINE:
                     self.eof_readed = True
