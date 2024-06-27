@@ -3,6 +3,7 @@ docker-image-client:
 .PHONY: docker-image-client
 
 docker-image-system:
+	docker build -f ./base-images/server-libraries.dockerfile -t "server-libraries:latest" .
 	docker build -f ./base-images/server-base.dockerfile -t "server-base:latest" .
 	docker build -f ./server/clientHandler/Dockerfile -t "client_handler:latest" .
 	docker build -f ./server/query1/worker/Dockerfile -t "query1_worker:latest" .
@@ -14,6 +15,8 @@ docker-image-system:
 	docker build -f ./server/query5/worker/Dockerfile -t "query5_worker:latest" .
 	docker build -f ./server/query5/synchronizer/Dockerfile -t "query5_synchronizer:latest" .
 	docker build -f ./server/resultHandler/Dockerfile -t "result_handler:latest" .
+	docker build -f ./server/doctor/Dockerfile -t "doctor:latest" .
+	docker build -f ./chaosMonkey/Dockerfile -t "chaos_monkey:latest" .
 .PHONY: docker-image-system
 
 system-run: docker-image-system
@@ -25,6 +28,11 @@ client-run: docker-image-client
 	docker compose -f docker-compose-client.yaml build
 	docker compose -f docker-compose-client.yaml run --rm client python main.py
 .PHONY: client-run
+
+client-shutdown: docker-image-client
+	docker compose -f docker-compose-client.yaml stop -t 10
+	docker compose -f docker-compose-client.yaml down
+.PHONY: client-shutdown
 
 system-shutdown:
 	docker compose -f docker-compose-server.yaml stop -t 10

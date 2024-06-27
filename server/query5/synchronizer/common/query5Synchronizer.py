@@ -66,10 +66,10 @@ class Query5Synchronizer(Synchronizer):
         for result in results:
             chunk.append(result)
             if len(chunk) >= self.chunk_size:
-                self.send_chunk(chunk, next(id_iterator))
+                self.send_chunk(chunk, next(id_iterator)[0])
                 chunk = []
         if chunk:
-            self.send_chunk(chunk, next(id_iterator))
+            self.send_chunk(chunk, next(id_iterator)[0])
         logging.debug('action: send_results | status: success')
         return
 

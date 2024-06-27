@@ -1,7 +1,7 @@
 from configparser import ConfigParser
-from common.clientHandler import ClientHandler
-from utils.heartbeat import HeartBeat
+from common.chaosMonkey import ChaosMonkey
 import logging
+import ast
 import os
 
 
@@ -36,16 +36,10 @@ def initialize_config():
 
     config_params = {}
     try:
-        config_params["port"] = int(os.getenv('SERVER_PORT', config["DEFAULT"]["SERVER_PORT"]))
-        config_params["max_users"] = int(os.getenv('MAX_USERS', config["DEFAULT"]["MAX_USERS"]))
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
-        config_params["n_workers_q1"] = int(os.getenv('N_WORKERS_Q1', config["DEFAULT"]["N_WORKERS_Q1"]))
-        config_params["n_workers_q2"] = int(os.getenv('N_WORKERS_Q2', config["DEFAULT"]["N_WORKERS_Q2"]))
-        config_params["n_workers_q3"] = int(os.getenv('N_WORKERS_Q3', config["DEFAULT"]["N_WORKERS_Q3"]))
-        config_params["n_workers_q5"] = int(os.getenv('N_WORKERS_Q5', config["DEFAULT"]["N_WORKERS_Q5"]))
+        config_params["waiting_time"] = int(os.getenv('WAITING_TIME', config["DEFAULT"]["WAITING_TIME"]))
+        config_params["nodes"] = ast.literal_eval(os.getenv('NODES', config["DEFAULT"]["NODES"]))
 
-        config_params["heartbeat_ip"] = os.environ['HEARTBEAT_IP']
-        config_params["heartbeat_port"] = int(os.environ['HEARTBEAT_PORT'])
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
     except ValueError as e:
@@ -57,23 +51,16 @@ def initialize_config():
 def main():
     config_params = initialize_config()
     logging_level = config_params["logging_level"]
-    port = config_params["port"]
-
-    initialize_log(logging_level)
-    heartbeat = HeartBeat(addr=(config_params['heartbeat_ip'], config_params['heartbeat_port']))
-    heartbeat.start()
+    initialize_log('DEBUG')
 
     # Log config parameters at the beginning of the program to verify the configuration
     # of the component
-    logging.debug(f"action: config | result: success | port: {port} |"
+    logging.debug(f"action: config | result: success |"
                   f"logging_level: {logging_level}")
 
     # Initialize server and start server loop
-    clientHandler = ClientHandler(config_params)
-    clientHandler.run()
-
-    heartbeat.terminate()
-    heartbeat.join()
+    chaosMonkey = ChaosMonkey(config_params)
+    chaosMonkey.run()
 
 
 if __name__ == "__main__":

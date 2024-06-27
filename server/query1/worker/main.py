@@ -1,6 +1,7 @@
 from configparser import ConfigParser
 from common.query1Worker import Query1Worker
 from common.matches import matching_function
+from utils.heartbeat import HeartBeat
 import logging
 import os
 
@@ -31,6 +32,9 @@ def initialize_config():
         config_params["published_date_max"] = int(os.getenv('PUBLISHED_DATE_MAX', config["DEFAULT"]["PUBLISHED_DATE_MAX"]))
         config_params["category"] = os.getenv('CATEGORY', config["DEFAULT"]["CATEGORY"])
         config_params["title"] = os.getenv('TITLE', config["DEFAULT"]["TITLE"])
+
+        config_params["heartbeat_ip"] = os.environ['HEARTBEAT_IP']
+        config_params["heartbeat_port"] = int(os.environ['HEARTBEAT_PORT'])
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
     except ValueError as e:
@@ -57,10 +61,16 @@ def main():
     # of the component
     logging.debug(f"action: config | result: success | logging_level: {logging_level}")
 
+    heartbeat = HeartBeat(addr=(config_params['heartbeat_ip'], config_params['heartbeat_port']))
+    heartbeat.start()
+
     # Initialize server and start server loop
     matches = matching_function(published_date_min, published_date_max, category, title)
     worker = Query1Worker(peer_id, peers, chunk_size, matches)
     exitcode = worker.run()
+
+    heartbeat.terminate()
+    heartbeat.join()
     return exitcode
 
 

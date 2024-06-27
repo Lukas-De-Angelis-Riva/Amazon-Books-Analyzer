@@ -1,5 +1,6 @@
 from configparser import ConfigParser
 from common.resultHandler import ResultHandler
+from utils.heartbeat import HeartBeat
 import logging
 import os
 
@@ -26,6 +27,9 @@ def initialize_config():
         config_params["ip"] = os.getenv('SERVER_IP', config["DEFAULT"]["SERVER_IP"])
         config_params["results_directory"] = os.getenv('RESULTS_DIRECTORY', config["DEFAULT"]["RESULTS_DIRECTORY"])
         config_params['max_users'] = int(os.getenv('MAX_USERS', config["DEFAULT"]["MAX_USERS"]))
+
+        config_params["heartbeat_ip"] = os.environ['HEARTBEAT_IP']
+        config_params["heartbeat_port"] = int(os.environ['HEARTBEAT_PORT'])
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
     except ValueError as e:
@@ -43,6 +47,8 @@ def main():
     # Log config parameters at the beginning of the program to verify the configuration
     # of the component
     logging.debug(f"action: config | result: success | logging_level: {logging_level}")
+    heartbeat = HeartBeat(addr=(config_params['heartbeat_ip'], config_params['heartbeat_port']))
+    heartbeat.start()
 
     # creating the directory
     os.mkdir(config_params['results_directory'])
@@ -50,6 +56,9 @@ def main():
     # start server loop
     handler = ResultHandler(config_params)
     handler.run()
+
+    heartbeat.terminate()
+    heartbeat.join()
 
 
 def initialize_log(logging_level):
