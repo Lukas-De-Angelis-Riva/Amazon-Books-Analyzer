@@ -72,6 +72,9 @@ class Client:
         if self.signal_received:
             return
 
+        if not self.connect(self.config["results_ip"], self.config["results_port"], timeout=SOCK_TIMEOUT, tries=1+N_RETRIES):
+            return
+
         ok = self.get_results()
         if not ok or self.signal_received:
             return
@@ -229,7 +232,7 @@ class Client:
                 file.write(result)
                 file.write('\n')
                 self.query_sizes[result[:2]] += 1
-                logging.info(f'result: {result}')
+                logging.info(f'page: {self.curr_results_page} | result: {result}')
 
     def get_results(self):
         t_sleep = MIN_TIME_SLEEP
@@ -263,18 +266,17 @@ class Client:
 
         while keep_running:
             t, msg_id, value = self.protocolHandler.poll_results(self.curr_results_page)
-
             if self.protocolHandler.is_result_wait(t):
-                logging.debug('action: polling | result: wait')
+                logging.debug(f'action: polling | result: wait | page: {self.curr_results_page}')
                 time.sleep(t_sleep)
                 t_sleep = min(TIME_SLEEP_SCALE*t_sleep, MAX_TIME_SLEEP)
 
             elif self.protocolHandler.is_result_eof(t):
-                logging.info('action: polling | result: eof')
+                logging.info('action: polling | result: eof | page: {self.curr_results_page}')
                 keep_running = False
 
             elif self.protocolHandler.is_results(t):
-                logging.debug(f'action: polling | result: success | len(results): {len(value)}')
+                logging.debug(f'action: polling | result: success | len(results): {len(value)} | page: {self.curr_results_page}')
                 t_sleep = max(t_sleep/TIME_SLEEP_SCALE, MIN_TIME_SLEEP)
                 self.save_results(value)
                 self.curr_results_page += 1     # increase page once result is saved
