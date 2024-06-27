@@ -303,7 +303,6 @@ class TestUtils(unittest.TestCase):
                 sync.run()
                 break
             except Disease:
-                test_middleware.requeue()
                 continue
 
         sent_q3 = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent_by_tag[Q3_TAG]])
@@ -355,7 +354,6 @@ class TestUtils(unittest.TestCase):
                 sync.run()
                 break
             except Disease:
-                test_middleware.requeue()
                 continue
 
         sent_q3 = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent_by_tag[Q3_TAG]])

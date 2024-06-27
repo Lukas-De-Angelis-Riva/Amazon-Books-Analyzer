@@ -299,7 +299,6 @@ class TestUtils(unittest.TestCase):
                 sync.run()
                 break
             except Disease:
-                test_middleware.requeue()
                 continue
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
@@ -355,7 +354,6 @@ class TestUtils(unittest.TestCase):
                 sync.run()
                 break
             except Disease:
-                test_middleware.requeue()
                 continue
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])

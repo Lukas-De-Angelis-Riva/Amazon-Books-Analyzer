@@ -55,7 +55,7 @@ def main():
     config_params = initialize_config()
     logging_level = config_params["logging_level"]
     config_params["port"] = config_params["heartbeat_port"]
-    initialize_log('DEBUG')
+    initialize_log(logging_level)
 
     # Log config parameters at the beginning of the program to verify the configuration
     # of the component

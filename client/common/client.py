@@ -40,7 +40,7 @@ class Client:
     def __init__(self, config_params):
         # Initialize server socket
         self.config = config_params
-        self.socket = None 
+        self.socket = None
         self.handler = None
         self.query_sizes = {'Q1': 0, 'Q2': 0, 'Q3': 0, 'Q4': 0, 'Q5': 0}
         self.id = uuid.uuid4()
@@ -63,7 +63,7 @@ class Client:
         if not self.connect(self.config["ip"], self.config["port"], timeout=SOCK_TIMEOUT):
             return
 
-        if not self.send_books(): 
+        if not self.send_books():
             return
 
         if not self.send_reviews():
@@ -90,9 +90,9 @@ class Client:
     def connect(self, ip, port, timeout=None, tries=1):
         if self.socket is not None:
             self.disconnect()
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.settimeout(timeout)
-        sleep = MIN_TIME_SLEEP 
+        sleep = MIN_TIME_SLEEP
         err = None
 
         for _ in range(tries):
@@ -104,9 +104,9 @@ class Client:
                 err = e
                 time.sleep(sleep)
                 sleep = min(sleep*TIME_SLEEP_SCALE, MAX_TIME_SLEEP)
-                continue 
+                continue
         logging.error(f'action: connect | result: fail | error: {str(err)} | tries: {tries}')
-        #self.socket.settimeout(None)
+        # self.socket.settimeout(None)
         return False
 
     def disconnect(self):
@@ -121,16 +121,14 @@ class Client:
         logging.debug('action: stop_client | result: success')
 
     def handshake(self, tries=1):
-        sleep = MIN_TIME_SLEEP 
-        err = None
+        sleep = MIN_TIME_SLEEP
         for i in range(tries):
             try:
                 logging.debug('action: handshake | result: in_progress')
                 self.protocolHandler.handshake(self.id)
                 logging.debug('action: handshake | result: success')
                 return True
-            except socket.error as e:
-                err = e
+            except socket.error:
                 time.sleep(sleep)
                 sleep = min(sleep*TIME_SLEEP_SCALE, MAX_TIME_SLEEP)
                 continue
@@ -142,19 +140,19 @@ class Client:
 
     def send_books(self):
         return self.send_file(self.config["book_file_path"],
-                       self.read_book_line,
-                       self.config["chunk_size_book"],
-                       TlvTypes.BOOK_CHUNK,
-                       BookSerializer(),
-                       )
+                              self.read_book_line,
+                              self.config["chunk_size_book"],
+                              TlvTypes.BOOK_CHUNK,
+                              BookSerializer(),
+                              )
 
     def send_reviews(self):
         return self.send_file(self.config["review_file_path"],
-                       self.read_review_line,
-                       self.config["chunk_size_review"],
-                       TlvTypes.REVIEW_CHUNK,
-                       ReviewSerializer(),
-                       )
+                              self.read_review_line,
+                              self.config["chunk_size_review"],
+                              TlvTypes.REVIEW_CHUNK,
+                              ReviewSerializer(),
+                              )
 
     def send_file(self, path, read_line, chunk_size, msg_type, serializer, pos=0):
         logging.info(f'action: send file | result: in_progress | path: {path}')
@@ -171,7 +169,7 @@ class Client:
                 while line:
                     bar(float(file.tell() / file_size))
                     element = read_line(line)
-                    line = file.readline() # read next line
+                    line = file.readline()  # read next line
 
                     if element is None:
                         logging.debug('action: read_element | result: discard')
@@ -190,7 +188,7 @@ class Client:
                             if len(batch) == chunk_size or not line:
                                 self.protocolHandler.send_batch(batch, msg_type, serializer)
                                 batch = []
-                                logging.debug(f'action: send_batch | result: success')
+                                logging.debug('action: send_batch | result: success')
                             if not line:
                                 self.protocolHandler.send_eof()
 
@@ -201,16 +199,13 @@ class Client:
                             if not self.connect(self.config["ip"], self.config["port"], timeout=SOCK_TIMEOUT, tries=1+N_RETRIES):
                                 return False
                         # if send has timeouted (includes if ack not received)
-                        # TODO: make ProtocolHandler exception class 
+                        # TODO: make ProtocolHandler exception class
                         except socket.timeout:
-                            logging.error(f'action: timeout_error')
+                            logging.error('action: timeout_error')
                             time.sleep(sleep)
-                            sleep *= min(sleep*TIME_SLEEP_SCALE, MAX_TIME_SLEEP) 
+                            sleep *= min(sleep*TIME_SLEEP_SCALE, MAX_TIME_SLEEP)
 
-                    if msg_type == TlvTypes.BOOK_CHUNK:
-                        time.sleep(0.01)
-                            
-                #self.protocolHandler.send_eof()
+                # self.protocolHandler.send_eof()
                 bar(1.0)
                 return True
 
@@ -220,7 +215,7 @@ class Client:
             return False
         else:
             logging.info(f'action: send file | result: success | path: {path}')
-            return True 
+            return True
 
     def save_results(self, results):
         with open(self.config['results_path'], 'a') as file:
@@ -233,7 +228,7 @@ class Client:
     def get_results(self):
         t_sleep = MIN_TIME_SLEEP
         self.curr_results_page = 0
-        
+
         for _ in range(1+N_RETRIES):
             try:
                 logging.info('action: poll_results | result: in_progress')
@@ -249,12 +244,11 @@ class Client:
                     logging.error(f'action: poll_results | result: fail | reason: connection refused {1+N_RETRIES} times')
                     return False
 
-            #except Exception as e:
+            # except Exception as e:
             #    if not self.signal_received:
             #        logging.error(f'action: polling | result: fail | error: {e}')
             #    return False
         return False
-
 
     def poll_results(self):
         logging.debug('action: polling | result: in_progress')
@@ -263,12 +257,12 @@ class Client:
 
         while keep_running:
             t, msg_id, value = self.protocolHandler.poll_results(self.curr_results_page)
-            
+
             if self.protocolHandler.is_result_wait(t):
                 logging.debug('action: polling | result: wait')
                 time.sleep(t_sleep)
                 t_sleep = min(TIME_SLEEP_SCALE*t_sleep, MAX_TIME_SLEEP)
-                
+
             elif self.protocolHandler.is_result_eof(t):
                 logging.info('action: polling | result: eof')
                 keep_running = False
@@ -277,7 +271,7 @@ class Client:
                 logging.debug(f'action: polling | result: success | len(results): {len(value)}')
                 t_sleep = max(t_sleep/TIME_SLEEP_SCALE, MIN_TIME_SLEEP)
                 self.save_results(value)
-                self.curr_results_page += 1 # increase page once result is saved
+                self.curr_results_page += 1     # increase page once result is saved
             else:
                 logging.error(f'action: polling | result: fail | unknown_type: {t}')
         return True

@@ -17,6 +17,7 @@ QUERY1_ID = 'Q1'
 QUERY2_ID = 'Q2'
 QUERY3_ID = 'Q3'
 QUERY5_ID = 'Q5'
+LAST_CHUNK = 'LAST_CHUNK'
 
 
 def OUT_BOOKS_QUEUE(query_id, worker_id):
@@ -63,10 +64,10 @@ class QueryManager:
             QUERY2_ID: {str(i): 0 for i in range(1, workers_by_query[QUERY2_ID]+1)},
             QUERY3_ID: {str(i): 0 for i in range(1, workers_by_query[QUERY3_ID]+1)},
             QUERY5_ID: {str(i): 0 for i in range(1, workers_by_query[QUERY5_ID]+1)},
+            LAST_CHUNK: "",
         })
 
-        if os.path.exists(f"{client_id}/books_worked"):
-            self.total_books.load(lambda k, v: v)
+        self.total_books.load(lambda k, v: v)
 
         self.book_serializers = {
             QUERY1_ID: Q1InSerializer(),
@@ -82,10 +83,10 @@ class QueryManager:
         self.total_reviews = PersistentMap(f'{client_id}/reviews_worked', {
             QUERY3_ID: {str(i): 0 for i in range(1, workers_by_query[QUERY3_ID]+1)},
             QUERY5_ID: {str(i): 0 for i in range(1, workers_by_query[QUERY5_ID]+1)},
+            LAST_CHUNK: "",
         })
 
-        if os.path.exists(f"{client_id}/reviews_worked"):
-            self.total_books.load(lambda k, v: v)
+        self.total_reviews.load(lambda k, v: v)
 
     def __send_book_eof(self, query_id):
         for worker_i in self.total_books[query_id]:
@@ -128,6 +129,9 @@ class QueryManager:
             )
 
     def distribute_books(self, chunk_id, chunk):
+        if str(chunk_id) == self.total_books[LAST_CHUNK]:
+            return
+
         # Query 1:
         value_grouped_by_title = group_by_key(chunk, self.workers_by_query[QUERY1_ID], lambda b: b.title)
         self.__distribute_books(chunk_id, value_grouped_by_title, QUERY1_ID)
@@ -145,6 +149,7 @@ class QueryManager:
         value_grouped_by_title = group_by_key(chunk, self.workers_by_query[QUERY5_ID], lambda b: b.title)
         self.__distribute_books(chunk_id, value_grouped_by_title, QUERY5_ID)
 
+        self.total_books[LAST_CHUNK] = str(chunk_id)
         self.total_books.flush()
 
     def __send_review_eof(self, query_id):
@@ -186,6 +191,9 @@ class QueryManager:
             )
 
     def distribute_reviews(self, chunk_id, chunk):
+        if str(chunk_id) == self.total_reviews[LAST_CHUNK]:
+            return
+
         # Query 3/4:
         reviews_grouped_by_title = group_by_key(chunk, self.workers_by_query[QUERY3_ID], lambda r: r.title)
         self.__distribute_reviews(chunk_id, reviews_grouped_by_title, QUERY3_ID)
@@ -194,6 +202,7 @@ class QueryManager:
         reviews_grouped_by_author = group_by_key(chunk, self.workers_by_query[QUERY5_ID], lambda r: r.title)
         self.__distribute_reviews(chunk_id, reviews_grouped_by_author, QUERY5_ID)
 
+        self.total_reviews[LAST_CHUNK] = str(chunk_id)
         self.total_reviews.flush()
 
     def stop(self):

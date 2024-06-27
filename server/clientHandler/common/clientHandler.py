@@ -1,7 +1,7 @@
 import socket
 import signal
 import logging
-
+import time
 from threading import Thread, Event
 from multiprocessing import Semaphore
 from utils.protocolHandler import ProtocolHandler
@@ -75,6 +75,8 @@ class ClientHandler:
                 if protocolHandler.is_review(t):
                     manager.distribute_reviews(msg_id, value)
                     logging.debug(f'action: send_reviews | N: {len(value)} | result: success')
+                    # TODO: sleep
+                    time.sleep(0.5)
                 elif protocolHandler.is_book(t):
                     manager.distribute_books(msg_id, value)
                     logging.debug(f'action: send_books | N: {len(value)} | result: success')

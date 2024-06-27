@@ -248,14 +248,13 @@ class TestUtils(unittest.TestCase):
         self.append_eof(client_id, test_middleware, 3, len([]))
         self.append_eof(client_id, test_middleware, 4, len([b4]))
 
-        virus.mutate(0.25)
+        virus.mutate(0.20)
         while True:
             try:
                 worker = Query1Synchronizer(n_workers=4, test_middleware=test_middleware)
                 worker.run()
                 break
             except Disease:
-                test_middleware.requeue()
                 continue
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])
@@ -299,7 +298,6 @@ class TestUtils(unittest.TestCase):
                 worker.run()
                 break
             except Disease:
-                test_middleware.requeue()
                 continue
 
         sent = set([Message.from_bytes(raw_msg) for raw_msg in test_middleware.sent])

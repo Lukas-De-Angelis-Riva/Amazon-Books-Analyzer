@@ -1,5 +1,4 @@
 import uuid
-import csv
 import os
 
 from utils.model.virus import virus
