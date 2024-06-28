@@ -1,8 +1,6 @@
 import json
 import os
 
-from utils.model.virus import virus
-
 
 class PersistentMap():
     def __init__(self, path, map=None):
@@ -52,9 +50,7 @@ class PersistentMap():
                 for k, v in self.map.items()
             }, tmp_fp)
 
-        virus.infect()
         os.rename(self.tmp_file, self.path)
-        virus.infect()
 
     def load(self, parser):
         if os.path.exists(self.path) and os.path.getsize(self.path) > 0:

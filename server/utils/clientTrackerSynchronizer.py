@@ -9,9 +9,6 @@ from utils.persistentMap import PersistentMap
 from utils.persistentMap2 import PersistentMap2
 from utils.logManager import LogManager
 
-# TEST PURPOSES
-from utils.model.virus import virus
-
 
 BASE_DIRECTORY = "/clients"
 NULL_DIRECTORY = BASE_DIRECTORY + '/null'
@@ -55,9 +52,7 @@ class ClientTrackerSynchronizer():
         if log_lines[-1].type == LogLineType.COMMIT:
             chunk_id = log_lines[-1].chunk_id
             if chunk_id not in self.worked_chunks:
-                virus.infect()
                 self.worked_chunks.append(chunk_id)
-                virus.infect()
             return
 
         worker_id = str(log_lines[0].worker_id)
@@ -68,22 +63,15 @@ class ClientTrackerSynchronizer():
             elif log_line.type == LogLineType.BEGIN:
                 break
 
-        virus.infect()
         self.meta_data.flush()
-        virus.infect()
 
     def recovery(self):
-        virus.infect()
         self.meta_data.load(lambda k, v: v)
-        virus.infect()
         self.worked_chunks.load()
-        virus.infect()
         self.data.load(self.parser)
-        virus.infect()
 
         if os.path.getsize(self.log_manager.log_file) > 0:
             self.undo()
-            virus.infect()
 
     def all_chunks_received(self):
         return all(
@@ -98,16 +86,11 @@ class ClientTrackerSynchronizer():
         return uuid.UUID(self.meta_data[EOF_ID])
 
     def clear(self):
-        virus.infect()
         os.rename(f'{BASE_DIRECTORY}/{str(self.client_id)}', NULL_DIRECTORY)
-        virus.infect()
         shutil.rmtree(NULL_DIRECTORY)
-        virus.infect()
 
     def persist(self, chunk_id, worker_id, worked=None, total=None):
-        virus.infect()
         self.log_manager.begin(chunk_id, int(worker_id))
-        virus.infect()
         if worked is not None:
             self.log_manager.log_metadata(WORKED_BY_WORKER, self.meta_data[WORKED_BY_WORKER][worker_id])
         if total is not None:
@@ -117,14 +100,10 @@ class ClientTrackerSynchronizer():
         if worked is not None:
             self.meta_data[WORKED_BY_WORKER][worker_id] += worked
             self.data.flush()
-        virus.infect()
         self.meta_data.flush()
-        virus.infect()
         self.log_manager.commit(chunk_id, int(worker_id))
-        virus.infect()
         # append & flush chunk_id
         self.worked_chunks.append(chunk_id)
-        virus.infect()
 
     def __repr__(self) -> str:
         return f'ClientTracker({self.client_id})'

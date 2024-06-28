@@ -13,9 +13,6 @@ from utils.persistentMap import PersistentMap
 from utils.middleware.middleware import Middleware, ACK
 from utils.model.message import Message, MessageType
 
-# TEST PURPOSES
-from utils.model.virus import virus
-
 
 IN_QUEUE = 'RH-Results'
 QUERY1_ID = 'Q1'
@@ -59,33 +56,20 @@ class ClientTracker():
         self.results = []
 
     def flush_results(self):
-        virus.infect()
         with open(self.results_tmp_path, 'w') as tmp:
-            virus.infect()
             tmp.writelines(self.results)
-            virus.infect()
             tmp.flush()
-        virus.infect()
         os.rename(self.results_tmp_path, self.results_path)
 
     def recovery(self):
-        virus.infect()
         self.meta_data.load(lambda k, v: v)
-        virus.infect()
         with open(self.results_path, 'r', encoding='utf-8') as fp:
-            virus.infect()
             lines = fp.readlines()
-        virus.infect()
         for line in lines:
-            virus.infect()
             if line[-1] != '\n':
-                virus.infect()
                 self.flush_results()
-                virus.infect()
             else:
-                virus.infect()
                 self.results.append(line)
-                virus.infect()
 
         # Check if short write in ptrs file
         if os.path.exists(self.results_ptrs_path) and os.path.getsize(self.results_ptrs_path) % 4 != 0:
@@ -151,14 +135,10 @@ class ResultReceiver(Process):
                 chunk_ptrs.seek(-4, io.SEEK_END)
                 prev = chunk_ptrs.read(4)
                 if prev != curr:
-                    virus.infect()
-                    virus.write_corrupt(int.to_bytes(fp.tell(), 4, "big"), chunk_ptrs)
-                    virus.infect()
+                    chunk_ptrs.write(int.to_bytes(fp.tell(), 4, "big"))
                     chunk_ptrs.flush()
             else:
-                virus.infect()
-                virus.write_corrupt(int.to_bytes(fp.tell(), 4, "big"), chunk_ptrs)
-                virus.infect()
+                chunk_ptrs.write(int.to_bytes(fp.tell(), 4, "big"))
                 chunk_ptrs.flush()
 
     def recv_results(self, results_raw, results_type):
@@ -177,45 +157,29 @@ class ResultReceiver(Process):
         if not complete_line:
             if self.tracker.is_completed() and (EOF_LINE+'\n') not in self.tracker.results:
                 with self.stop_lock, self.directory_lock, open(self.tracker.results_path, 'a', encoding='UTF8') as file:
-                    virus.infect()
                     self.tracker.results.append(EOF_LINE + '\n')
-                    virus.infect()
-                    virus.write_corrupt(EOF_LINE + '\n', file)
+                    file.write(EOF_LINE + '\n')
             return
 
         with self.stop_lock, self.directory_lock, open(self.tracker.results_path, 'a', encoding='UTF8') as file:
-            virus.infect()
             self.write_ptr(fp=file)
-            virus.infect()
-            virus.write_corrupt(complete_line, file)
+            file.write(complete_line)
 
-            virus.infect()
             if self.tracker.is_completed():
-                virus.infect()
                 self.tracker.results.append(EOF_LINE + '\n')
-                virus.infect()
-                virus.write_corrupt(EOF_LINE + '\n', file)
+                file.write(EOF_LINE + '\n')
             file.flush()
 
     def recv_eof(self, results_type, expected):
-        virus.infect()
         self.tracker.meta_data[TOTAL_BY_QUERY][results_type] = expected
-        virus.infect()
         self.tracker.meta_data.flush()
-        virus.infect()
 
         if self.tracker.is_completed():
-            virus.infect()
             with self.stop_lock, self.directory_lock, open(self.tracker.results_path, 'a', encoding='UTF8') as file:
-                virus.infect()
                 self.write_ptr(fp=file)
-                virus.infect()
                 self.tracker.results.append(EOF_LINE + '\n')
-                virus.infect()
-                virus.write_corrupt(EOF_LINE + '\n', file)
-                virus.infect()
+                file.write(EOF_LINE + '\n')
                 file.flush()
-                virus.infect()
 
     def save_results(self, results_raw, results_type):
         msg = Message.from_bytes(results_raw)

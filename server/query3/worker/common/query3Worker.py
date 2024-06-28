@@ -9,9 +9,6 @@ from utils.serializer.q3PartialSerializer import Q3PartialSerializer    # type: 
 from utils.serializer.q3BookInSerializer import Q3BookInSerializer      # type: ignore
 from utils.model.message import Message, MessageType
 
-# TEST PURPOSES
-from utils.model.virus import virus
-
 
 def IN_BOOKS_QUEUE_NAME(peer_id):
     return f'Q3-Books-{peer_id}'
@@ -80,10 +77,8 @@ class Query3Worker(Worker):
         for input in input_chunk:
             self.save_book(input)
 
-        virus.infect()
         self.tracker.persist(chunk_id, flush_data=True,
                              N_BOOKS=self.tracker.meta_data[N_BOOKS]+len(input_chunk))
-        virus.infect()
 
     def recv_book(self, raw_msg, key):
         msg = Message.from_bytes(raw_msg)
@@ -97,18 +92,14 @@ class Query3Worker(Worker):
 
         if msg.type == MessageType.EOF:
             if msg.args[TOTAL] != self.tracker.meta_data[N_BOOKS]:
-                virus.infect()
                 diff = msg.args[TOTAL]-self.tracker.meta_data[N_BOOKS]
                 logging.debug(f'action: recv_book_eof | remaining: {diff} left')
                 return NACK
             else:
-                virus.infect()
                 self.tracker.persist(msg.ID, ALL_BOOKS_RECEIVED=True)
-                virus.infect()
                 logging.debug('action: recv_book_eof | success | all_books_received')
                 return ACK
         self.recv_raw_book(msg.data, msg.ID)
-        virus.infect()
         return ACK
 
     #################
@@ -121,7 +112,6 @@ class Query3Worker(Worker):
         self.context_switch(msg.client_id)
         if not self.tracker.meta_data[ALL_BOOKS_RECEIVED]:
             logging.debug('action: recv_raw | status: not_all_books_received | NACK')
-            virus.infect()
             return NACK
         return super().recv(raw_msg, key)
 
@@ -149,7 +139,5 @@ class Query3Worker(Worker):
         results = [v for v in self.tracker.data.values() if v.n >= self.min_amount_reviews]
         if results:
             logging.debug(f'action: filtering_result | result: success | n: {len(self.tracker.data)} >> {len(results)}')
-            virus.infect()
             self.send_results(results)
-        virus.infect()
         self.send_eof(len(results))

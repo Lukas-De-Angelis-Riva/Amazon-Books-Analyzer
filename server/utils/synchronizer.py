@@ -10,9 +10,6 @@ from utils.model.message import Message, MessageType
 from utils.middleware.middleware import ACK
 from utils.listener import Listener
 
-# TEST PURPOSES
-from utils.model.virus import virus
-
 TOTAL = "total"
 WORKER_ID = "worker_id"
 
@@ -51,16 +48,11 @@ class Synchronizer(Listener):
                 continue
             client_id = uuid.UUID(directory)
             self.context_switch(client_id)
-            virus.infect()
             self.tracker.recovery()
-            virus.infect()
 
             if self.tracker.all_chunks_received():
-                virus.infect()
                 self.terminator()
-                virus.infect()
                 self.tracker.clear()
-                virus.infect()
                 del self.clients[self.tracker.client_id]
                 self.tracker = None
 
@@ -91,16 +83,11 @@ class Synchronizer(Listener):
         input_chunk = self.in_serializer.from_chunk(reader)
         self.process_chunk(input_chunk, chunk_id)
 
-        virus.infect()
         self.tracker.persist(chunk_id, worker_id, worked=len(input_chunk))
-        virus.infect()
 
         if self.tracker.all_chunks_received():
-            virus.infect()
             self.terminator()
-            virus.infect()
             self.tracker.clear()
-            virus.infect()
             del self.clients[self.tracker.client_id]
             self.tracker = None
         return
@@ -110,11 +97,8 @@ class Synchronizer(Listener):
         self.tracker.persist(eof_id, worker_id, total=total)
 
         if self.tracker.all_chunks_received():
-            virus.infect()
             self.terminator()
-            virus.infect()
             self.tracker.clear()
-            virus.infect()
             del self.clients[self.tracker.client_id]
             self.tracker = None
         return
