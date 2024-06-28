@@ -11,6 +11,7 @@ class MessageType():
     COORDINATOR = 2
     HEALTHCHECK = 3
     HEARTBEAT = 4
+    LEADER = 5
 
 
 class MessageHandler:

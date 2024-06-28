@@ -15,8 +15,7 @@ class PersistentList():
         self.list.append(item)
 
         with open(self.path, "a+") as fp:
-            # fp.write(str(item))
-            virus.write_corrupt(str(item)+'\n', fp)
+            fp.write(str(item)+'\n')
 
     def __getitem__(self, index):
         return self.list[index]
