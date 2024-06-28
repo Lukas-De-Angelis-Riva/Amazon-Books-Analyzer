@@ -51,7 +51,8 @@ def main():
     heartbeat.start()
 
     # creating the directory
-    os.mkdir(config_params['results_directory'])
+    if not os.path.exists(config_params['results_directory']):
+        os.mkdir(config_params['results_directory'])
 
     # start server loop
     handler = ResultHandler(config_params)
