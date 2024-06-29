@@ -176,7 +176,9 @@ def intarr_from_bytes(bytes_arr):
         array.append(int.from_bytes(bytes_i, 'big'))
     return array
 
-def make_msg_id():
+def make_msg_id(_id=None):
+    if _id is not None:
+        return _id.bytes
     return uuid.uuid4().bytes
 
 def msg_id_from_bytes(raw):

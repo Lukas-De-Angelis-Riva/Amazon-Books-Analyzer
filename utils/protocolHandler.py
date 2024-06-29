@@ -66,12 +66,12 @@ class ProtocolHandler:
         assert result == len(eof), 'TCP Error: cannot send EOF'
         self.wait_confimation()
 
-    def send_book_eof(self):
-        eof = self.make_header(TlvTypes.EOF_BOOK, 0)
+    def send_book_eof(self, _id):
+        eof = self.make_header(TlvTypes.EOF_BOOK, 0, _id)
         self.__send_eof(eof)
 
-    def send_review_eof(self):
-        eof = self.make_header(TlvTypes.EOF_REVIEW, 0)
+    def send_review_eof(self, _id):
+        eof = self.make_header(TlvTypes.EOF_REVIEW, 0, _id)
         self.__send_eof(eof)
 
     def send_line_eof(self):
@@ -99,8 +99,8 @@ class ProtocolHandler:
         assert result == len(bytes), f'Cannot send all bytes {result} != {len(bytes)}'
         self.wait_confimation()
 
-    def send_batch(self, batch, msg_type, serializer, waitack=True):
-        bytes = self.make_header(msg_type, len(batch))
+    def send_batch(self, batch, msg_type, serializer, _id, waitack=True):
+        bytes = self.make_header(msg_type, len(batch), _id)
         bytes += serializer.to_bytes(batch)
         result = self.TCPHandler.send_all(bytes)
         assert result == len(bytes), f'Cannot send all bytes {result} != {len(bytes)}'
@@ -108,11 +108,11 @@ class ProtocolHandler:
             self.wait_confimation()
 
     # TODO: maybe move to protocol.py
-    def make_header(self, tlv_type, payload_len):
+    def make_header(self, tlv_type, payload_len, _id=None):
         raw_header = code_to_bytes(tlv_type)
-        raw_header += make_msg_id()
+        raw_header += make_msg_id(_id)
         raw_header += int.to_bytes(payload_len, SIZE_LENGTH, "big") 
-        return raw_header 
+        return raw_header
 
     def read_header(self):
         """
