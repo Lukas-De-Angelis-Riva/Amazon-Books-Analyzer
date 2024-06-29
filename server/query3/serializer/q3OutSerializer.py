@@ -1,22 +1,22 @@
-import logging
-
 from utils.serializer.serializer import Serializer
 from utils.protocol import SIZE_LENGTH
 from utils.protocol import string_to_bytes, string_from_bytes
 from utils.protocol import code_to_bytes
 from dto.q3Result import Q3Result
 
+
 class Q3OutTypes():
-    CHUNK = 0
-    RESULT = 1
-    TITLE = 2
-    AUTHORS = 3
+    CHUNK = 30
+    RESULT = 31
+    TITLE = 32
+    AUTHORS = 33
+
 
 class Q3OutSerializer(Serializer):
 
     def make_raw_dict(self):
         return {
-            Q3OutTypes.TITLE : b'',
+            Q3OutTypes.TITLE: b'',
             Q3OutTypes.AUTHORS: [],
         }
 
@@ -41,11 +41,11 @@ class Q3OutSerializer(Serializer):
                 raw_result += string_to_bytes(author, Q3OutTypes.AUTHORS)
 
             raw_chunk += code_to_bytes(Q3OutTypes.RESULT)
-            raw_chunk += int.to_bytes(len(raw_result), SIZE_LENGTH, 'big') 
+            raw_chunk += int.to_bytes(len(raw_result), SIZE_LENGTH, 'big')
             raw_chunk += raw_result
 
         result = code_to_bytes(Q3OutTypes.CHUNK)
-        result += int.to_bytes(len(chunk), SIZE_LENGTH, 'big') 
+        result += int.to_bytes(len(chunk), SIZE_LENGTH, 'big')
         result += raw_chunk
 
         return result

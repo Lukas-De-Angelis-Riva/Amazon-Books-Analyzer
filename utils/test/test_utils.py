@@ -6,6 +6,7 @@ from model.review import Review
 from utils.serializer.bookSerializer import BookSerializer
 from utils.serializer.reviewSerializer import ReviewSerializer
 
+
 class TestUtils(unittest.TestCase):
     def test_serializer_can_packet_two_books_in_the_same_mesagge(self):
         serializer = BookSerializer()
@@ -20,7 +21,7 @@ class TestUtils(unittest.TestCase):
 
         book2 = Book(
             title='The C programming language',
-            authors=['Dennis Ritchie','Brian Kernighan'],
+            authors=['Dennis Ritchie', 'Brian Kernighan'],
             publisher='Prentice Hall',
             publishedDate='1978',
             categories=['Programming', 'Manual'],
@@ -78,6 +79,7 @@ class TestUtils(unittest.TestCase):
         assert review2.title == _review2.title
         assert abs(review2.score - _review2.score) < 1e-4
         assert review2.text == _review2.text
+
 
 if __name__ == '__main__':
     unittest.main()

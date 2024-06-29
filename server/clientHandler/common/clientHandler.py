@@ -1,141 +1,110 @@
-import socket 
+import socket
 import signal
 import logging
-
-from common.clientHandlerMiddleware import ClientHandlerMiddleware
-from utils.serializer.bookSerializer import BookSerializer
-from utils.serializer.reviewSerializer import ReviewSerializer
-from utils.serializer.q1InSerializer import Q1InSerializer
-from utils.serializer.q2InSerializer import Q2InSerializer
-from utils.serializer.q3BookInSerializer import Q3BookInSerializer
-from utils.serializer.q3ReviewInSerializer import Q3ReviewInSerializer
-from utils.serializer.q5BookInSerializer import Q5BookInSerializer
-from utils.serializer.q5ReviewInSerializer import Q5ReviewInSerializer
+import time
+from threading import Thread, Event
+from multiprocessing import Semaphore
 from utils.protocolHandler import ProtocolHandler
 from utils.TCPhandler import SocketBroken
-from utils.protocol import make_eof
+from common.queryManager import QueryManager, QUERY1_ID, QUERY2_ID, QUERY3_ID, QUERY5_ID
+
+REVIEW_REACTION_DELAY_SCALER = 0.4
+BOOK_REACTION_DELAY_SCALER = 0.1
+
 
 class ClientHandler:
     def __init__(self, config_params):
+        signal.signal(signal.SIGTERM, self.__handle_signal)
+
         # Initialize server socket
-        self.config_params = config_params
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', config_params['port']))
         self._server_socket.listen(1)
         self._server_on = True
-        signal.signal(signal.SIGTERM, self.__handle_signal)
+        self.max_users = config_params['max_users']
+        self._semaphore = Semaphore(value=self.max_users)
+        self._threads = []
+        self._thread_stoppers = []
+        self.workers_by_query = {
+            QUERY1_ID: config_params['n_workers_q1'],
+            QUERY2_ID: config_params['n_workers_q2'],
+            QUERY3_ID: config_params['n_workers_q3'],
+            QUERY5_ID: config_params['n_workers_q5']
+        }
 
-        # client data serializer:
-        self.book_serializer = BookSerializer()
-        self.review_serializer = ReviewSerializer()
-
-        # Query 1
-        self.q1InSerializer = Q1InSerializer()
-
-        # Query 2
-        self.q2InSerializer = Q2InSerializer()
-
-        # Query 3/4
-        self.q3BookInSerializer = Q3BookInSerializer()
-        self.q3ReviewInSerializer = Q3ReviewInSerializer()
-
-        # Query 5
-        self.q5BookInSerializer = Q5BookInSerializer()
-        self.q5ReviewInSerializer = Q5ReviewInSerializer()
-
-        self.middleware = ClientHandlerMiddleware()
-        
     def run(self):
-        logging.info(f'action: run server | result: success')
+        logging.info('action: run_server')
         while self._server_on:
-            client_sock = self.__accept_new_connection() 
-            if client_sock:
-                self.__handle_client_connection(client_sock)
+            client_sock = self.__accept_new_connection()
+            if not client_sock:
+                continue
+            ok = self.connect(client_sock)
+            if not ok:
+                client_sock.close()
 
         self._server_socket.close()
-        logging.debug(f'action: release_socket | result: success')
-        self.middleware.stop()
-        logging.debug(f'action: release_rabbitmq_conn | result: success')
-        logging.info(f'action: stop_server | result: success')
+        logging.debug('action: release_socket | result: success')
+        logging.info('action: stop_server | result: success')
 
+    def connect(self, client_sock):
+        client_ip = client_sock.getpeername()[0]
+        if self._semaphore.acquire(block=False):
+            thread_stopper = Event()
+            thread = Thread(
+                target=self.__handle_client_connection,
+                args=(client_sock, thread_stopper, )
+            )
+            self._threads.append(thread)
+            self._thread_stoppers.append(thread_stopper)
+            thread.start()
+            return True
+        else:
+            # TODO?: Maybe answer?
+            logging.info(f'action: handle_client | ip: {client_ip} | result: fail | error: reached '
+                         f'limit of simultaneous users {self.max_users} out of {self.max_users}')
+            return False
 
-    def __handle_client_connection(self, client_sock):
+    def __delay_response(self, delay_scaler):
+        n_clients = self.max_users - self._semaphore.get_value()
+        time.sleep(delay_scaler * n_clients)
+
+    def __handle_client_connection(self, client_sock, event_stop):
+        addr = client_sock.getpeername()[0]
+        protocolHandler = ProtocolHandler(client_sock)
         try:
-            protocolHandler = ProtocolHandler(client_sock)
+            client_id = protocolHandler.wait_handshake()
+            logging.info(f'action: handle_client | ip: {addr} | uuid: {str(client_id)}')
+            manager = QueryManager(client_id, workers_by_query=self.workers_by_query)
             keep_reading = True
-            while keep_reading:
-                t, value = protocolHandler.read()
+            while keep_reading and not event_stop.is_set():
+                t, msg_id, value = protocolHandler.read()
 
                 if protocolHandler.is_review(t):
-                    keep_reading = self.__handle_reviews(value)
+                    manager.distribute_reviews(msg_id, value)
+                    self.__delay_response(REVIEW_REACTION_DELAY_SCALER)
+                    logging.debug(f'action: send_reviews | N: {len(value)} | result: success')
                 elif protocolHandler.is_book(t):
-                    keep_reading = self.__handle_books(value)
+                    manager.distribute_books(msg_id, value)
+                    self.__delay_response(BOOK_REACTION_DELAY_SCALER)
+                    logging.debug(f'action: send_books | N: {len(value)} | result: success')
+                    time.sleep(0.5)
                 elif protocolHandler.is_book_eof(t):
-                    keep_reading = self.__handle_book_eof()
+                    manager.terminate_books()
+                    logging.debug('action: send_books | value: EOF | result: success')
                 elif protocolHandler.is_review_eof(t):
-                    keep_reading = self.__handle_review_eof()
-
+                    manager.terminate_reviews()
+                    keep_reading = False
+                    logging.debug('action: review_eof | value: EOF | result: success')
                 protocolHandler.ack()
-        
+            manager.stop()
         except (SocketBroken, OSError) as e:
-            logging.error(f'action: receive_message | result: fail | error: {str(e)}')
-        finally:
-            if client_sock:
-                logging.debug(f'action: release_client_socket | result: success')
-                client_sock.close()
-                logging.debug(f'action: finishing | result: success')
+            logging.error(f'action: receive_message | result: fail | error: {str(e) or repr(e)}')
 
-    def __handle_book_eof(self):
-        eof = make_eof()
-        self.middleware.send_booksQ1(eof)
-        self.middleware.send_booksQ2(eof)
-        self.middleware.send_booksQ3(eof)
-        self.middleware.send_booksQ5(eof)
-
-        logging.debug(f'action: send_books | value: EOF | result: success')
-        return True
-
-    def __handle_books(self, value):
-        # Query 1:
-        data_q1 = self.q1InSerializer.to_bytes(value)
-        self.middleware.send_booksQ1(data_q1)
-
-        # Query 2:
-        data_q2 = self.q2InSerializer.to_bytes(value)
-        self.middleware.send_booksQ2(data_q2)
-
-        # Query 3/4:
-        data_q3 = self.q3BookInSerializer.to_bytes(value)
-        self.middleware.send_booksQ3(data_q3)
-
-        # Query 5:
-        data_q5 = self.q5BookInSerializer.to_bytes(value)
-        self.middleware.send_booksQ5(data_q5)
-
-        logging.debug(f'action: send_books | len(value): {len(value)} | result: success')
-        return True
-
-    def __handle_review_eof(self):
-        logging.debug(f'action: read review_eof | result: success')
-        eof = make_eof(0)
-        self.middleware.send_reviewsQ3(eof)
-        self.middleware.send_reviewsQ5(eof)
-        return False
-        
-    def __handle_reviews(self, reviews):
-        #  It's responsible for separating the relevant 
-        #  fields for each query and sending them to different queues.
-        logging.debug(f'action: received reviews | result: success | N: {len(reviews)}')
-
-        # Query 3/4:
-        data = self.q3ReviewInSerializer.to_bytes(reviews)
-        self.middleware.send_reviewsQ3(data)
-
-        # Query 5:
-        data = self.q5ReviewInSerializer.to_bytes(reviews)
-        self.middleware.send_reviewsQ5(data)
-
-        return True
+        logging.debug('action: release_client_socket | result: success')
+        client_sock.close()
+        logging.debug('action: finishing | result: success')
+        self._semaphore.release()
+        logging.info(f'action: handle_client | result: end | ip: {addr} | uuid: {str(client_id)}')
 
     def __accept_new_connection(self):
         try:
@@ -146,13 +115,17 @@ class ClientHandler:
             return c
         except OSError as e:
             if self._server_on:
-                logging.error(f'action: accept_connections | result: fail')
+                logging.error(f'action: accept_connections | result: fail | error: {str(e) or repr(e)}')
             else:
-                logging.debug(f'action: stop_accept_connections | result: success')
+                logging.debug('action: stop_accept_connections | result: success')
             return
 
     def __handle_signal(self, signum, frame):
         logging.info(f'action: stop_server | result: in_progress | signal {signum}')
         self._server_on = False
         self._server_socket.shutdown(socket.SHUT_RDWR)
-        logging.debug(f'action: shutdown_socket | result: success')
+        for stopper in self._thread_stoppers:
+            stopper.set()
+        for thread in self._threads:
+            thread.join()
+        logging.debug('action: shutdown_socket | result: success')

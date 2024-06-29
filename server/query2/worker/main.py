@@ -1,16 +1,18 @@
 from configparser import ConfigParser
 from common.query2Worker import Query2Worker
+from utils.heartbeat import HeartBeat
 import logging
 import os
+
 
 def initialize_config():
     """ Parse env variables or config file to find program config params
 
     Function that search and parse program configuration parameters in the
-    program environment variables first and the in a config file. 
-    If at least one of the config parameters is not found a KeyError exception 
-    is thrown. If a parameter could not be parsed, a ValueError is thrown. 
-    If parsing succeeded, the function returns a ConfigParser object 
+    program environment variables first and the in a config file.
+    If at least one of the config parameters is not found a KeyError exception
+    is thrown. If a parameter could not be parsed, a ValueError is thrown.
+    If parsing succeeded, the function returns a ConfigParser object
     with config parameters
     """
 
@@ -21,8 +23,13 @@ def initialize_config():
     config_params = {}
     try:
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
-        config_params["peers"] = int(os.environ['PEERS'])
         config_params["chunk_size"] = int(os.getenv('CHUNK_SIZE', config["DEFAULT"]["CHUNK_SIZE"]))
+        config_params["peers"] = int(os.environ['PEERS'])
+        config_params["peer_id"] = int(os.environ['PEER_ID'])
+        config_params["min_decades"] = int(os.getenv('MIN_DECADES', config["DEFAULT"]["MIN_DECADES"]))
+
+        config_params["heartbeat_ip"] = os.environ['HEARTBEAT_IP']
+        config_params["heartbeat_port"] = int(os.environ['HEARTBEAT_PORT'])
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
     except ValueError as e:
@@ -34,18 +41,25 @@ def initialize_config():
 def main():
     config_params = initialize_config()
     logging_level = config_params["logging_level"]
-    peers = config_params['peers']
     chunk_size = config_params['chunk_size']
+    peers = config_params['peers']
+    peer_id = config_params['peer_id']
+    min_decades = config_params["min_decades"]
 
     initialize_log(logging_level)
 
     # Log config parameters at the beginning of the program to verify the configuration
     # of the component
     logging.debug(f"action: config | result: success | logging_level: {logging_level}")
+    heartbeat = HeartBeat(addr=(config_params['heartbeat_ip'], config_params['heartbeat_port']))
+    heartbeat.start()
 
     # Initialize server and start server loop
-    worker = Query2Worker(peers, chunk_size)
+    worker = Query2Worker(peer_id, peers, chunk_size, min_decades)
     exitcode = worker.run()
+
+    heartbeat.terminate()
+    heartbeat.join()
     return exitcode
 
 
@@ -61,6 +75,7 @@ def initialize_log(logging_level):
         level=logging_level,
         datefmt='%Y-%m-%d %H:%M:%S',
     )
+
 
 if __name__ == "__main__":
     main()
