@@ -141,11 +141,11 @@ class Client:
 
         return False
 
-    def __send_book_eof(self):
-        self.protocolHandler.send_book_eof()
+    def __send_book_eof(self, _id):
+        self.protocolHandler.send_book_eof(_id)
 
-    def __send_review_eof(self):
-        self.protocolHandler.send_review_eof()
+    def __send_review_eof(self, _id):
+        self.protocolHandler.send_review_eof(_id)
 
     def send_books(self):
         return self.send_file(self.config["book_file_path"],
@@ -171,11 +171,13 @@ class Client:
         try:
             file_size = os.path.getsize(path)
             with open(path, mode='r') as file, alive_bar(100, manual=True, force_tty=True) as bar:
+                next_uuid = uuid.uuid4()
                 # file.seek(pos)
                 file.readline()  # skip the headers
                 batch = []
                 line = file.readline()
                 i = 1
+                sent_eof = False
 
                 while line:
                     bar(float(file.tell() / file_size))
@@ -200,10 +202,14 @@ class Client:
                                 logging.info("action: retry send_batch | result: in_progress")
 
                             # send also if next line is null
-                            if len(batch) == chunk_size or not line:
-                                self.protocolHandler.send_batch(batch, msg_type, serializer)
+                            if (len(batch) == chunk_size or not line) and not sent_eof:
+                                self.protocolHandler.send_batch(batch, msg_type, serializer, next_uuid)
                                 batch = []
+                                next_uuid = uuid.uuid4()
                                 logging.debug('action: send_batch | result: success')
+                            if not line:
+                                sent_eof = True
+                                send_eof(next_uuid)
                             break
                         except (socket.error, SocketBroken) as e:
                             logging.error(f'action: socket_error | error: {str(e) or repr(e)}')
@@ -217,7 +223,6 @@ class Client:
                             time.sleep(sleep)
                             sleep *= min(sleep*TIME_SLEEP_SCALE, MAX_TIME_SLEEP)
 
-                send_eof()
                 bar(1.0)
                 return True
 

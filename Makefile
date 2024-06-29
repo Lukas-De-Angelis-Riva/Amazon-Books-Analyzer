@@ -29,12 +29,19 @@ client-run: docker-image-client
 	docker compose -f docker-compose-client.yaml run --rm client python main.py
 .PHONY: client-run
 
+monkey-run:
+	docker compose -f docker-compose-monkey.yaml up -d --build
+	docker compose -f docker-compose-monkey.yaml logs -f
+.PHONY: monkey-run	
+
 client-shutdown: docker-image-client
 	docker compose -f docker-compose-client.yaml stop -t 10
 	docker compose -f docker-compose-client.yaml down
 .PHONY: client-shutdown
 
 system-shutdown:
+	docker compose -f docker-compose-monkey.yaml stop -t 1
+	docker compose -f docker-compose-monkey.yaml down
 	docker compose -f docker-compose-server.yaml stop -t 10
 	docker compose -f docker-compose-server.yaml down
 .PHONY: system-shutdown

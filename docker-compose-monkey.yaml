@@ -1,0 +1,28 @@
+name: tp2-monkey
+networks:
+  amazon-network:
+    external: 'true'
+    ipam:
+      config:
+      - subnet: 172.25.125.0/24
+      driver: default
+services:
+  chaosMonkey:
+    container_name: chaosMonkey
+    entrypoint: python3 /main.py
+    environment:
+    - LOGGING_LEVEL=INFO
+    - PYTHONUNBUFFERED=1
+    - NODES=['doctor1', 'doctor2', 'doctor3', 'doctor4', 'query1Worker1', 'query1Worker2',
+      'query2Worker1', 'query2Worker2', 'query2Worker3', 'query2Worker4', 'query2Worker5',
+      'query3Worker1', 'query3Worker2', 'query3Worker3', 'query3Worker4', 'query3Worker5',
+      'query5Worker1', 'query5Worker2', 'query5Worker3', 'query5Worker4', 'query5Worker5',
+      'query1Synchronizer', 'query2Synchronizer', 'query3Synchronizer', 'query5Synchronizer',
+      'resultHandler', 'clientHandler']
+    image: chaos_monkey:latest
+    networks:
+    - amazon-network
+    privileged: 'true'
+    volumes:
+    - ./chaosMonkey/config.ini:/config.ini
+    - /var/run/docker.sock:/var/run/docker.sock

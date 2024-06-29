@@ -406,8 +406,6 @@ def create_server_side():
     for i in range(AMOUNT_OF_DOCTOR):
         config['services'][f'doctor{i+1}'] = create_doctor(i+1)
 
-    config['services']['chaosMonkey'] = create_monkey()
-
     config['services']['resultHandler'] = create_resultHandler()
 
     with open('docker-compose-server.yaml', 'w') as file:
@@ -436,6 +434,19 @@ def create_client():
         ],
     }
 
+def create_monkey_side():
+    config = {}
+    config['name'] = 'tp2-monkey'
+
+    config['networks'] = {}
+    config['networks'][NETWORK_NAME] = create_network(external=True)
+
+    config['services'] = {}
+    config['services']['chaosMonkey'] = create_monkey()
+
+    with open('docker-compose-monkey.yaml', 'w') as file:
+        yaml.dump(config, file)
+
 
 def create_client_side():
     config = {}
@@ -454,3 +465,4 @@ def create_client_side():
 if __name__ == '__main__':
     create_server_side()
     create_client_side()
+    create_monkey_side()
