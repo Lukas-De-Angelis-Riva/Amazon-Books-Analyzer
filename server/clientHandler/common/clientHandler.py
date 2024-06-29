@@ -8,6 +8,9 @@ from utils.protocolHandler import ProtocolHandler
 from utils.TCPhandler import SocketBroken
 from common.queryManager import QueryManager, QUERY1_ID, QUERY2_ID, QUERY3_ID, QUERY5_ID
 
+REVIEW_REACTION_DELAY_SCALER = 0.4
+BOOK_REACTION_DELAY_SCALER = 0.1
+
 
 class ClientHandler:
     def __init__(self, config_params):
@@ -61,6 +64,10 @@ class ClientHandler:
                          f'limit of simultaneous users {self.max_users} out of {self.max_users}')
             return False
 
+    def __delay_response(self, delay_scaler):
+        n_clients = self.max_users - self._semaphore.get_value()
+        time.sleep(delay_scaler * n_clients)
+
     def __handle_client_connection(self, client_sock, event_stop):
         addr = client_sock.getpeername()[0]
         protocolHandler = ProtocolHandler(client_sock)
@@ -74,11 +81,13 @@ class ClientHandler:
 
                 if protocolHandler.is_review(t):
                     manager.distribute_reviews(msg_id, value)
+                    self.__delay_response(REVIEW_REACTION_DELAY_SCALER)
                     logging.debug(f'action: send_reviews | N: {len(value)} | result: success')
-                    time.sleep(0.5)
                 elif protocolHandler.is_book(t):
                     manager.distribute_books(msg_id, value)
+                    self.__delay_response(BOOK_REACTION_DELAY_SCALER)
                     logging.debug(f'action: send_books | N: {len(value)} | result: success')
+                    time.sleep(0.5)
                 elif protocolHandler.is_book_eof(t):
                     manager.terminate_books()
                     logging.debug('action: send_books | value: EOF | result: success')

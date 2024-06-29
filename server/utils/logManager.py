@@ -2,9 +2,6 @@ import os
 
 from utils.model.log import WriteLine, WriteMetadataLine, BeginLine, CommitLine
 
-# TEST PURPOSES
-from utils.model.virus import virus
-
 
 class LogManager():
     BASE_DIRECTORY = '/clients'
@@ -23,8 +20,7 @@ class LogManager():
     def begin(self, chunk_id, worker_id=None):
         with open(self.log_file, "wb") as log_file:
             begin_line = BeginLine(chunk_id, worker_id)
-            # log_file.write(begin_line.encode())
-            virus.write_corrupt(begin_line.encode(), log_file)
+            log_file.write(begin_line.encode())
 
     def hold_change(self, k, v_old, v_new):
         if k not in self.changes:
@@ -37,8 +33,7 @@ class LogManager():
             for k in self.changes:
                 old = self.changes[k][0]
                 write_line = WriteLine(k, old)
-                # log_file.write(write_line.encode())
-                virus.write_corrupt(write_line.encode(), log_file)
+                log_file.write(write_line.encode())
 
         self.changes = {}
 
@@ -60,11 +55,9 @@ class LogManager():
                 write_line = WriteMetadataLine(key, v_old, self.bool_encoder)
             else:
                 write_line = WriteMetadataLine(key, v_old, self.int_encoder)
-            # log_file.write(write_line.encode())
-            virus.write_corrupt(write_line.encode(), log_file)
+            log_file.write(write_line.encode())
 
     def commit(self, chunk_id, worker_id=None):
         with open(self.log_file, "ab") as log_file:
             commit_line = CommitLine(chunk_id, worker_id)
-            # log_file.write(commit_line.encode())
-            virus.write_corrupt(commit_line.encode(), log_file)
+            log_file.write(commit_line.encode())

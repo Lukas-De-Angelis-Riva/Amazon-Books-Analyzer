@@ -9,8 +9,6 @@ from utils.persistentMap import PersistentMap
 from utils.persistentMap2 import PersistentMap2
 from utils.logManager import LogManager
 
-# TEST PURPOSES
-from utils.model.virus import virus
 
 BASE_DIRECTORY = '/clients'
 NULL_DIRECTORY = BASE_DIRECTORY + '/null'
@@ -33,13 +31,9 @@ class ClientTracker():
         self.client_id = client_id
         self.log_manager = LogManager(client_id)
 
-        virus.infect()
         self.worked_chunks = PersistentList(BASE_DIRECTORY + '/' + str(client_id) + '/chunks')
-        virus.infect()
         self.meta_data = PersistentMap(BASE_DIRECTORY + '/' + str(client_id) + '/meta')
-        virus.infect()
         self.data = PersistentMap2(BASE_DIRECTORY + '/' + str(client_id) + '/data')
-        virus.infect()
 
         self.meta_data[EXPECTED] = -1
         self.meta_data[WORKED] = 0
@@ -54,14 +48,10 @@ class ClientTracker():
 
     @classmethod
     def clear(cls, client_id):
-        virus.infect()
         os.rename(f'{BASE_DIRECTORY}/{str(client_id)}', NULL_DIRECTORY)
-        virus.infect()
         shutil.rmtree(NULL_DIRECTORY)
-        virus.infect()
 
     def undo(self):
-        virus.infect()
         with open(self.log_manager.log_file, 'rb') as f:
             aux = f.read()
         log_lines = LogFactory.from_bytes(io.BytesIO(aux), self.parser, self.log_manager.meta_decoder)
@@ -70,9 +60,7 @@ class ClientTracker():
         if log_lines[-1].type == LogLineType.COMMIT:
             chunk_id = log_lines[-1].chunk_id
             if chunk_id not in self.worked_chunks:
-                virus.infect()
                 self.worked_chunks.append(chunk_id)
-                virus.infect()
             return
 
         log_lines.reverse()
@@ -87,25 +75,16 @@ class ClientTracker():
             elif log_line.type == LogLineType.BEGIN:
                 break
 
-        virus.infect()
         self.data.flush()
-        virus.infect()
         self.meta_data.flush()
-        virus.infect()
 
     def recovery(self):
-        virus.infect()
         self.meta_data.load(lambda k, v: v)
-        virus.infect()
         self.worked_chunks.load()
-        virus.infect()
         self.data.load(self.parser)
-        virus.infect()
 
         if os.path.getsize(self.log_manager.log_file) > 0:
-            virus.infect()
             self.undo()
-            virus.infect()
 
     def eof_id(self):
         return uuid.UUID(self.meta_data[EOF_ID])
@@ -117,9 +96,7 @@ class ClientTracker():
         return self.meta_data[EXPECTED] == self.meta_data[WORKED]
 
     def persist(self, chunk_id, flush_data=False, **meta_changes):
-        virus.infect()
         self.log_manager.begin(chunk_id)
-        virus.infect()
         for meta_k in meta_changes:
             self.log_manager.log_metadata(meta_k, self.meta_data[meta_k])
 
@@ -137,13 +114,9 @@ class ClientTracker():
         if flush_data:
             self.data.flush()
 
-        virus.infect()
         self.meta_data.flush()
-        virus.infect()
         self.log_manager.commit(chunk_id)
-        virus.infect()
         self.worked_chunks.append(chunk_id)
-        virus.infect()
 
     def __repr__(self) -> str:
         n_data = len(self.data)

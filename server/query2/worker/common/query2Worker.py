@@ -6,9 +6,6 @@ from dto.q2Partial import Q2Partial
 from utils.serializer.q2InSerializer import Q2InSerializer              # type: ignore
 from utils.serializer.q2OutSerializer import Q2OutSerializer            # type: ignore
 
-# TEST PURPOSES
-from utils.model.virus import virus
-
 
 def in_queue_name(peer_id):
     return f'Q2-Books-{peer_id}'
@@ -67,7 +64,5 @@ class Query2Worker(Worker):
         results = self.filter_results()
         if results:
             logging.debug(f'action: filtering_result | result: success | n: {len(self.tracker.data)} >> {len(results)}')
-            virus.infect()
             self.send_results(results)
-        virus.infect()
         self.send_eof(len(results))

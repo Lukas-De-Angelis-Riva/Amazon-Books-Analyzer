@@ -1,8 +1,6 @@
 import os
 import io
 
-from utils.model.virus import virus
-
 
 class PersistentMap2():
     def __init__(self, path):
@@ -60,11 +58,9 @@ class PersistentMap2():
 
     def flush(self):
         with open(self.tmp_file, "wb") as tmp_fp:
-            virus.write_corrupt(self.encode(), tmp_fp)
+            tmp_fp.write(self.encode())
 
-        virus.infect()
         os.rename(self.tmp_file, self.path)
-        virus.infect()
 
     def load(self, decoder):
         if os.path.exists(self.path) and os.path.getsize(self.path) > 0:

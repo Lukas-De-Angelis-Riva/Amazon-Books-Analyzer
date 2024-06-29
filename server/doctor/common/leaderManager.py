@@ -60,8 +60,8 @@ class LeaderManager(Process):
             self.handler_ok_message(message)
         if mType == MessageType.COORDINATOR:
             self.handler_coordinator_message(message)
-        if mType == MessageType.HEARTBEAT:
-            self.handle_heartbeat_message(message, addr)
+        if mType == MessageType.LEADER:
+            self.handle_leader_message(message, addr)
 
     def handle_election_message(self, message, addr):
         sender_id = message["id"]
@@ -91,7 +91,7 @@ class LeaderManager(Process):
             self.ok_received.set()
             logging.debug(f"action: recv_coordinator | leader={sender_id}")
 
-    def handle_heartbeat_message(self, message, addr):
+    def handle_leader_message(self, message, addr):
         self.last_heartbeat = time.time()
         sender_id = message["id"]
         if sender_id < self.id:
@@ -152,7 +152,7 @@ class LeaderManager(Process):
     def heald_check(self):
         for peer_ip in self.peers:
             self.messageHandler.send_message((peer_ip, self.port),
-                                             MessageType.HEARTBEAT,
+                                             MessageType.LEADER,
                                              self.id)
 
     def run(self):
